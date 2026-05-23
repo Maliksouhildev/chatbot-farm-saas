@@ -1,0 +1,99 @@
+{
+  "createdAt": "2026-03-17T15:34:54.788Z",
+  "updatedAt": "2026-03-25T12:16:34.000Z",
+  "id": "8lcSsO0JfacFeORG",
+  "name": "wsp : recherche catalogue",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "225f811c-bade-4ba7-8aa8-cc7c6cc7c01c",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1a5i0CJA-wphmdeuY0vePPXJmrTtK0bgylQlIrhu1bDM",
+          "mode": "list",
+          "cachedResultName": "Catalogue Hospitable"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Feuille 1"
+        },
+        "options": {}
+      },
+      "id": "d5da689a-a9b8-4a5d-a6d7-2c8dc86fb902",
+      "name": "Lire Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        280,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2J1AuUzVQd1KKduy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(item => item.json);\n\nif (rows.length === 0) {\n  return [{ json: { result: \"Aucun appartement trouvé dans la base de données.\" } }];\n}\n\n// On nettoie et on envoie le lien de réservation à l'IA\nconst catalogueClean = rows.map(r => ({\n  Property_ID: r.Property_ID || \"\",\n  Nom: r.Nom || \"\",\n  Ville: r.Ville_Quartier || \"\",\n  Capacite: r.Capacite || \"\",\n  Description: r.Description_Courte || \"\",\n  Lien_Reservation: r.Lien_Reservation || \"\"\n}));\n\nreturn [{ json: { result: JSON.stringify(catalogueClean) } }];"
+      },
+      "id": "f94c6461-446b-47dd-9bde-04fbfd6e24bc",
+      "name": "Formater pour IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Lire Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lire Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Formater pour IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "4f8eebd3-2ecf-468b-a8da-40eae8fe559f",
+  "triggerCount": 0,
+  "tags": []
+}
