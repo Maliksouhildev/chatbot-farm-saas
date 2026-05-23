@@ -1,0 +1,218 @@
+{
+  "createdAt": "2026-03-17T15:40:26.378Z",
+  "updatedAt": "2026-04-18T11:13:53.000Z",
+  "id": "cpUwDbRPuJNAwpeM",
+  "name": "wsp : dispo",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "property_ids"
+            },
+            {
+              "name": "start_date"
+            },
+            {
+              "name": "end_date"
+            },
+            {
+              "name": "guests",
+              "type": "number"
+            },
+            {
+              "name": "phone"
+            },
+            {
+              "name": "first_name"
+            },
+            {
+              "name": "last_name"
+            },
+            {
+              "name": "page",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1180,
+        -520
+      ],
+      "id": "cc60ad2f-3a33-45f5-adbd-8cdae7448e18",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n    const results = [];\n    const httpResponses = $input.all();\n    const originalIds = $('Split IDs').all();\n\n    // 🟢 SCRAPING DEVISESQUARE\n    let TAUX_CHANGE_DZD = 240; \n    try {\n        const htmlNode = $('Scrape DeviseSquare').first();\n        if (htmlNode && htmlNode.json && htmlNode.json.data) {\n            const html = htmlNode.json.data;\n            const match = html.match(/1 EURO[\\s\\S]*?buy[\\s\\S]*?<h1>(\\d{3})/i); \n            if (match && match[1]) {\n                TAUX_CHANGE_DZD = parseInt(match[1], 10);\n            }\n        }\n    } catch(e) {}\n\n    // Sécurité si Hospitable n'a rien renvoyé du tout\n    if (!httpResponses || httpResponses.length === 0) {\n        return [{ json: { result: \"ERREUR: Aucune donnée reçue.\" } }];\n    }\n\n    for (let i = 0; i < httpResponses.length; i++) {\n        const response = httpResponses[i].json || {};\n        const property_id = (originalIds[i] && originalIds[i].json) ? originalIds[i].json.property_id : \"ID_INCONNU\";\n        \n        // Guard: skip WhatsApp API responses that leaked into this context\n        if (response.messaging_product === 'whatsapp' || response.object === 'whatsapp_business_account') {\n            results.push({ json: { result: `ID: ${property_id} -> STATUT: INDISPONIBLE` } });\n            continue;\n        }\n\n        if (response.error || response.status_code || response.message) {\n            results.push({ json: { result: `ID: ${property_id} -> STATUT: INDISPONIBLE` } });\n            continue;\n        }\n\n        const data = response.data || response;\n\n        if (data && data.financials && data.financials.totals && data.financials.totals.total) {\n            const prixEuroFormat = data.financials.totals.total.formatted;\n            const prixCentimes = data.financials.totals.total.amount;\n            \n            const prixEuroVal = prixCentimes / 100;\n            const prixDZD = Math.round(prixEuroVal * TAUX_CHANGE_DZD);\n            const prixDzdFormate = prixDZD.toLocaleString('fr-FR') + \" DA\";\n            \n            const prixFinal = `${prixEuroFormat} (soit ${prixDzdFormate})`;\n            // C'EST CE LIEN QUE L'IA DOIT UTILISER :\n            let lienDirect = data.booking_url || \"\";\n            if (lienDirect && originalIds[i] && originalIds[i].json) {\n                let start = originalIds[i].json.start_date;\n                let end = originalIds[i].json.end_date;\n                let guests = originalIds[i].json.guests;\n                if (!lienDirect.includes(\"check_in\")) {\n                    const sep = lienDirect.includes(\"?\") ? \"&\" : \"?\";\n                    lienDirect += `${sep}check_in=${start}&check_out=${end}&guests=${guests}`;\n                // No extra params — Hospitable booking page only supports check_in, check_out, guests\n                }\n            } \n\n            results.push({ \n                json: { \n                    result: `ID: ${property_id} -> STATUT: DISPONIBLE | PRIX: ${prixFinal} | LIEN HOSPITABLE: ${lienDirect}` \n                } \n            });\n        } else {\n            results.push({ json: { result: `ID: ${property_id} -> STATUT: INDISPONIBLE` } });\n        }\n    }\n\n    return results;\n\n} catch (error) {\n    // Si le code plante, n8n ne crashera pas, il enverra ça à l'IA :\n    return [{ json: { result: \"ERREUR CRITIQUE DANS L'ANALYSE: \" + error.message } }];\n}"
+      },
+      "id": "2d6d10c7-e1eb-4572-9b9f-fbf285046565",
+      "name": "Analyser le Devis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -40,
+        -600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://public.api.hospitable.com/v2/properties/' + $json.property_id + '/quote' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"checkin_date\": $json.start_date, \"checkout_date\": $json.end_date, \"guests\": { \"adults\": $json.guests, \"children\": 0, \"infants\": 0, \"pets\": 0 } } }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 4000
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "aed66587-75f4-43d2-87bd-0fa0e717563b",
+      "name": "API Quote Hospitable1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -260,
+        -520
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fWa7mv4OTPOJ9HRv",
+          "name": "Header Auth account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Récupère les données du trigger pour la pagination\nconst triggerData = $('When Executed by Another Workflow').first().json;\nconst actualData = triggerData.query ? triggerData.query : triggerData;\nconst page = parseInt(actualData.page) || 1;\nconst PAGE_SIZE = 3;\n\n// Combine tous les résultats DISPONIBLES\nconst allResults = $input.all()\n    .map(item => item.json.result)\n    .filter(r => r && r.includes('STATUT: DISPONIBLE'));\n\n// Calcule les indices de pagination\nconst startIdx = (page - 1) * PAGE_SIZE;\nconst endIdx = startIdx + PAGE_SIZE;\nconst pageResults = allResults.slice(startIdx, endIdx);\nconst totalAvailable = allResults.length;\nconst remaining = Math.max(0, totalAvailable - endIdx);\n\n// Si cette page est vide → aucune nouvelle option\nif (pageResults.length === 0) {\n    return [{ json: { result: \"AUCUNE_NOUVELLE_OPTION - Tous les appartements disponibles ont déjà été présentés.\" } }];\n}\n\nconst combinedResults = pageResults.join('\\n\\n');\nconst suffix = remaining > 0 \n    ? `\\n\\n[INFO: Il reste ${remaining} appartement(s) disponible(s) non encore présenté(s). L'IA peut demander page=${page + 1} pour les voir.]`\n    : `\\n\\n⛔ [INFO: Ce sont tous les appartements disponibles pour ces dates. NE RAPPELLE PAS CET OUTIL. Dis au client que toutes les options ont été présentées.]`;\n\nreturn [{ json: { result: combinedResults + suffix } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        180,
+        -600
+      ],
+      "id": "c7b8e794-9f3e-4a1d-81d0-3cb8a8904ebe",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const triggerData = $('When Executed by Another Workflow').first().json;\nconst actualData = triggerData.query ? triggerData.query : triggerData;\n\n// CATALOGUE COMPLET — toujours utilisé pour garantir une recherche exhaustive\n// L'IA peut passer n'importe quoi dans property_ids, on ignore et on cherche sur tout le catalogue\nconst CATALOGUE_COMPLET = \"0e4dea37-7994-46d6-beab-67efe3499f5b,ed2e6d1d-0975-46ac-8dec-8d1885500112,d7979f36-0a9d-4380-bd2f-5dbd011ef55b,83216c4b-8612-4d0a-8da8-ea50f181a27b,4b6389a0-2672-4054-aa3e-3bd6847827de,11ae3d86-a80d-49fd-865a-69dd4d3576e7,12951e63-841e-41c5-a200-d24a485e0704,3d9dfb16-f4e6-41b5-834d-e6f1a2f3fd1b,41498064-88b5-4d25-a8e5-ce58be68c813,ba397f86-bcb2-4443-add2-cfb58ab6c418,f6c5de4e-46a4-4193-a072-14d7883f2fbc,0692ebed-1f44-4cfc-98a2-1364603bb05d,bd66df5b-1ddf-44a0-bd48-85eca8edd452,7b792df1-6fb3-47ec-87c4-b69c382584fb,907d81f3-9160-4dcb-8767-94e85662ef61\";\n\nconst ids = CATALOGUE_COMPLET.split(',');\n\nreturn ids.map(id => ({\n    json: {\n        property_id: id.trim(),\n        start_date: actualData.start_date,\n        end_date: actualData.end_date,\n        guests: actualData.guests\n    }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -740,
+        -520
+      ],
+      "id": "38fb03d3-73c5-410e-bc20-c5956c923951",
+      "name": "Split IDs"
+    },
+    {
+      "parameters": {
+        "url": "https://devisesquare.com/",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -960,
+        -520
+      ],
+      "id": "f9a78bad-6548-42cb-ab70-8cbc3509b9e5",
+      "name": "Scrape DeviseSquare",
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Scrape DeviseSquare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyser le Devis": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Quote Hospitable1": {
+      "main": [
+        [
+          {
+            "node": "Analyser le Devis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split IDs": {
+      "main": [
+        [
+          {
+            "node": "API Quote Hospitable1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape DeviseSquare": {
+      "main": [
+        [
+          {
+            "node": "Split IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "81c0cdf5-dc07-4988-ad94-a600e0a2e484",
+  "triggerCount": 0,
+  "tags": []
+}
