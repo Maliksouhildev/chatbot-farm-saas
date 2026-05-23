@@ -1,0 +1,118 @@
+{
+  "createdAt": "2026-04-07T17:11:58.914Z",
+  "updatedAt": "2026-04-07T17:12:09.000Z",
+  "id": "kCtbKybpBYduPMA8",
+  "name": "wsp: reset pics",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "phone"
+            }
+          ]
+        }
+      },
+      "id": "c00c3876-3d0b-40c2-9fe9-da495b4cf383",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -580,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const phone = $('When Executed by Another Workflow').first().json.phone || '';\nreturn [\n  { json: { key_to_delete: 'photo_urls_' + phone } },\n  { json: { key_to_delete: 'vision_batch_' + phone } },\n  { json: { key_to_delete: 'photo_count_' + phone } }\n];"
+      },
+      "id": "92e81ee6-366d-4c78-8809-af979f90d15f",
+      "name": "Prep Keys To Delete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -360,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $json.key_to_delete }}"
+      },
+      "id": "fe0bd97b-1286-4d42-acc3-d7ece0c621ac",
+      "name": "Redis Wipe Photos",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        -300
+      ],
+      "credentials": {
+        "redis": {
+          "id": "V8K02flgy9UVw9wq",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { result: \"Photos effacées avec succès. Demande au client d'envoyer les nouvelles photos.\" } }];"
+      },
+      "id": "018b812d-6c0f-4409-874a-3f5002c63d7d",
+      "name": "Réponse pour IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -300
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prep Keys To Delete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Keys To Delete": {
+      "main": [
+        [
+          {
+            "node": "Redis Wipe Photos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Wipe Photos": {
+      "main": [
+        [
+          {
+            "node": "Réponse pour IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "6f93da02-ea1a-4d5e-b353-364adfee4284",
+  "triggerCount": 0,
+  "tags": []
+}
