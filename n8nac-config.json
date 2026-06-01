@@ -1,0 +1,51 @@
+{
+  "version": 4,
+  "activeEnvironmentId": "http-127-0-0-1-5678",
+  "environmentTargets": [
+    {
+      "id": "managed",
+      "name": "managed",
+      "kind": "managed-instance",
+      "managedInstanceId": "managed-7d1ff5e5"
+    },
+    {
+      "id": "managed-2",
+      "name": "managed 2",
+      "kind": "managed-instance",
+      "managedInstanceId": "managed-5218b4b9"
+    },
+    {
+      "id": "managed-3",
+      "name": "managed 3",
+      "kind": "managed-instance",
+      "managedInstanceId": "managed-7d1ff5e5"
+    },
+    {
+      "id": "http-127-0-0-1-5678-instance",
+      "name": "127.0.0.1:5678",
+      "kind": "external-instance",
+      "url": "http://127.0.0.1:5678"
+    }
+  ],
+  "environments": [
+    {
+      "id": "mikow",
+      "name": "mikow",
+      "syncSlug": "mikow",
+      "environmentTargetId": "managed",
+      "projectId": "personal",
+      "projectName": "Personal",
+      "workflowsPath": "workflows/mikow",
+      "folderSync": true
+    },
+    {
+      "id": "http-127-0-0-1-5678",
+      "name": "127.0.0.1:5678",
+      "syncSlug": "127-0-0-1-5678",
+      "environmentTargetId": "http-127-0-0-1-5678-instance",
+      "projectId": "personal",
+      "projectName": "Personal",
+      "workflowsPath": "workflows\\127-0-0-1-5678"
+    }
+  ]
+}

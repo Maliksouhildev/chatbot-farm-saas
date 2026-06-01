@@ -1,0 +1,22 @@
+# Antigravity Developer Rules & System Instructions
+
+## 1. Project Context & Environment
+- **OS:** Windows (running PowerShell).
+- **n8n Version:** Using n8n version `1.77.0`.
+- **Deployment:** Running locally on Docker containers via Docker Desktop.
+- **Access URL:** Accessible locally at `http://localhost:5678`.
+- **Public Tunneling:** Exposed using `ngrok` for webhook testing (e.g., WhatsApp webhooks). Do not use or configure ngrok for IDE-to-n8n communication; keep it purely for webhooks.
+
+## 2. Token & Cost Efficiency
+- **Strict Cost Optimization:** NEVER output full JSON workflows in responses. Write JSON changes silently using file-system tools and only display minimal diffs of updated nodes/connections.
+- **Prevent Hallucinations:** Before modifying nodes, verify their configuration against `WORKFLOW_INDEX.md` and current JSON file structure.
+
+## 3. Automated Testing (TestSprite MCP)
+- **Automatic Test Integration:** Whenever editing codebase files, scripts, or fixing bugs in the workflows, you MUST invoke **TestSprite MCP tools** to generate and execute tests, validating changes before marking tasks as complete.
+- **Test ID Verification:** Check if `.testsprite/config.json` exists before bootstrapping. If it exists, call `mcp_TestSprite_testsprite_generate_code_and_execute` directly instead of bootstrapping.
+
+## 4. Execution Workflow
+- Always read `PROGRESS.md` before starting any task to understand current task status.
+- Update `PROGRESS.md` with completed steps and known issues upon completing the task.
+- Follow the directory structure: scripts in `/scripts`, workflows/JSON in `/workflows`, docs in `/docs`.
+- **No Planning Mode:** NEVER generate implementation plans, task checklists (task.md), or walkthroughs (walkthrough.md) unless the user explicitly requests one in their prompt. Skip Planning Mode by default and execute directly.

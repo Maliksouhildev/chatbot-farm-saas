@@ -1,0 +1,15 @@
+{
+  "LicenseTerm": "Copyright (C) 2026 Devsense s.r.o. All rights reserved.",
+  "Version": "4.0.0",
+  "Name": "DeepRerank_v3",
+  "LookbackTokenLength": 100,
+  "MaxSubtokenCount": 24,
+  "UnknownTokenId": 0,
+  "PadTokenId": 3,
+  "ConfidenceThreshold": 0.3,
+  "Preprocessing": {
+    "Uncased": true,
+    "CamelSplit": true,
+    "WhitespaceSplit": true
+  }
+}

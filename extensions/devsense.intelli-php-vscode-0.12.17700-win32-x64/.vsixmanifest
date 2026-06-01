@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+	<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+		<Metadata>
+			<Identity Language="en-US" Id="intelli-php-vscode" Version="0.12.17700" Publisher="DEVSENSE" TargetPlatform="win32-x64"/>
+			<DisplayName>IntelliPHP - AI Autocomplete for PHP</DisplayName>
+			<Description xml:space="preserve">AI-assisted development for PHP.</Description>
+			<Tags>php,ai,tools,php tools,compose</Tags>
+			<Categories>Programming Languages,Machine Learning,Snippets,Other</Categories>
+			<GalleryFlags>Public Preview</GalleryFlags>
+			<Badges><Badge Link="https://twitter.com/php4vs" ImgUri="https://badgen.net/badge/@php4vs/twitter/blue?icon=twitter" Description="PHP Tools on Twitter" />
+<Badge Link="https://www.devsense.com/en?from=vscode" ImgUri="https://img.shields.io/badge/-changelog-green" Description="PHP Tools product page" /></Badges>
+			<Properties>
+				<Property Id="Microsoft.VisualStudio.Code.Engine" Value="^1.70.0" />
+				<Property Id="Microsoft.VisualStudio.Code.ExtensionDependencies" Value="" />
+				<Property Id="Microsoft.VisualStudio.Code.ExtensionPack" Value="" />
+				<Property Id="Microsoft.VisualStudio.Code.ExtensionKind" Value="workspace" />
+				<Property Id="Microsoft.VisualStudio.Code.LocalizedLanguages" Value="" />
+				<Property Id="Microsoft.VisualStudio.Code.EnabledApiProposals" Value="" />
+				
+				<Property Id="Microsoft.VisualStudio.Code.ExecutesCode" Value="true" />
+				
+				<Property Id="Microsoft.VisualStudio.Services.Links.Source" Value="https://github.com/DEVSENSE/phptools-docs.git" />
+				<Property Id="Microsoft.VisualStudio.Services.Links.Getstarted" Value="https://github.com/DEVSENSE/phptools-docs.git" />
+				<Property Id="Microsoft.VisualStudio.Services.Links.GitHub" Value="https://github.com/DEVSENSE/phptools-docs.git" />
+				<Property Id="Microsoft.VisualStudio.Services.Links.Support" Value="https://github.com/DEVSENSE/phptools-docs/issues" />
+				<Property Id="Microsoft.VisualStudio.Services.Links.Learn" Value="https://www.devsense.com/" />
+				<Property Id="Microsoft.VisualStudio.Services.Branding.Color" Value="#b9dcf4" />
+				<Property Id="Microsoft.VisualStudio.Services.Branding.Theme" Value="light" />
+				<Property Id="Microsoft.VisualStudio.Services.GitHubFlavoredMarkdown" Value="true" />
+				<Property Id="Microsoft.VisualStudio.Services.Content.Pricing" Value="Trial"/>
+
+				
+				<Property Id="Microsoft.VisualStudio.Services.CustomerQnALink" Value="https://community.devsense.com/" />
+			</Properties>
+			<License>extension/LICENSE.md</License>
+			<Icon>extension/icons/icon-2.png</Icon>
+		</Metadata>
+		<Installation>
+			<InstallationTarget Id="Microsoft.VisualStudio.Code"/>
+		</Installation>
+		<Dependencies/>
+		<Assets>
+			<Asset Type="Microsoft.VisualStudio.Code.Manifest" Path="extension/package.json" Addressable="true" />
+			<Asset Type="Microsoft.VisualStudio.Services.Content.Details" Path="extension/readme.md" Addressable="true" />
+<Asset Type="Microsoft.VisualStudio.Services.Content.License" Path="extension/LICENSE.md" Addressable="true" />
+<Asset Type="Microsoft.VisualStudio.Services.Icons.Default" Path="extension/icons/icon-2.png" Addressable="true" />
+		</Assets>
+	</PackageManifest>

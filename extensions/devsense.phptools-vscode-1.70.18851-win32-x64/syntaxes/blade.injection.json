@@ -1,0 +1,131 @@
+{
+    "scopeName": "html-blade.injection",
+    "injectionSelector": "L:text.html.php - (source.php, meta.embedded.inline.phpx, text.html.php.blade, comment.block.html, comment.block.blade)",
+    "patterns": [
+        {
+            "include": "#meta.embedded.comment.blade"
+        },
+        {
+            "include": "#meta.embedded.escaped-content.blade"
+        },
+        {
+            "include": "#meta.embedded.raw-content.blade"
+        },
+        {
+            "include": "#meta.embedded.content.blade"
+        },
+        {
+            "include": "#meta.embedded.phpblock.blade"
+        },
+        {
+            "include": "#meta.embedded.tag.blade.use-quoted"
+        },
+        {
+            "include": "#meta.embedded.tag.blade"
+        },
+        {
+            "include": "#meta.embedded.empty-tag.blade"
+        }
+    ],
+    "repository": {
+        "meta.embedded.phpblock.blade": {
+            "begin": "(@php)\\s+",
+            "end": "(@endphp)\\s+",
+            "beginCaptures": {
+                "0": { "name": "keyword.other.type.php" }
+            },
+            "endCaptures": {
+                "1": { "name": "keyword.other.type.php" }
+            },
+            "name": "meta.embedded.inline.phpx",
+            "patterns": [
+                {
+                    "include": "source.phpx"
+                }
+            ]
+        },
+        "meta.embedded.tag.blade": {
+            "begin": "(@\\w+)\\s*\\(",
+            "end": "(\\))",
+            "beginCaptures": {
+                "0": { "name": "keyword.other.type.php" }
+            },
+            "endCaptures": {
+                "1": { "name": "keyword.other.type.php" }
+            },
+            "name": "meta.tag.blade",
+            "patterns": [{"include": "source.phpx"}]
+        },
+        "meta.embedded.tag.blade.use-quoted": {
+            "begin": "(@use\\s*\\()\\s*(['\"])?",
+            "end": "(['\"])?\\s*(,[a-zA-Z'\"\\s]*)?(\\))",
+            "beginCaptures": {
+                "1": { "name": "keyword.other.type.php" },
+                "2": { "name": "string.quoted.single.php"}
+            },
+            "endCaptures": {
+                "1": { "name": "string.quoted.single.php"},
+                "3": { "name": "keyword.other.type.php" }
+            },
+            "name": "meta.tag.blade",
+            "patterns": [{"include": "source.phpx"}]
+        },
+        "meta.embedded.empty-tag.blade": {
+            "match": "(@\\w+)\\s*$",
+            "name": "keyword.other.type.php"
+        },
+        "meta.embedded.comment.blade": {
+            "begin": "\\{\\{\\-\\-",
+            "end": "\\-\\-\\}\\}",
+            "name": "comment.block.html"
+        },
+        "meta.embedded.escaped-content.blade": {
+            "begin": "\\{\\{\\{",
+            "end": "\\}\\}\\}",
+            "beginCaptures": {
+                "0": { "name": "punctuation.definition.tag.begin.html" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.definition.tag.end.html" }
+            },
+            "name": "meta.embedded.inline.phpx",
+            "patterns": [
+                {
+                    "include": "source.phpx"
+                }
+            ]
+        },
+        "meta.embedded.raw-content.blade": {
+            "begin": "\\{\\!!",
+            "end": "!!\\}",
+            "beginCaptures": {
+                "0": { "name": "punctuation.definition.tag.begin.html" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.definition.tag.end.html" }
+            },
+            "name": "meta.embedded.inline.phpx",
+            "patterns": [
+                {
+                    "include": "source.phpx"
+                }
+            ]
+        },
+        "meta.embedded.content.blade": {
+            "begin": "@?\\{\\{",
+            "end": "\\}\\}",
+            "beginCaptures": {
+                "0": { "name": "punctuation.definition.tag.begin.html" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.definition.tag.end.html" }
+            },
+            "name": "meta.embedded.inline.phpx",
+            "patterns": [
+                {
+                    "include": "source.phpx"
+                }
+            ]
+        }
+    }
+}

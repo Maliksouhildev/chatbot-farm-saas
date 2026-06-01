@@ -1,0 +1,1319 @@
+{
+  "nodes": [
+    {
+      "name": "WA Validation & Suite2",
+      "id": "dda36de0-84eb-4ba2-91fb-d810ca847c51",
+      "pos": [
+        -180,
+        2540
+      ],
+      "type": "n8n-nodes-base.whatsApp"
+    },
+    {
+      "name": "WA Proposition Devis2",
+      "id": "962cd5da-7c29-4a31-885f-53cbc8a5df95",
+      "pos": [
+        -180,
+        2320
+      ],
+      "type": "n8n-nodes-base.whatsApp"
+    },
+    {
+      "name": "Set Context",
+      "id": "8d3d2466-8f4f-4acf-9e59-ca6a60eb327b",
+      "pos": [
+        -2960,
+        1680
+      ],
+      "type": "n8n-nodes-base.code"
+    },
+    {
+      "name": "WA Image Voyageur3",
+      "id": "b6dba171-1565-4022-acb7-39047ab4e5ed",
+      "pos": [
+        -340,
+        1160
+      ],
+      "type": "n8n-nodes-base.whatsApp"
+    },
+    {
+      "name": "Outil Export CRM2",
+      "id": "7c3539c5-bc09-40cd-b7af-4ec97d2bcdb5",
+      "pos": [
+        -1960,
+        1080
+      ],
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow"
+    },
+    {
+      "name": "WA Demande Photos Supplémentaires1",
+      "id": "df1b4e22-e489-41d3-8871-fde786c8a472",
+      "pos": [
+        -1200,
+        2540
+      ],
+      "type": "n8n-nodes-base.whatsApp"
+    },
+    {
+      "name": "3. AI Vision Analysis1",
+      "id": "5797dca4-f2bc-4d9c-8589-f0bc9b934d01",
+      "pos": [
+        -3000,
+        2340
+      ],
+      "type": "@n8n/n8n-nodes-langchain.agent"
+    },
+    {
+      "name": "2. Download Image1",
+      "id": "22d0ed1a-e1e3-4e35-bb9d-6296cd5970d9",
+      "pos": [
+        -3380,
+        2340
+      ],
+      "type": "n8n-nodes-base.httpRequest"
+    },
+    {
+      "name": "1. Get Image URL1",
+      "id": "4024ede1-0cc7-4e66-84c7-8061168e8a13",
+      "pos": [
+        -3580,
+        2340
+      ],
+      "type": "n8n-nodes-base.httpRequest"
+    },
+    {
+      "name": "10. Score Moyen < 7/10?",
+      "id": "f48614a3-55ad-4d9e-a567-1fbbf0204474",
+      "pos": [
+        -1000,
+        2340
+      ],
+      "type": "n8n-nodes-base.if"
+    },
+    {
+      "name": "Chercher_Catalogue_GS",
+      "id": "68fc718a-0bb4-43c7-a991-f8fd216f84e2",
+      "pos": [
+        -1580,
+        660
+      ],
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow"
+    },
+    {
+      "name": "WA Image Voyageur2",
+      "id": "338a3b1e-3d96-417d-9c27-8485237b2203",
+      "pos": [
+        -740,
+        1640
+      ],
+      "type": "n8n-nodes-base.whatsApp"
+    },
+    {
+      "name": "WA Image Voyageur1",
+      "id": "fb6c05c8-0085-4d26-856d-1af4bba6bd8a",
+      "pos": [
+        -980,
+        460
+      ],
+      "type": "n8n-nodes-base.whatsApp"
+    },
+    {
+      "name": "Extraire Image Voyageur",
+      "id": "2b6c76b4-41e7-41b0-9e9d-b2dd5810da8f",
+      "pos": [
+        -1060,
+        180
+      ],
+      "type": "n8n-nodes-base.code"
+    },
+    {
+      "name": "WA Image Voyageur",
+      "id": "ae32e3ed-6040-4aa3-b134-f02d8646569a",
+      "pos": [
+        280,
+        40
+      ],
+      "type": "n8n-nodes-base.whatsApp"
+    },
+    {
+      "name": "If",
+      "id": "6d8c3e59-a1c5-46a2-8195-5c318e6b6c22",
+      "pos": [
+        -820,
+        120
+      ],
+      "type": "n8n-nodes-base.if"
+    },
+    {
+      "name": "Code1",
+      "id": "916a1935-b525-44f0-b950-ff780f6c6f04",
+      "pos": [
+        2860,
+        1400
+      ],
+      "type": "n8n-nodes-base.code"
+    },
+    {
+      "name": "Is Text Message?",
+      "id": "f7254a35-79e9-4c10-a8c5-27d7f6e89fa3",
+      "pos": [
+        -6620,
+        1380
+      ],
+      "type": "n8n-nodes-base.switch"
+    },
+    {
+      "name": "Booking Agent (Voyageur)",
+      "id": "e6948f08-2a69-469b-9405-3845fa104bc4",
+      "pos": [
+        -1820,
+        440
+      ],
+      "type": "@n8n/n8n-nodes-langchain.agent"
+    },
+    {
+      "name": "Booking Agent (Proprietaire)",
+      "id": "189b3cc3-7d6c-4164-8260-e0e9fdc7d552",
+      "pos": [
+        -2020,
+        860
+      ],
+      "type": "@n8n/n8n-nodes-langchain.agent"
+    },
+    {
+      "name": "WA Demande Photos Init",
+      "id": "458096db-84f7-423f-aa52-dce13d6a238d",
+      "pos": [
+        -980,
+        1260
+      ],
+      "type": "n8n-nodes-base.whatsApp"
+    },
+    {
+      "name": "Redis",
+      "id": "15eb47ff-3a15-4f6f-b550-f36566dedd82",
+      "pos": [
+        -2540,
+        2320
+      ],
+      "type": "n8n-nodes-base.redis"
+    },
+    {
+      "name": "Redis1",
+      "id": "3507d2a0-a514-4038-aac7-6c9e62ff63fc",
+      "pos": [
+        -2400,
+        2320
+      ],
+      "type": "n8n-nodes-base.redis"
+    },
+    {
+      "name": "Redis3",
+      "id": "e0248221-9d29-4b7b-bcd4-9f40aebd29db",
+      "pos": [
+        -1860,
+        2240
+      ],
+      "type": "n8n-nodes-base.redis"
+    },
+    {
+      "name": "Code",
+      "id": "4f173f73-a6d8-4cac-a292-18bc3ede9f78",
+      "pos": [
+        -1380,
+        2260
+      ],
+      "type": "n8n-nodes-base.code"
+    },
+    {
+      "name": "Redis4",
+      "id": "4a8b8e7c-1848-432e-b9ec-ae2e20eedff2",
+      "pos": [
+        -1720,
+        2240
+      ],
+      "type": "n8n-nodes-base.redis"
+    },
+    {
+      "name": "Redis5",
+      "id": "98bb942d-0d5f-4240-8f51-36bf9af70168",
+      "pos": [
+        -1540,
+        2280
+      ],
+      "type": "n8n-nodes-base.redis"
+    },
+    {
+      "name": "Redis2",
+      "id": "c2438494-5a92-4a1c-a964-b87363a51268",
+      "pos": [
+        100,
+        2300
+      ],
+      "type": "n8n-nodes-base.redis"
+    },
+    {
+      "name": "Redis6",
+      "id": "e8d199fd-d41e-468b-86d3-046d5c305278",
+      "pos": [
+        240,
+        2300
+      ],
+      "type": "n8n-nodes-base.redis"
+    },
+    {
+      "name": "Traduction_WA_Image_Voyageur3",
+      "id": "ae759ff2-45de-4d34-8e27-52b835ca7006",
+      "pos": [
+        -720,
+        1200
+      ],
+      "type": "@n8n/n8n-nodes-langchain.chainLlm"
+    },
+    {
+      "name": "Traduction_WA_Demande_Photos_Init",
+      "id": "6bb58e17-e6d8-4240-b503-b11abfd0368d",
+      "pos": [
+        -1440,
+        1260
+      ],
+      "type": "@n8n/n8n-nodes-langchain.chainLlm"
+    },
+    {
+      "name": "Traduction_WA_Demande_Photos_Supplémentaires1",
+      "id": "43542f15-eeb9-4da7-82e7-8df59fda846b",
+      "pos": [
+        -1720,
+        2560
+      ],
+      "type": "@n8n/n8n-nodes-langchain.chainLlm"
+    },
+    {
+      "name": "Redis Get Image Lang",
+      "id": "07737fb3-d62d-4f32-84bd-800684409211",
+      "pos": [
+        -1920,
+        2560
+      ],
+      "type": "n8n-nodes-base.redis"
+    },
+    {
+      "name": "Code Save Photos",
+      "id": "f5d42cfc-126d-4a8c-b524-43af6a63ee84",
+      "pos": [
+        -2800,
+        2600
+      ],
+      "type": "n8n-nodes-base.code"
+    },
+    {
+      "name": "Code Build Admin Report 1",
+      "id": "bb880001-0000-0000-0000-000000000001",
+      "pos": [
+        -1220,
+        460
+      ],
+      "type": "n8n-nodes-base.code"
+    },
+    {
+      "name": "Code Build Admin Report 2",
+      "id": "bb880002-0000-0000-0000-000000000002",
+      "pos": [
+        -1040,
+        1640
+      ],
+      "type": "n8n-nodes-base.code"
+    }
+  ],
+  "connections": {
+    "WA Validation & Suite2": {
+      "main": [
+        [
+          {
+            "node": "Redis2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Proposition Devis2": {
+      "main": [
+        [
+          {
+            "node": "Redis2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Context": {
+      "main": [
+        [
+          {
+            "node": "AI Routeur1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Image Voyageur3": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Language (HTTP)": {
+      "main": [
+        [
+          {
+            "node": "Redis Set Text Lang",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Active Text": {
+      "main": [
+        [
+          {
+            "node": "Redis Get Text Lang",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outil Export CRM2": {
+      "ai_tool": [
+        [
+          {
+            "node": "Booking Agent (Proprietaire)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. AI Vision Analysis1": {
+      "main": [
+        [
+          {
+            "node": "If Logement Valide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Download Image1": {
+      "main": [
+        [
+          {
+            "node": "3. AI Vision Analysis1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Get Image URL1": {
+      "main": [
+        [
+          {
+            "node": "2. Download Image1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10. Score Moyen < 7/10?": {
+      "main": [
+        [
+          {
+            "node": "WA Proposition Devis2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "WA Validation & Suite2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model10": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "3. AI Vision Analysis1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If4": {
+      "main": [
+        [
+          {
+            "node": "Code Build Admin Report 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch Ville1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chercher_Catalogue_GS": {
+      "ai_tool": [
+        [
+          {
+            "node": "Booking Agent (Voyageur)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Booking Agent (Voyageur)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Booking Agent (Proprietaire)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Image Voyageur2": {
+      "main": [
+        [
+          {
+            "node": "Code Set Pause",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Code Build Admin Report 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Traduction_WA_Message_Support",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Image Voyageur1": {
+      "main": [
+        [
+          {
+            "node": "Code Set Pause",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Code Build Admin Report 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extraire Image Voyageur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Real Message?": {
+      "main": [
+        [
+          {
+            "node": "Code Check Pause",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer questions with a vector store1": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agent Support Client",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Booking Agent (Voyageur)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Booking Agent (Proprietaire)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent Support Client": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outil Infos Hospitable1": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agent Support Client",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Booking Agent (Voyageur)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraire Image Voyageur": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Image Voyageur": {
+      "main": [
+        [
+          {
+            "node": "WA Voyageur1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "WA Image Voyageur",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Text Message?": {
+      "main": [
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "1. Get Image URL1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "1. Get Audio URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "1. Prep Redis Vars",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "The Router1": {
+      "main": [
+        [
+          {
+            "node": "Booking Agent (Voyageur)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Booking Agent (Proprietaire)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agent Support Client",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agent Support Client",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agent Support Client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking Agent (Voyageur)": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Voyageur1": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking Agent (Proprietaire)": {
+      "main": [
+        [
+          {
+            "node": "If4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outil Gamma Offer": {
+      "ai_tool": [
+        [
+          {
+            "node": "Booking Agent (Proprietaire)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Ville1": {
+      "main": [
+        [
+          {
+            "node": "Traduction_WA_Pose_Question1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Traduction_WA_Pose_Question1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GS Hors Zone1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "WA Attente Client",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Traduction_WA_Demande_Photos_Init",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Traduction_WA_Pose_Question1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Pose Question1": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Refus1": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Demande Photos Init": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Script Admin": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Message Support": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Prep Redis Vars": {
+      "main": [
+        [
+          {
+            "node": "2. Redis Get Initial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Calc New Buffer": {
+      "main": [
+        [
+          {
+            "node": "4. Redis Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Wait (Debounce)": {
+      "main": [
+        [
+          {
+            "node": "6. Redis Get (Check)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7. Collision Check": {
+      "main": [
+        [
+          {
+            "node": "8. Redis Delete Key",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "10. Halt (Newer Msg Exists)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agent Support Client",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Booking Agent (Proprietaire)",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Booking Agent (Voyageur)",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis": {
+      "main": [
+        [
+          {
+            "node": "Redis1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis1": {
+      "main": [
+        [
+          {
+            "node": "If5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If5": {
+      "main": [
+        [
+          {
+            "node": "Redis3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redis Get Image Lang",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis3": {
+      "main": [
+        [
+          {
+            "node": "Redis4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "10. Score Moyen < 7/10?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis4": {
+      "main": [
+        [
+          {
+            "node": "Redis5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis5": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis2": {
+      "main": [
+        [
+          {
+            "node": "Redis6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disponibilites_Hospitable": {
+      "ai_tool": [
+        [
+          {
+            "node": "Booking Agent (Voyageur)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verifier_Statut_Paiement": {
+      "ai_tool": [
+        [
+          {
+            "node": "Booking Agent (Voyageur)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Traduction_WA_Image_Voyageur3",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Traduction_WA_Pose_Question1",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Traduction_WA_Refus1",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Traduction_WA_Demande_Photos_Init",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Traduction_WA_Message_Support",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Traduction_WA_Demande_Photos_Supplémentaires1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Traduction_WA_Image_Voyageur3": {
+      "main": [
+        [
+          {
+            "node": "WA Image Voyageur3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Traduction_WA_Demande_Photos_Init": {
+      "main": [
+        [
+          {
+            "node": "WA Demande Photos Init",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Traduction_WA_Demande_Photos_Supplémentaires1": {
+      "main": [
+        [
+          {
+            "node": "WA Demande Photos Supplémentaires1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Set Text Lang": {
+      "main": [
+        [
+          {
+            "node": "Redis7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Get Image Lang": {
+      "main": [
+        [
+          {
+            "node": "Traduction_WA_Demande_Photos_Supplémentaires1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Transcribed Text": {
+      "main": [
+        [
+          {
+            "node": "1. Prep Redis Vars",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Darja/Arabic": {
+      "main": [
+        [
+          {
+            "node": "WA Escalade Langue Locale",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Audio?": {
+      "main": [
+        [
+          {
+            "node": "Filter Darja/Arabic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Logement Valide": {
+      "main": [
+        [
+          {
+            "node": "Redis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code Save Photos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redis Get Image Lang",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Check Pause": {
+      "main": [
+        [
+          {
+            "node": "If Paused",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Paused": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Is Text Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Set Pause": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Build Admin Report 1": {
+      "main": [
+        [
+          {
+            "node": "WA Image Voyageur1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Build Admin Report 2": {
+      "main": [
+        [
+          {
+            "node": "WA Image Voyageur2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Reponse Vocale Client": {
+      "main": [
+        [
+          {
+            "node": "Code Set Pause",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

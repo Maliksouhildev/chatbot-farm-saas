@@ -1,0 +1,9 @@
+{
+	"title": "IntelliPHP",
+    "description": "AI-assisted development for PHP.",
+    "intelliphp.inlineSuggestionsEnabled.description": "Enables or disables AI inline code suggestions. Enabled by default.",
+    "intelliphp.releasenotes.title": "About ...",
+    
+    "capabilities.virtualWorkspaces.description": "In virtual workspaces, composer packages can't be installed or updated.",
+    "capabilities.untrustedWorkspaces.description": "The extension may require workspace trust to use 'php' 3rd party tool, or to navigate to PHP documentation website, or to navigate to the product website."
+}

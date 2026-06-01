@@ -1,0 +1,17 @@
+{
+    "webview.title": "Welcome to IntelliPHP",
+    "buy": "Buy License",
+    "renew": "Renew License",
+    "activate": "Activate License",
+    "reactivate": "Re-Activate",
+    "subscribe": "Subscribe",
+    "invalidMail": "Entered e-mail is not valid",
+    "showmore": "Show me more",
+    "dismiss": "Dismiss",
+
+    "trial.expired": "IntelliPHP is a PREMIUM feature. Please Activate to continue using PHP AI code completions.",
+
+    "webview.welcome.showafterupdate": "Show Welcome after Update.",
+    "webview.welcome.more": "More details ...",
+    "webview.welcome.allnews": "See all news and releases ..."
+}

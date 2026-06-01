@@ -1,0 +1,1617 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "68b8f480-563b-428a-8984-9c9888eddf90",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -94860,
+        26100
+      ]
+    },
+    {
+      "parameters": {
+        "command": "ls -1 /files/inputs/ | grep \"\\.mp4$\" | head -n 1"
+      },
+      "id": "902599e5-d85a-472c-a17d-e425f6b049ff",
+      "name": "Find Stream",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -94660,
+        26100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.stdout.trim().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b5a5239f-0109-4da8-88eb-26bc2ff3bf8f",
+      "name": "If Stream Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -94460,
+        26100
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "mlkmehdid@gmail.com",
+        "toEmail": "mlkmehdid@gmail.com",
+        "subject": "⚠️ Editor Factory is EMPTY!",
+        "options": {}
+      },
+      "id": "26aea5db-7f2d-439c-912f-a121cc397a96",
+      "name": "Email Empty",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -94260,
+        26300
+      ],
+      "webhookId": "a5dafd70-ac2e-44d7-ba76-36433e90dc80",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000,
+      "credentials": {
+        "smtp": {
+          "id": "y9GfhJenJPSfkVno",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "file_set",
+              "name": "stream_file",
+              "value": "={{ $json.stdout.trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d5e2ebac-2e9d-4969-85d8-a24b334adccd",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -94260,
+        25900
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.file }}",
+        "options": {
+          "dataPropertyName": "data"
+        }
+      },
+      "id": "74842daf-31d2-40ed-a451-d9fef48fbc2c",
+      "name": "Read Reference",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -93540,
+        25900
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://router.huggingface.co/hf-inference/models/facebook/detr-resnet-50",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "40a29d15-5a53-4c58-ad81-912c99a2f221",
+      "name": "HF Face Detector",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -93340,
+        25800
+      ],
+      "retryOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "pwmTF4Pl54IWy5Kz",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst detections = items.map(item => item.json);\nconst imgW = 480, imgH = 270, videoRealW = 1920, videoRealH = 1080;\nconst scale = videoRealW / imgW;\n\nlet validBoxes = [];\nconst getArea = (box) => (box.xmax - box.xmin) * (box.ymax - box.ymin);\nconst totalArea = imgW * imgH;\ndetections.forEach(d => {\n    if (d.label === 'person' && d.score > 0.4) {\n        const coverage = getArea(d.box) / totalArea;\n        if (coverage > 0.02 && coverage < 0.45) validBoxes.push({ box: d.box, score: d.score });\n    }\n});\nvalidBoxes.sort((a, b) => b.score - a.score);\nlet topBoxes = validBoxes.slice(0, 3).map(v => v.box);\nlet bestBox = topBoxes.length > 0 ? {\n    xmin: topBoxes.reduce((s,b)=>s+b.xmin,0)/topBoxes.length,\n    xmax: topBoxes.reduce((s,b)=>s+b.xmax,0)/topBoxes.length,\n    ymin: topBoxes.reduce((s,b)=>s+b.ymin,0)/topBoxes.length,\n    ymax: topBoxes.reduce((s,b)=>s+b.ymax,0)/topBoxes.length\n} : { xmin: 360, ymin: 13, xmax: 456, ymax: 94 };\n\nlet faceX = ((bestBox.xmin + bestBox.xmax) / 2) * scale;\nlet faceY = ((bestBox.ymin + bestBox.ymax) / 2) * scale;\nlet faceW = (bestBox.xmax - bestBox.xmin) * scale;\n\n// Tighter crop: 2.8x face width (was 3.5) = more zoomed in\nlet cropW = faceW * 2.6;\nif (cropW < 260) cropW = 260;\nif (cropW > 680) cropW = 680;\nlet cropH = cropW * (9/16);\n\n// FIX: push crop UP so the face isn't cut at the top.\n// faceY/2.0 = face center at 50% from top (was 40%). Ensures head is fully visible.\nlet startX = faceX - (cropW / 2);\nlet startY = faceY - (cropH * 0.40);\n\n// Also shift down by 30px to show chin + a bit of shoulder\nstartY = startY - 20;\n\nif (startX < 0) startX = 0;\nif (startY < 0) startY = 0;\nif (startX + cropW > videoRealW) startX = videoRealW - cropW;\nif (startY + cropH > videoRealH) startY = videoRealH - cropH;\n\nreturn [{ json: { cam_x: Math.floor(startX), cam_y: Math.floor(startY), cam_w: Math.floor(cropW), cam_h: Math.floor(cropH), ai_found: topBoxes.length > 0 } }];"
+      },
+      "id": "9e5021d9-aa8f-4b3e-a7cc-06f249a6cb8e",
+      "name": "Parse Cam Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -93140,
+        25800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base64Data = $('Read Reference').first().binary.data.data.replace(/[\\n\\r\\s]/g, \"\");\nreturn [{ json: { vision_payload: { model: \"meta-llama/llama-4-scout-17b-16e-instruct\", max_completion_tokens: 1024, messages: [ { role: \"user\", content: [ { type: \"text\", text: \"Analyze this gaming stream frame. Identify the streamer if they are world-famous. If not, provide a short 3-word description. Identify the game being played. You MUST return strictly a JSON object: {\\\"streamer_name\\\": \\\"Unknown\\\", \\\"visual_description\\\": \\\"Guy with black headset\\\", \\\"game\\\": \\\"Roblox\\\"}\" }, { type: \"image_url\", image_url: { url: `data:image/jpeg;base64,${base64Data}` } } ] } ], response_format: { type: \"json_object\" } } } }];"
+      },
+      "id": "73f1d8b2-da6f-4aea-af00-17533bfb2248",
+      "name": "Vision Prep",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -93340,
+        26000
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.vision_payload }}",
+        "options": {}
+      },
+      "id": "edf712f4-5974-4e33-adff-9f86cbc4a078",
+      "name": "Groq Vision Analyzer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -93140,
+        26000
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 30000,
+      "credentials": {
+        "groqApi": {
+          "id": "PF1ZMT03O2E5waqU",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "config_name",
+              "name": "streamer_name",
+              "value": "malik",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d2c47f93-b3ac-422c-afb9-8f585f6929da",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -92940,
+        25900
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -loglevel error -y -i \"/files/inputs/{{ $('Edit Fields').first().json.stream_file }}\" -vn -acodec libmp3lame -b:a 16k -ac 1 -ar 16000 \"/files/temp/audio.mp3\""
+      },
+      "id": "b9c69031-3668-45b5-9ae9-2d12c4d9c5b5",
+      "name": "1. Extract Audio",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -92740,
+        25900
+      ]
+    },
+    {
+      "parameters": {
+        "filePath": "/files/temp/audio.mp3"
+      },
+      "id": "3d9075f9-061f-4f1e-9bef-671418883d98",
+      "name": "2. Read Audio File",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        -92540,
+        25900
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "whisper-large-v3-turbo"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "response_format",
+              "value": "verbose_json"
+            },
+            {
+              "name": "timestamp_granularities[]",
+              "value": "word"
+            },
+            {
+              "name": "prompt",
+              "value": "Roblox gaming, Lucky Blocks, Divine Mutation, Strawberry Elephant, Taco Combinacion, 10x Luck, streamer reacting, gaming chaos."
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "1269e981-bdce-45e8-b5d2-b45a1306f31d",
+      "name": "3. Groq Whisper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -92340,
+        25900
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 30000,
+      "credentials": {
+        "groqApi": {
+          "id": "PF1ZMT03O2E5waqU",
+          "name": "Groq account 2"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "c9e2930c-af14-479a-8437-500650057dcf",
+      "name": "Loop Clips",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -89980,
+        25980
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const clipData = $input.first().json;\nconst viral = clipData.viral_structure;\nif (!viral || Object.keys(viral).length === 0) return [{ json: { error: \"No viral structure\", clip_title: clipData.title } }];\n\nconst whisperData = $('3. Groq Whisper').first().json;\nconst whisperWords = whisperData.words || (whisperData.x_groq && whisperData.x_groq.words) || [];\n\nfunction findTimeForText(targetText) {\n    if (!targetText || typeof targetText !== 'string') return null;\n    const tWords = targetText.toLowerCase().replace(/[^a-z0-9\\s]/g,'').split(/\\s+/).filter(w=>w);\n    if (tWords.length === 0) return null;\n    let bestStart=-1,bestEnd=-1,maxMatch=0;\n    for (let i=0;i<whisperWords.length;i++) {\n        let matchCount=0,tIdx=0,endIdx=i;\n        for (let wIdx=i;wIdx<Math.min(whisperWords.length,i+tWords.length*2.5);wIdx++) {\n            if (tIdx>=tWords.length) break;\n            const wWord=(whisperWords[wIdx].word||\"\").toLowerCase().replace(/[^a-z0-9]/g,'');\n            if (!wWord) continue;\n            if (wWord===tWords[tIdx]){matchCount++;tIdx++;endIdx=wIdx;}\n            else if (tIdx+1<tWords.length&&wWord===tWords[tIdx+1]){matchCount++;tIdx+=2;endIdx=wIdx;}\n            else if (tIdx+2<tWords.length&&wWord===tWords[tIdx+2]){matchCount++;tIdx+=3;endIdx=wIdx;}\n        }\n        if (matchCount>maxMatch&&(matchCount/tWords.length)>0.40){\n            maxMatch=matchCount;bestStart=i;bestEnd=endIdx;\n            if (matchCount===tWords.length) break;\n        }\n    }\n    if (bestStart!==-1) return {start:whisperWords[bestStart].start,end:whisperWords[bestEnd].end};\n    return null;\n}\n\nconst BUFFER=0.4;\nlet rawSegs=[];\nfor (const [key,value] of Object.entries(viral)) {\n    const texts=Array.isArray(value)?value:[value];\n    for (const text of texts) {\n        if (typeof text!=='string') continue;\n        const t=findTimeForText(text);\n        if (t) rawSegs.push({name:key,start:Math.max(0,t.start-BUFFER),end:t.end+BUFFER});\n    }\n}\nif (rawSegs.length===0) rawSegs.push({name:'fallback',start:0,end:45});\n\n// Sort and merge overlapping/adjacent segments\nrawSegs.sort((a,b)=>a.start-b.start);\nconst MERGE_GAP=1.5;\nconst merged=[];\nfor (const seg of rawSegs) {\n    const last=merged[merged.length-1];\n    if (!last||seg.start>last.end+MERGE_GAP) merged.push({...seg});\n    else { last.end=Math.max(last.end,seg.end); last.name+='+'+seg.name; }\n}\n\n// Silence cutting: cut gaps >1.8s unless shock word precedes them\nconst SILENCE_CUT=1.8,MIN_SUB=1.2;\nconst SHOCK=new Set(['wait','no','oh','bro','what','dude','wow','yo','omg','nah','stop']);\nconst finalSegs=[];\nfor (const seg of merged) {\n    const segWords=whisperWords.filter(w=>w.start>=seg.start-0.1&&w.end<=seg.end+0.1);\n    if (segWords.length<2){finalSegs.push(seg);continue;}\n    let subStart=seg.start;\n    for (let i=0;i<segWords.length-1;i++) {\n        const gap=segWords[i+1].start-segWords[i].end;\n        if (gap>SILENCE_CUT){\n            const wb=(segWords[i].word||'').toLowerCase().replace(/[^a-z]/g,'');\n            if (!SHOCK.has(wb)){\n                const subEnd=segWords[i].end+0.15;\n                if (subEnd-subStart>=MIN_SUB) finalSegs.push({...seg,start:subStart,end:subEnd});\n                subStart=segWords[i+1].start-0.15;\n            }\n        }\n    }\n    if (seg.end-subStart>=MIN_SUB) finalSegs.push({...seg,start:subStart,end:seg.end});\n}\n\n// ── DURATION ENFORCEMENT: target 40-55 seconds ──────────────────────────────\nconst TARGET_MIN=40, TARGET_MAX=55;\nconst totalDur=finalSegs.reduce((sum,s)=>sum+(s.end-s.start),0);\n\nif (totalDur<TARGET_MIN && finalSegs.length>0) {\n    // Expand each segment proportionally to reach 40s minimum\n    const deficit=TARGET_MIN-totalDur;\n    const expandPerSeg=deficit/finalSegs.length;\n    finalSegs.forEach(s=>{\n        s.start=Math.max(0,s.start-expandPerSeg*0.3);\n        s.end=s.end+expandPerSeg*0.7;\n    });\n}\nif (totalDur>TARGET_MAX && finalSegs.length>1) {\n    // Trim from the last segment to stay under 55s\n    const excess=totalDur-TARGET_MAX;\n    finalSegs[finalSegs.length-1].end=Math.max(\n        finalSegs[finalSegs.length-1].start+5,\n        finalSegs[finalSegs.length-1].end-excess\n    );\n}\n\nreturn finalSegs.map((seg,i)=>({ json:{\n    segment_name:seg.name, segment_order:i+1,\n    start:seg.start, end:seg.end, duration:seg.end-seg.start,\n    clip_title:clipData.title, theme:clipData.theme||\"None\",\n    structure_type:clipData.structure_type||\"Standard\"\n}}));"
+      },
+      "id": "2e9bdfb8-34d6-444b-81bd-d986eba553be",
+      "name": "6. Extract Viral Segments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -89780,
+        25980
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const all = $input.all().map(item => item.json).sort((a, b) => a.segment_order - b.segment_order);\nconst clipTitle = all[0].clip_title;\nconst streamFile = $('Edit Fields').first().json.stream_file;\n\n// Drop segments shorter than 0.5s — ffmpeg chokes on near-zero durations\nconst segments = all.filter(s => (s.end - s.start) >= 0.5);\nif (segments.length === 0) {\n    // Emergency fallback: just take first 40 seconds\n    segments.push({ ...all[0], start: 0, end: 40 });\n}\n\nlet filterComplex = \"\";\nlet concatInputs = \"\";\nsegments.forEach((seg, i) => {\n    filterComplex += `[0:v]trim=start=${seg.start}:end=${seg.end},setpts=PTS-STARTPTS[v${i}];`;\n    filterComplex += `[0:a]atrim=start=${seg.start}:end=${seg.end},asetpts=PTS-STARTPTS[a${i}];`;\n    concatInputs += `[v${i}][a${i}]`;\n});\nfilterComplex += `${concatInputs}concat=n=${segments.length}:v=1:a=1[v_out][a_out]`;\n\n// +faststart: writes moov atom at the START of the file = always readable\nconst ffmpegCmd = `ffmpeg -loglevel error -y -i \"/files/inputs/${streamFile}\" -filter_complex \"${filterComplex}\" -map \"[v_out]\" -map \"[a_out]\" -c:v libx264 -preset ultrafast -crf 23 -c:a aac -movflags +faststart \"/files/temp/concatenated_clip.mp4\"`;\nreturn [{ json: { command: ffmpegCmd, output_file: \"/files/temp/concatenated_clip.mp4\", clip_title: clipTitle } }];"
+      },
+      "id": "353a3f05-5e2a-43fd-958d-1ba1957a996b",
+      "name": "Cut & Concat All Segments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -89580,
+        25980
+      ]
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.command }}"
+      },
+      "id": "44831329-2ce1-4da0-aa00-fe06b91732e3",
+      "name": "Execute Cut & Concat",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -89380,
+        25980
+      ]
+    },
+    {
+      "parameters": {
+        "command": "ffmpeg -loglevel error -y -i \"/files/temp/concatenated_clip.mp4\" -vn -acodec libmp3lame -q:a 5 \"/files/temp/temp_audio.mp3\""
+      },
+      "id": "1f4b6274-6d6c-47c4-ba1d-a430a9c7bec7",
+      "name": "7b. Extract Clip Audio",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -89180,
+        25980
+      ]
+    },
+    {
+      "parameters": {
+        "filePath": "/files/temp/temp_audio.mp3"
+      },
+      "id": "e6da088d-decd-4472-ac66-65a5e08db04b",
+      "name": "7c. Read Audio",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        -88980,
+        25980
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "whisper-large-v3-turbo"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "response_format",
+              "value": "verbose_json"
+            },
+            {
+              "name": "timestamp_granularities[]",
+              "value": "word"
+            },
+            {
+              "name": "prompt",
+              "value": "Roblox gaming, Lucky Blocks, Divine Mutation, Strawberry Elephant, Taco Combinacion, 10x Luck, streamer reacting, gaming chaos."
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "80fa3522-c3c6-4735-b4a0-190ce1b3706c",
+      "name": "7d. Get Subtitles (SRT)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -88780,
+        25980
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 60000,
+      "credentials": {
+        "groqApi": {
+          "id": "PF1ZMT03O2E5waqU",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "ls /files/memes"
+      },
+      "id": "a161758e-b59c-4f7d-8b98-494b36e598bd",
+      "name": "Get Meme List",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -88580,
+        25980
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const FONT_SIZE = 58;\nconst HIGHLIGHT_COLOR = \"&H00FFFF&\";\nconst MAIN_COLOR = \"&HFFFFFF&\";\nfunction formatTimeASS(seconds) {\n  const h = Math.floor(seconds / 3600);\n  const m = Math.floor((seconds % 3600) / 60);\n  const s = Math.floor(seconds % 60);\n  const cs = Math.floor((seconds % 1) * 100);\n  return h + \":\" + String(m).padStart(2,'0') + \":\" + String(s).padStart(2,'0') + \".\" + String(cs).padStart(2,'0');\n}\n\nconst subInput = $('7d. Get Subtitles (SRT)').first().json;\nlet wordData = subInput.words || (subInput.x_groq && subInput.x_groq.words) || [];\n\nconst camConfig = $('Parse Cam Config').first().json;\nconst camW = camConfig.cam_w, camH = camConfig.cam_h, camX = camConfig.cam_x, camY = camConfig.cam_y;\n\nconst realFiles = ($('Get Meme List').first().json.stdout || \"\").split('\\n').filter(f => f.length > 3);\nfunction getBestMatch(aiFile) {\n  if (!aiFile) return null;\n  const clean = String(aiFile).toLowerCase();\n  if (realFiles.includes(aiFile)) return aiFile;\n  return realFiles.find(f => f.toLowerCase().includes(clean.replace('.mp3',''))) || null;\n}\n\n// ── Caption: use AI-generated caption, NOT \"WAIT FOR IT\" ─────────────────\nlet rawCaption = \"\", screams = [], memes = [];\ntry {\n  let raw = $('Context Merge Agent').first().json.output || '{}';\n  raw = raw.replace(/\\`\\`\\`json/g, '').replace(/\\`\\`\\`/g, '').trim();\n  const parsed = JSON.parse(raw);\n  if (parsed.viral_caption) rawCaption = parsed.viral_caption;\n  if (parsed.screams) screams = parsed.screams;\n  if (parsed.screams_or_full_cam) screams = screams.concat(parsed.screams_or_full_cam);\n  if (parsed.memes) memes = parsed.memes;\n} catch(e) {}\n\n// Fallback: use the clip title shortened (never \"WAIT FOR IT\")\nif (!rawCaption || rawCaption.toUpperCase().includes('WAIT FOR IT')) {\n  rawCaption = ($('Loop Clips').first().json.title || '').substring(0, 35).toUpperCase();\n}\n\n// ── Meme audio ────────────────────────────────────────────────────────────\nlet audioInputs = [], audioFilters = \"\", activeMemes = 0;\nif (memes && memes.length > 0) {\n  memes.forEach(m => {\n    if (activeMemes >= 6 || !m.file) return;\n    const realFile = getBestMatch(m.file);\n    if (realFile) {\n      const time = parseFloat(m.timestamp);\n      if (!isNaN(time)) {\n        const delay = Math.floor(time * 1000);\n        audioInputs.push(`-i \"/files/memes/${realFile}\"`);\n        const memeVol = (typeof m.volume === 'number' ? m.volume : 0.3);\n        audioFilters += `[${activeMemes+1}:a]volume=${memeVol},adelay=${delay}|${delay}[meme${activeMemes+1}];`;\n        activeMemes++;\n      }\n    }\n  });\n}\n\nlet audioMixFilter = \"\";\nif (activeMemes > 0) {\n  let mixInputs = \"[0:a]\";\n  for (let k = 1; k <= activeMemes; k++) mixInputs += `[meme${k}]`;\n  audioMixFilter = audioFilters + mixInputs + `amix=inputs=${activeMemes + 1}:duration=first:normalize=0[a_out]`;\n}\n\n\n// ── Detect Payoff Timing for Impact Zoom ────────────────────────\nlet payoffTime = { start: 0, end: 0 };\ntry {\n  const payoffText = $('Loop Clips').first().json.viral_structure.Payoff;\n  // findTimeForText was defined in Extract Viral Segments, but we can't easily access it here.\n  // Instead, we'll look for the first word in the wordData that matches the payoff start.\n  // Or simpler: the payoff is usually the climax of the clip (the last 1/3rd).\n  const totalDuration = wordData.length > 0 ? wordData[wordData.length-1].end : 45;\n  payoffTime = { start: totalDuration * 0.7, end: totalDuration }; \n} catch(e) {}\n\nlet zoomEnable = screams.length > 0\n  ? screams.map(s => `between(t,${s.start || 0},${s.end || 0})`).join(\"+\")\n  : \"between(t,0,0)\";\n\n// ── ASS Subtitle Header ────────────────────────────────────────────────────\nlet assContent = `[Script Info]\nScriptType: v4.00+\nPlayResX: 720\nPlayResY: 1280\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: ViralSubs,Lilita One,${FONT_SIZE},${MAIN_COLOR},&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,3,2,5,10,10,10,1\nStyle: ViralCaption,Lilita One,62,&H00FFFF&,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,8,40,40,30,1\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;\n\n// ── SEMANTIC PHRASE GROUPING ───────────────────────────────────────────────\n// Strategy: build groups of 2-4 words. Break on:\n//   1. Natural pauses > 0.35s between words\n//   2. After punctuation words (ends in . , ! ?)  \n//   3. When group exceeds 18 chars total\n//   4. Never exceed 4 words per group\nif (wordData.length > 0) {\n  const PAUSE_BREAK = 0.35;    // gap > 350ms = new phrase\n  const MAX_CHARS = 18;         // max chars per subtitle card\n  const MAX_WORDS = 4;          // max words per card\n  const PUNCT_RE = /[.!?,;:]$/; // ends in punctuation = natural break after\n\n  const groups = [];\n  let current = [];\n\n  for (let i = 0; i < wordData.length; i++) {\n    const w = wordData[i];\n    const word = String(w.word || \"\").trim();\n    if (!word) continue;\n\n    current.push(w);\n\n    const currentChars = current.reduce((s, x) => s + String(x.word || \"\").length, 0);\n    const nextW = wordData[i + 1];\n    const gapToNext = nextW ? (nextW.start - w.end) : 9999;\n    const endsPhrase = PUNCT_RE.test(word);\n\n    // Decide whether to flush the group\n    const shouldBreak =\n      current.length >= MAX_WORDS ||\n      currentChars >= MAX_CHARS ||\n      gapToNext > PAUSE_BREAK ||\n      endsPhrase;\n\n    if (shouldBreak && current.length > 0) {\n      groups.push([...current]);\n      current = [];\n    }\n  }\n  if (current.length > 0) groups.push(current);\n\n  // Render each group as a karaoke-style subtitle card\n  for (const group of groups) {\n    const cStart = group[0].start;\n    const cEnd = group[group.length - 1].end;\n    const displayEnd = cEnd + 0.05; // tiny pad to avoid flicker\n\n    for (let j = 0; j < group.length; j++) {\n      const wStart = Math.max(cStart, group[j].start);\n      const wEnd = j < group.length - 1 ? group[j + 1].start : displayEnd;\n\n      const lineText = group.map((w, idx) => {\n        const txt = String(w.word || \"\").trim().toUpperCase();\n        if (idx === j) {\n          return `{\\\\c${HIGHLIGHT_COLOR}\\\\t(0,40,\\\\fscx110\\\\fscy110)\\\\t(40,120,\\\\fscx100\\\\fscy100)}${txt}{\\\\c${MAIN_COLOR}}`;\n        }\n        return txt;\n      }).join(\" \");\n\n      assContent += `Dialogue: 1,${formatTimeASS(wStart)},${formatTimeASS(wEnd)},ViralSubs,,0,0,0,,{\\\\pos(360,500)}${lineText}\\n`;\n    }\n  }\n}\n\n// ── Caption overlay (top, first 5s, fades out) ────────────────────────────\nif (rawCaption) {\n  assContent += `Dialogue: 2,0:00:00.00,0:00:05.50,ViralCaption,,0,0,0,,{\\\\an8\\\\fad(0,400)\\\\t(0,80,\\\\fscx115\\\\fscy115)\\\\t(80,250,\\\\fscx100\\\\fscy100)}${rawCaption.replace(/'/g,'').toUpperCase()}\\n`;\n}\n\n// ── FFmpeg filter graph ────────────────────────────────────────────────────\nconst bgPart = \"[0:v]split=3[v_bg][v_game][v_cam];[v_bg]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,boxblur=20:5[bg]\";\nconst gamePart = \"[v_game]crop=trunc(ih*0.88/2)*2:trunc(ih*0.88/2)*2:(iw-ow)/2:0,scale=720:720,drawbox=x=0:y=0:w=720:h=720:color=white:t=6,split=2[g1][g2];[g2]scale=iw*1.2:-1,crop=720:720[g_zoomed];[g1][g_zoomed]overlay=0:0:enable='between(t,\" + payoffTime.start + \",\" + payoffTime.end + \")'[game_bordered]\";\nconst camPart = \"[v_cam]crop=\" + camW + \":\" + camH + \":\" + camX + \":\" + camY + \",split=2[cam_small][cam_full];[cam_small]scale=720:400,drawbox=x=0:y=0:w=720:h=ih:color=white:t=6[cam_bordered];[cam_full]scale=-1:1280,crop=720:1280:exact=1[cam_zoom]\";\nconst overlayPart = \"[bg][cam_bordered]overlay=0:0[bg2];[bg2][game_bordered]overlay=0:H-h[base];[base][cam_zoom]overlay=0:0:enable='\" + zoomEnable + \"'[outv];[outv]ass=/files/temp/subs.ass:fontsdir=/files/inputs[v]\";\n\nconst filter = bgPart + \";\" + gamePart + \";\" + camPart + \";\" + overlayPart;\nconst title = $('Loop Clips').first().json.title || \"output_clip\";\nconst outputFile = \"/files/outputs/\" + title + \".mp4\";\n\nconst cmd = activeMemes > 0\n  ? `ffmpeg -loglevel error -y -i \"/files/temp/concatenated_clip.mp4\" ${audioInputs.join(\" \")} -filter_complex \"${filter};${audioMixFilter}\" -map \"[v]\" -map \"[a_out]\" -c:v libx264 -preset fast -crf 23 -c:a aac \"${outputFile}\"`\n  : `ffmpeg -loglevel error -y -i \"/files/temp/concatenated_clip.mp4\" -filter_complex \"${filter}\" -map \"[v]\" -map 0:a -c:v libx264 -preset fast -crf 23 -c:a aac \"${outputFile}\"`;\n\nreturn [{json: {command: cmd}, binary: {data: {data: Buffer.from(assContent).toString('base64'), mimeType: 'text/plain', fileName: 'subs.ass'}}}];\n"
+      },
+      "id": "727de56b-e2bf-4cce-9dd8-dc7fdc62e4b1",
+      "name": "Create Subtitle Binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -87580,
+        25980
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/files/temp/{{ $binary.data.fileName }}",
+        "options": {}
+      },
+      "id": "6ef14988-e91f-4925-bd17-9b03634f100b",
+      "name": "Read/Write Files from Disk",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -87380,
+        25980
+      ]
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.command }}"
+      },
+      "id": "ea22bd11-71d2-4a29-b240-6e76b5b911d4",
+      "name": "7f. Final Render",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -87180,
+        25980
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=mkdir -p /files/inputs/archive && [ -f \"/files/inputs/{{ $('Edit Fields').first().json.stream_file }}\" ] && mv \"/files/inputs/{{ $('Edit Fields').first().json.stream_file }}\" \"/files/inputs/archive/\" || echo 'File already archived, skipping.'"
+      },
+      "id": "f6edf73b-369d-4de4-b6ec-f8e5cc7539df",
+      "name": "Execute Command1",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -89640,
+        25840
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=file=\"/files/inputs/{{ $('Edit Fields').first().json.stream_file }}\"; ffmpeg -loglevel error -y -ss 00:05:00 -i \"$file\" -vf \"scale=480:-1\" -vframes 1 -q:v 2 \"/files/temp/ref_1.jpg\" || true; ffmpeg -loglevel error -y -ss 00:12:00 -i \"$file\" -vf \"scale=480:-1\" -vframes 1 -q:v 2 \"/files/temp/ref_2.jpg\" || true; ffmpeg -loglevel error -y -ss 00:19:00 -i \"$file\" -vf \"scale=480:-1\" -vframes 1 -q:v 2 \"/files/temp/ref_3.jpg\" || true; ls -1 /files/temp/ref_*.jpg"
+      },
+      "id": "5959dc03-cb5a-4dde-bc83-8537352e890a",
+      "name": "Get Reference Frame",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -94060,
+        25900
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('3. Groq Whisper').first().json.text ? $('3. Groq Whisper').first().json.text.substring(0,40000) : '' }}",
+        "options": {
+          "systemMessage": "You are the Lead Narrative Director for a top gaming creator. Your task is to analyze the entire VOD transcript and provide a profound, hallucination-free Global Summary.\n\nTASK:\n1. Identify the specific Game being played.\n2. Summarize the overarching narrative/goal of the entire VOD in 3-4 sentences.\n3. Define the precise \"Vibe\" (e.g., Chaotic, Educational, Story-driven).\n4. Extract key recurring themes or inside jokes.\n\nOUTPUT JSON FORMAT EXACTLY AND ONLY JSON. NO MARKDOWN:\n{\n  \"game\": \"Name of Game\",\n  \"global_summary\": \"Streamer is trying to...\",\n  \"vibe\": \"High-energy rage\",\n  \"key_themes\": [\"dying to fall damage\", \"lag complaining\"]\n}"
+        }
+      },
+      "id": "dc7ef757-3107-45a3-b001-7a42944b1ed4",
+      "name": "1. Global Summary AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -91780,
+        26000
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 30000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "270b118f-cf07-4559-9922-5de2171f0fab",
+      "name": "Groq LLaMA3 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -91820,
+        26260
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 30000,
+      "credentials": {
+        "groqApi": {
+          "id": "PF1ZMT03O2E5waqU",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "CLIP TITLE (use this to understand the clip content):\n{{ $('Loop Clips').item.json.title }}\n\nCLIP THEME: {{ $('Loop Clips').item.json.theme }}\n\nGLOBAL VOD CONTEXT:\n{{ $('1. Global Summary AI').first().json.output || '{}' }}\n\nAVAILABLE SOUNDS (pick from these exact filenames):\n{{ $('Get Meme List').first().json.stdout ? $('Get Meme List').first().json.stdout.replace(/\\n/g, ', ') : 'vine_boom.mp3' }}\n\nFULL TIMECODED TRANSCRIPT OF THE CLIP (read every word before placing ANY effects):\n{{ (function(){ const w=$('7d. Get Subtitles (SRT)').first().json.words; return w&&w.length>0?w.map(x=>'['+x.start.toFixed(1)+'s] '+x.word).join(' '):'NO WORDS'; })() }}",
+        "options": {
+          "systemMessage": "You are an Elite YouTube Shorts editor. You have the clip's full timecoded transcript below.\n\nYOUR JOB — output ONLY raw JSON with these 3 fields:\n\n━━━ 1. VIRAL CAPTION (max 5 words, ALL CAPS, 1-2 emojis) ━━━\nThis is the BIG TEXT burned at the top of the video for the first 5 seconds.\nRULES:\n• Must be INTRIGUING and create FOMO — make the viewer NEED to keep watching.\n• Must TEASE the payoff without spoiling it. It's a HOOK, not a spoiler.\n• Use tension words: \"wait...\", \"he actually...\", \"bro thought...\", \"no way he...\"\n• Reference the SPECIFIC item/player/number from this clip.\n• BANNED forever: \"Wait for it\", \"Watch till end\", \"Noob gets cooked\", \"He did it\", \"Crazy moment\", \"OMG\", \"Gaming fail\".\nGOOD EXAMPLES:\n  ✓ \"SAMMY ACTUALLY DID IT 😱\" (teases the divine trade)\n  ✓ \"2 BILLION PER SECOND?! 🔥\" (teases the record)\n  ✓ \"BRO BET HIS ACCOUNT 💀\" (teases the dare)\n  ✓ \"SHE GOT 1% DIVINE?! 😭\" (teases the rare drop)\nBAD EXAMPLES:\n  ✗ \"NOOB GETS COOKED\" — spoils nothing, means nothing\n  ✗ \"WAIT FOR IT\" — banned\n  ✗ \"INSANE MOMENT\" — too generic\n\n━━━ 2. FACE ZOOMS (screams_or_full_cam): 3-8 moments ━━━\nFind moments in the transcript where the streamer screams, gasps, reacts with max energy, or laughs hard.\nRead the FULL timecoded transcript carefully. Spread zooms across the whole clip. Each zoom 0.8-2.5s long.\nNEVER output fewer than 3.\n\n━━━ 3. MEMES (4-6 sounds MAX) ━━━\nRead the FULL transcript first. Then place sounds ONLY on specific earned moments:\n• vine-boom = use ONLY on a jaw-dropping reveal, shocking item, unexpected win (max 2x)\n• fartmeme/bruh = use ONLY on fails, dumb plays, self-own moments (max 2x)\n• anime-wow = use ONLY when something genuinely hype happens after building tension (max 1x)\n• Do NOT spam memes every 3 seconds — space them at least 8 seconds apart\n• Set volume to 0.35 (quiet background effect, NOT louder than speech)\n• Each meme object: {\"timestamp\": 4.2, \"file\": \"vine-boom-sound-effect.mp3\", \"volume\": 0.35}\n\nOutput ONLY raw JSON:\n{\n  \"viral_caption\": \"SAMMY ACTUALLY DID IT 😱\",\n  \"screams_or_full_cam\": [{\"start\": 4.5, \"end\": 6.0}, {\"start\": 18.2, \"end\": 19.8}],\n  \"memes\": [{\"timestamp\": 2.3, \"file\": \"vine-boom-sound-effect.mp3\", \"volume\": 0.35}]\n}"
+        }
+      },
+      "id": "045c2797-5d88-4dfa-ab22-e3c76242a114",
+      "name": "Context Merge Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -88440,
+        25820
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 30000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "2171d8ca-8886-4c5b-863a-fb15821c2619",
+      "name": "Groq LLaMA3 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -88420,
+        26040
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 30000,
+      "credentials": {
+        "groqApi": {
+          "id": "PF1ZMT03O2E5waqU",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const files = $input.first().json.stdout.trim().split('\\n').filter(f => f.length > 3);\nif(files.length===0) return [{json:{file:\"/files/temp/ref_frame.jpg\"}}];\nreturn files.map(f => ({ json: { file: f } }));"
+      },
+      "id": "8f4fbd18-625b-4f48-8c0a-e0e771cf59ef",
+      "name": "Prepare Frames",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -93800,
+        25920
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ !!$json.output }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f98462bc-7b70-4aae-9479-4047b773f86b",
+      "name": "IF: Summary OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -91460,
+        26000
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('3. Groq Whisper').first().json.text ? $('3. Groq Whisper').first().json.text.substring(0,40000) : '' }}",
+        "options": {
+          "systemMessage": "You are the Lead Narrative Director for a top gaming creator. Your task is to analyze the entire VOD transcript and provide a profound, hallucination-free Global Summary.\n\nTASK:\n1. Identify the specific Game being played.\n2. Summarize the overarching narrative/goal of the entire VOD in 3-4 sentences.\n3. Define the precise \"Vibe\" (e.g., Chaotic, Educational, Story-driven).\n4. Extract key recurring themes or inside jokes.\n\nOUTPUT JSON FORMAT EXACTLY AND ONLY JSON. NO MARKDOWN:\n{\n  \"game\": \"Name of Game\",\n  \"global_summary\": \"Streamer is trying to...\",\n  \"vibe\": \"High-energy rage\",\n  \"key_themes\": [\"dying to fall damage\", \"lag complaining\"]\n}"
+        }
+      },
+      "id": "9e74015d-4297-45ec-9e9a-6cdd63ba6aae",
+      "name": "1. Global Summary Fallback",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -91320,
+        26140
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 30000
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "5d708cdf-058b-4dff-a7c3-fe6f77de9fab",
+      "name": "Groq Backup Model 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -91420,
+        26420
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 30000,
+      "credentials": {
+        "groqApi": {
+          "id": "Wqmk8AWvlA91Sgod",
+          "name": "Groq account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ !!$json.output }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a696a584-e58c-432c-9f1c-97bef4601551",
+      "name": "IF: Merge OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -88100,
+        25760
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "CLIP TITLE (use this to understand the clip content):\n{{ $('Loop Clips').item.json.title }}\n\nCLIP THEME: {{ $('Loop Clips').item.json.theme }}\n\nGLOBAL VOD CONTEXT:\n{{ $('1. Global Summary AI').first().json.output || '{}' }}\n\nAVAILABLE SOUNDS (pick from these exact filenames):\n{{ $('Get Meme List').first().json.stdout ? $('Get Meme List').first().json.stdout.replace(/\\n/g, ', ') : 'vine_boom.mp3' }}\n\nFULL TIMECODED TRANSCRIPT OF THE CLIP (read every word before placing ANY effects):\n{{ (function(){ const w=$('7d. Get Subtitles (SRT)').first().json.words; return w&&w.length>0?w.map(x=>'['+x.start.toFixed(1)+'s] '+x.word).join(' '):'NO WORDS'; })() }}",
+        "options": {
+          "systemMessage": "You are an Elite YouTube Shorts editor. You have the clip's full timecoded transcript below.\n\nYOUR JOB — output ONLY raw JSON with these 3 fields:\n\n━━━ 1. VIRAL CAPTION (max 5 words, ALL CAPS, 1-2 emojis) ━━━\nThis is the BIG TEXT burned at the top of the video for the first 5 seconds.\nRULES:\n• Must be INTRIGUING and create FOMO — make the viewer NEED to keep watching.\n• Must TEASE the payoff without spoiling it. It's a HOOK, not a spoiler.\n• Use tension words: \"wait...\", \"he actually...\", \"bro thought...\", \"no way he...\"\n• Reference the SPECIFIC item/player/number from this clip.\n• BANNED forever: \"Wait for it\", \"Watch till end\", \"Noob gets cooked\", \"He did it\", \"Crazy moment\", \"OMG\", \"Gaming fail\".\nGOOD EXAMPLES:\n  ✓ \"SAMMY ACTUALLY DID IT 😱\" (teases the divine trade)\n  ✓ \"2 BILLION PER SECOND?! 🔥\" (teases the record)\n  ✓ \"BRO BET HIS ACCOUNT 💀\" (teases the dare)\n  ✓ \"SHE GOT 1% DIVINE?! 😭\" (teases the rare drop)\nBAD EXAMPLES:\n  ✗ \"NOOB GETS COOKED\" — spoils nothing, means nothing\n  ✗ \"WAIT FOR IT\" — banned\n  ✗ \"INSANE MOMENT\" — too generic\n\n━━━ 2. FACE ZOOMS (screams_or_full_cam): 3-8 moments ━━━\nFind moments in the transcript where the streamer screams, gasps, reacts with max energy, or laughs hard.\nRead the FULL timecoded transcript carefully. Spread zooms across the whole clip. Each zoom 0.8-2.5s long.\nNEVER output fewer than 3.\n\n━━━ 3. MEMES (4-6 sounds MAX) ━━━\nRead the FULL transcript first. Then place sounds ONLY on specific earned moments:\n• vine-boom = use ONLY on a jaw-dropping reveal, shocking item, unexpected win (max 2x)\n• fartmeme/bruh = use ONLY on fails, dumb plays, self-own moments (max 2x)\n• anime-wow = use ONLY when something genuinely hype happens after building tension (max 1x)\n• Do NOT spam memes every 3 seconds — space them at least 8 seconds apart\n• Set volume to 0.35 (quiet background effect, NOT louder than speech)\n• Each meme object: {\"timestamp\": 4.2, \"file\": \"vine-boom-sound-effect.mp3\", \"volume\": 0.35}\n\nOutput ONLY raw JSON:\n{\n  \"viral_caption\": \"SAMMY ACTUALLY DID IT 😱\",\n  \"screams_or_full_cam\": [{\"start\": 4.5, \"end\": 6.0}, {\"start\": 18.2, \"end\": 19.8}],\n  \"memes\": [{\"timestamp\": 2.3, \"file\": \"vine-boom-sound-effect.mp3\", \"volume\": 0.35}]\n}"
+        }
+      },
+      "id": "4b6ab954-b58a-4134-b1ea-9b83bebbc7b9",
+      "name": "Context Merge Fallback",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -87960,
+        25980
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 30000
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "13b45eaf-4cb8-4ea8-a9ab-63655445afab",
+      "name": "Groq Backup Model 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -87940,
+        26260
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 30000,
+      "credentials": {
+        "groqApi": {
+          "id": "Wqmk8AWvlA91Sgod",
+          "name": "Groq account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "7a230250-cff6-4d77-9b06-24a72c9e889c",
+      "name": "Groq LLaMA3 Tier3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -91020,
+        26580
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 30000,
+      "credentials": {
+        "groqApi": {
+          "id": "oG6T5k2GQPeB7Ku1",
+          "name": "Groq account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "whisper-large-v3-turbo"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "response_format",
+              "value": "verbose_json"
+            },
+            {
+              "name": "timestamp_granularities[]",
+              "value": "word"
+            },
+            {
+              "name": "prompt",
+              "value": "Roblox gaming, Lucky Blocks, Divine Mutation, Strawberry Elephant, Taco Combinacion, 10x Luck, streamer reacting, gaming chaos."
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "5fc97116-6695-403a-9335-e9bd4a654b01",
+      "name": "3. Groq Whisper Fallback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -92100,
+        26120
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 30000,
+      "credentials": {
+        "groqApi": {
+          "id": "oG6T5k2GQPeB7Ku1",
+          "name": "Groq account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.text ? 'ok' : '' }}",
+              "rightValue": "ok",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ba963f8a-b5d6-40f1-afa0-e722995b2584",
+      "name": "IF: Whisper OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -92200,
+        25940
+      ]
+    },
+    {
+      "parameters": {
+        "unit": "minutes"
+      },
+      "id": "ca072c3b-c487-433c-9986-27a57a6578bd",
+      "name": "Wait Before Fallback",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -89260,
+        25800
+      ],
+      "webhookId": "017cc4b5-fe1d-4c08-ae5a-1e794a91d20f"
+    },
+    {
+      "parameters": {
+        "filePath": "/files/temp/audio.mp3"
+      },
+      "id": "0bb9ce26-5ec5-49cc-b1f9-71e023d0c916",
+      "name": "Read Audio For Fallback",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        -89060,
+        25800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let whisperData = null;\n\ntry {\n  const items = $input.all();\n  if (items && items[0] && items[0].json && items[0].json.text) {\n    whisperData = items[0].json;\n  }\n} catch(e) {}\n\nif (!whisperData) {\n  try {\n    const w = $('3. Groq Whisper').first().json;\n    if (w && w.text && w.text.length > 10) whisperData = w;\n  } catch(e) {}\n}\nif (!whisperData) {\n  try {\n    const w2 = $('3. Groq Whisper Fallback').first().json;\n    if (w2 && w2.text && w2.text.length > 10) whisperData = w2;\n  } catch(e) {}\n}\n\nif (!whisperData || !whisperData.text) {\n    throw new Error('CRITICAL ERROR: Transcript text is missing. Run Whisper node first.');\n}\n\nconst rawText = whisperData.text;\nconst durationMinutes = (whisperData.duration || 1800) / 60;\n\n// Break into sentences and add Line Numbers\nconst sentences = rawText.match(/[^.!?]+[.!?]+/g) || [rawText];\nconst numberedLines = sentences.map((s, i) => '[L' + (i+1) + '] ' + s.trim());\n\n// Calculate chunks — cap at 4 to limit parallel Groq calls\nlet numChunks = Math.max(1, Math.round(durationMinutes / 7.5));\nnumChunks = Math.min(numChunks, 4);\n\nconst linesPerChunk = Math.ceil(numberedLines.length / numChunks);\nconst overlap = 10; // Reduced from 20 to keep chunks smaller\n\n// TOKEN BUDGET: llama-3.3-70b-versatile = 12,000 TPM limit\n// Prompt overhead ≈ 300 tokens, output ≈ 600 tokens → 11,100 tokens left for input text\n// 1 token ≈ 4 chars → safe char cap = 10,000 chars per chunk\nconst MAX_CHUNK_CHARS = 10000;\n\nconst results = [];\nfor (let i = 0; i < numChunks; i++) {\n  const start = Math.max(0, i * linesPerChunk - overlap);\n  const end = Math.min(numberedLines.length, (i + 1) * linesPerChunk + overlap);\n  \n  // Build chunk text and HARD-CAP at 10,000 chars\n  let chunkText = numberedLines.slice(start, end).join('\\n');\n  if (chunkText.length > MAX_CHUNK_CHARS) {\n    // Trim from the end — keep the start (line numbers stay sequential)\n    chunkText = chunkText.substring(0, MAX_CHUNK_CHARS) + '\\n[... chunk trimmed to fit token limit ...]';\n  }\n\n  const prompt = \n    'SYSTEM: You are a viral gaming content scout. Read the numbered transcript chunk and find the 3 most explosive moments.\\n\\n' +\n    'SCAN FOR:\\n' +\n    '- [BET]: Dare/challenge (e.g., \"if you get X I will...\").\\n' +\n    '- [DROP]: Rare item + chaos/screaming.\\n' +\n    '- [ROAST]: Brutal insult.\\n' +\n    '- [RECORD]: Explicit number/milestone + reaction.\\n' +\n    '- [CHAOS]: Overlapping panic/screaming.\\n\\n' +\n    'OUTPUT: Plain text only. For each of the 3 moments, write:\\n' +\n    '- The exact climax quote\\n' +\n    '- 5 lines of context before it [Lx]\\n' +\n    '- 5 lines of context after it [Lx]\\n\\n' +\n    '--- CHUNK ' + (i+1) + '/' + numChunks + ' ---\\n' +\n    chunkText;\n\n  results.push({ json: { prompt, chunk_index: i+1 } });\n}\n\nreturn results;\n"
+      },
+      "id": "d7ccb05d-cddd-43bd-9178-85d70aea5672",
+      "name": "1. Prepare Scout Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -90920,
+        26240
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "id": "235ad0b2-bf2d-4feb-8cd2-2148eb3678bb",
+      "name": "Groq Model (Scout)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -90720,
+        26440
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 30000,
+      "credentials": {
+        "groqApi": {
+          "id": "Wqmk8AWvlA91Sgod",
+          "name": "Groq account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}"
+      },
+      "id": "7103ac68-8941-45ad-b8e2-316fc5da376a",
+      "name": "2. Basic LLM Chain (Scout)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        -90720,
+        26240
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 30000
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet allSnippets = \"\";\n\n// Gather all the plain text snippets from the Scout pass\nitems.forEach((item, index) => {\n  allSnippets += `\\n\\n=== SCOUTED MOMENTS CHUNK ${index + 1} ===\\n`;\n  allSnippets += item.json.text || item.json.output || \"\";\n});\n\n// Pull the Global Summary for title context\nlet streamContext = \"\";\ntry {\n  const summaryRaw = $('1. Global Summary AI').first().json.output || $('1. Global Summary Fallback').first().json.output || \"{}\";\n  const summary = JSON.parse(summaryRaw.replace(/```json/gi,'').replace(/```/g,'').trim());\n  streamContext = [\n    summary.game ? \"GAME: \" + summary.game : \"\",\n    summary.global_summary ? \"STREAM SUMMARY: \" + summary.global_summary : \"\",\n    summary.vibe ? \"VIBE: \" + summary.vibe : \"\",\n    (summary.key_themes && summary.key_themes.length) ? \"KEY THEMES: \" + summary.key_themes.join(\", \") : \"\"\n  ].filter(Boolean).join(\"\\n\");\n} catch(e) {}\n\n// HARD LIMIT: Force the AI to pick only the absolute top-tier clips.\nconst targetClips = 3; \n\nconst jsonSchema = '{\"clips\":[{\"clip_number\":1,\"estimated_vod_segment\":\"X-Y minutes\",\"title\":\"YOUR AI-GENERATED TITLE HERE\",\"theme\":\"Core viral theme\",\"structure_type\":\"Structure Name\",\"viral_structure\":{\"Hook\":\"VERBATIM line — screaming/reacting mid-event, never anticipation\",\"Build_up\":[\"VERBATIM line from earlier context\",\"VERBATIM line\",\"VERBATIM line\"],\"Payoff\":\"VERBATIM line — names specific item/player/number/action. Passes the 3-question test.\",\"Outro\":\"VERBATIM line — directly roasts/demands/disbelieves the SPECIFIC event in Payoff\"}}]}';\n\nconst prompt = \n  'SYSTEM: You are an expert YouTube Shorts director. You have been given a highly concentrated list of the most explosive moments from a gaming stream.\\n\\n' +\n\n  (streamContext ? '=== STREAM CONTEXT (use this to write great titles) ===\\n' + streamContext + '\\n\\n' : '') +\n\n  '=== STEP 1: REVIEW AND SCORE ===\\n' +\n  'You MUST read every single snippet from Chunk 1 to Chunk ' + items.length + '.\\n' +\n  'Mentally score each moment out of 10 based on:\\n' +\n  '1. Chaos and high energy.\\n' +\n  \"2. Having a clear, definitive PAYOFF (the event actually happens, it's not just a prediction).\\n\" +\n  'Select ONLY the top ' + targetClips + ' absolute best, highest-scoring moments from the entire list. Quality over quantity.\\n\\n' +\n\n  '=== STEP 2: BUILD CLIPS ===\\n' +\n  'For those ' + targetClips + ' moments, build a 40-55s clip using this structure:\\n\\n' +\n  '[HOOK] A line starting IN THE MIDDLE of the action (chaos already started). CRITICAL BAN: The Hook CANNOT be the exact same line as the Payoff. You must pick two different quotes.\\n' +\n  '[BUILD_UP] Exactly 3 lines building energy leading to the payoff.\\n' +\n  '[PAYOFF] The climax quote. MUST PASS: 1. Names specific item/player/number. 2. Understood out of context. 3. Makes you react. CRITICAL BAN: If the quote is just \"No way\" or \"Oh my god\" without naming a specific item/number, REJECT IT and pick a different moment.\\n' +\n  '[OUTRO] DIRECTLY references the Payoff.\\n\\n' +\n\n  '=== STEP 3: WRITE THE TITLE ===\\n' +\n  'For each clip, write a YouTube Shorts title that makes people STOP SCROLLING.\\n\\n' +\n  '━━━ TITLE FORMULA ━━━\\n' +\n  'TEASE the payoff — do NOT state it. The viewer must NEED to keep watching to find out.\\n' +\n  'BAD: \"He Gets the Strawberry Elephant\" — tells them, so why watch?\\n' +\n  'GOOD: \"Sammy Actually Gave It To Him On Stream 😱\" — they have to watch to see what it is.\\n\\n' +\n  'TITLE RULES:\\n' +\n  '• Max 60 chars. Shorter = better.\\n' +\n  '• Never state the outcome directly — TEASE it with tension words.\\n' +\n  '• Use: \"Actually\", \"Just\", \"On Stream\", \"For Real\", \"In Front of Everyone\".\\n' +\n  '• Use cliffhangers: \"Bro thought...\", \"He actually...\", \"No one expected...\", \"She dared...\".\\n' +\n  '• Must reference the SPECIFIC item/player/number involved.\\n' +\n  '• End with ?! or 💀 or 😱 to drive emotion.\\n' +\n  '• BANNED: \"Moment\",\"Epic\",\"Crazy\",\"Wild\",\"Fail\",\"Gaming\",\"Clip\",\"Noob gets\",\"Literally\",\"Insane\",\"He Gets\",\"She Gets\".\\n\\n' +\n  'GOOD TITLES:\\n' +\n  '  ✓ \"Sammy Actually Gave Him a Strawberry Elephant 😱\" — specific + shock without spoiling HOW\\n' +\n  '  ✓ \"Bro Hit 2 Billion Per Second and Nobody Believed Him 💀\" — specific + disbelief\\n' +\n  '  ✓ \"He Pulled the 1% Divine... In Front of the Whole Server 😭\" — specific + stakes\\n' +\n  '  ✓ \"She Dared Him to Trade His Divine Block On Stream\" — tension + unknown outcome\\n' +\n  '  ✓ \"No One Expected the Valentine Blocks to Actually Work\" — mystery hook\\n\\n' +\n  'BAD TITLES:\\n' +\n  '  ✗ \"He Gets 1% Pop Guru\" — TELLS the outcome, kills all curiosity\\n' +\n  '  ✗ \"Sammy Gives Strawberry Elephant\" — no tension, just a spoiler\\n' +\n  '  ✗ \"2 Billion a Second\" — too plain, no emotion or FOMO\\n' +\n  '  ✗ \"Noob Gets Cooked\" — banned phrasing, means nothing\\n\\n' +\n  '=== STEP 4: MANDATORY SELF-VALIDATION (do this BEFORE writing JSON) ===\\n' +\n  'For each clip, check all 5 boxes or REPLACE that element:\\n\\n' +\n  '□ HOOK CHECK: Does the Hook contain \"Oh my god\", \"No way\", \"Wait\", \"Watch this\", \"Oh\", \"Wow\" WITHOUT naming a specific item/number? If YES → pick a completely different line that names the item.\\n' +\n  '□ DUPLICATE CHECK: Is the Hook the same sentence as the Payoff? If YES → pick a different Hook from 10+ seconds earlier.\\n' +\n  '□ PAYOFF CHECK: Does the Payoff name a specific item, player name, or number? If the answer is just a generic reaction → REJECT and pick the line that actually says what happened.\\n' +\n  '□ TITLE CHECK: Does the title directly state the outcome (e.g., \"He Gets X\", \"She Pulls X\", \"X Drops\")? If YES → rewrite to tease it instead.\\n' +\n  '□ VERBATIM CHECK: Are ALL Hook/Build_up/Payoff/Outro lines exact quotes from the scouted snippets, not invented? If NO → replace with real quotes.\\n\\n' +\n  'Only AFTER all 5 boxes pass, output the JSON.\\n\\n' +\n\n  '=== OUTPUT RULES ===\\n' +\n  'Raw valid JSON only. No markdown. No explanation.\\n' +\n  'You MUST output exactly ' + targetClips + ' clips in the JSON array.\\n' +\n  jsonSchema + '\\n\\n' +\n  '--- SCOUTED SNIPPETS ---\\n' +\n  allSnippets;\n\nreturn [{ json: { prompt, targetClips } }];\n"
+      },
+      "id": "59c847f1-0354-4acd-9aef-3c3bea58643b",
+      "name": "3. Prepare Director Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -90420,
+        26240
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "4418209d-3aa9-46d8-a4fd-03c46dc71c1f",
+      "name": "Groq Model (Director)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -90180,
+        26440
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 30000,
+      "credentials": {
+        "groqApi": {
+          "id": "Wqmk8AWvlA91Sgod",
+          "name": "Groq account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}"
+      },
+      "id": "de4b9212-cf26-4e54-86db-60d717d8ae99",
+      "name": "4. Basic LLM Chain (Director)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        -90180,
+        26240
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet allClips = [];\n\nlet streamerName = \"Streamer\";\ntry {\n  streamerName = $('Config').item.json.streamer_name || \"Streamer\";\n} catch(e) {}\n\nfor (const item of items) {\n  let content = item.json.output || item.json.text || '{}';\n  \n  // 1. Clean markdown formatting\n  content = content.replace(/\\`\\`\\`json/gi, '').replace(/\\`\\`\\`/g, '').trim();\n  \n  // 2. Auto-Fix common AI JSON typos\n  content = content.replace(/\\}\\}\\},\\{/g, '}},{'); // Fixes the exact extra bracket error you just got\n  content = content.replace(/\\}\\}\\]\\}/g, '}}]}');\n  content = content.replace(/\\]\\]/g, ']'); \n  content = content.replace(/\\}\\,\\]/g, '}]'); \n  \n  try { \n    // 3. Try parsing the repaired JSON\n    const aiData = JSON.parse(content); \n    if (aiData.clips && Array.isArray(aiData.clips)) {\n      allClips = allClips.concat(aiData.clips);\n    }\n    continue; \n  } catch (e) {\n    // 4. BULLETPROOF FALLBACK: If JSON is STILL broken, forcefully extract using Regex\n    const clipBlocks = content.split(/\"clip_number\"\\s*:/i);\n    \n    if (clipBlocks.length > 1) {\n        for (let i = 1; i < clipBlocks.length; i++) {\n            const block = clipBlocks[i];\n            \n            const titleMatch = block.match(/\"title\"\\s*:\\s*\"([^\"]+)\"/i);\n            const hookMatch = block.match(/\"Hook\"\\s*:\\s*\"([^\"]+)\"/i);\n            const payoffMatch = block.match(/\"Payoff\"\\s*:\\s*\"([^\"]+)\"/i);\n            const outroMatch = block.match(/\"Outro\"\\s*:\\s*\"([^\"]+)\"/i);\n            \n            if (hookMatch && payoffMatch) {\n                allClips.push({\n                    title: titleMatch ? titleMatch[1] : `Recovered_Clip_${i}`,\n                    viral_structure: {\n                        Hook: hookMatch[1],\n                        Build_up: [\"(Recovered Build-up)\", \"(Recovered Build-up)\", \"(Recovered Build-up)\"],\n                        Payoff: payoffMatch[1],\n                        Outro: outroMatch ? outroMatch[1] : \"(Recovered Outro)\"\n                    }\n                });\n            }\n        }\n    }\n  }\n}\n\n// 5. If everything completely fails, use the backup\nif (allClips.length === 0) {\n    return [{ json: { viral_structure: { Hook: \"Error\", Payoff: \"Failed to parse AI output\" }, title: streamerName + \"_Backup_Clip\", virality_score: 0, structure_type: \"Standard\" } }];\n}\n\n// 6. Format the final output cleanly for your next nodes\nreturn allClips.map((clip, index) => {\n    return { json: {\n        viral_structure: clip.viral_structure,\n        title: clip.title || `${streamerName}_Clip_${index + 1}_${Math.floor(Math.random() * 9999)}`,\n        virality_score: clip.virality_score || 0,\n        theme: clip.theme || \"Gaming\",\n        structure_type: clip.structure_type || \"Standard\",\n        estimated_segment: clip.estimated_vod_segment || \"Unknown\"\n    }};\n});"
+      },
+      "id": "22aa75de-03e5-4354-bcde-032b4a6101cd",
+      "name": "5. Split Clips",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -89880,
+        26240
+      ]
+    },
+    {
+      "parameters": {
+        "command": "={{ (function(){ const title = ($('Loop Clips').first().json.title || 'clip').replace(/[\\/\\\\\"'<>|&;:]/g, '_').trim(); const sidecarFile = '/files/outputs/' + title + '.json'; let summary = {}; try { summary = JSON.parse($('1. Global Summary AI').first().json.output || '{}'); } catch(e) {} let caption = title; try { let raw = ($('Context Merge Agent').first().json.output || '{}').replace(/```json/gi,'').replace(/```/g,'').trim(); caption = JSON.parse(raw).viral_caption || title; } catch(e) {} const meta = { viral_caption: caption, game: summary.game || 'Gaming', global_summary: summary.global_summary || '', vibe: summary.vibe || '', theme: $('Loop Clips').first().json.theme || '', key_themes: summary.key_themes || [] }; const jsonStr = JSON.stringify(meta); return `cat <<'SIDECAR_EOF' > \"${sidecarFile}\"\n${jsonStr}\nSIDECAR_EOF`; })() }}"
+      },
+      "id": "1634f843-faa7-432b-9ef3-bf37a298d2ad",
+      "name": "Write Sidecar JSON",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -86980,
+        25980
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Find Stream",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Stream": {
+      "main": [
+        [
+          {
+            "node": "If Stream Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Stream Exists": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Get Reference Frame",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Reference": {
+      "main": [
+        [
+          {
+            "node": "HF Face Detector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HF Face Detector": {
+      "main": [
+        [
+          {
+            "node": "Parse Cam Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Cam Config": {
+      "main": [
+        [
+          {
+            "node": "Vision Prep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vision Prep": {
+      "main": [
+        [
+          {
+            "node": "Groq Vision Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Vision Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "1. Extract Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Extract Audio": {
+      "main": [
+        [
+          {
+            "node": "2. Read Audio File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Read Audio File": {
+      "main": [
+        [
+          {
+            "node": "3. Groq Whisper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Groq Whisper": {
+      "main": [
+        [
+          {
+            "node": "IF: Whisper OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Clips": {
+      "main": [
+        [
+          {
+            "node": "Execute Command1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "6. Extract Viral Segments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6. Extract Viral Segments": {
+      "main": [
+        [
+          {
+            "node": "Cut & Concat All Segments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cut & Concat All Segments": {
+      "main": [
+        [
+          {
+            "node": "Execute Cut & Concat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Cut & Concat": {
+      "main": [
+        [
+          {
+            "node": "7b. Extract Clip Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7b. Extract Clip Audio": {
+      "main": [
+        [
+          {
+            "node": "7c. Read Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7c. Read Audio": {
+      "main": [
+        [
+          {
+            "node": "7d. Get Subtitles (SRT)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7d. Get Subtitles (SRT)": {
+      "main": [
+        [
+          {
+            "node": "Get Meme List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Meme List": {
+      "main": [
+        [
+          {
+            "node": "Context Merge Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Subtitle Binary": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "7f. Final Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7f. Final Render": {
+      "main": [
+        [
+          {
+            "node": "Write Sidecar JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Reference Frame": {
+      "main": [
+        [
+          {
+            "node": "Prepare Frames",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Global Summary AI": {
+      "main": [
+        [
+          {
+            "node": "IF: Summary OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq LLaMA3 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "1. Global Summary AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context Merge Agent": {
+      "main": [
+        [
+          {
+            "node": "IF: Merge OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq LLaMA3 3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Context Merge Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Frames": {
+      "main": [
+        [
+          {
+            "node": "Read Reference",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Summary OK?": {
+      "main": [
+        [
+          {
+            "node": "1. Prepare Scout Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "1. Global Summary Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Global Summary Fallback": {
+      "main": [
+        [
+          {
+            "node": "1. Prepare Scout Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Backup Model 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "1. Global Summary Fallback",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Merge OK?": {
+      "main": [
+        [
+          {
+            "node": "Create Subtitle Binary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Context Merge Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context Merge Fallback": {
+      "main": [
+        [
+          {
+            "node": "Create Subtitle Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Backup Model 3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Context Merge Fallback",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Groq Whisper Fallback": {
+      "main": [
+        [
+          {
+            "node": "1. Global Summary AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Whisper OK?": {
+      "main": [
+        [
+          {
+            "node": "1. Global Summary AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait Before Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Before Fallback": {
+      "main": [
+        [
+          {
+            "node": "Read Audio For Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Audio For Fallback": {
+      "main": [
+        [
+          {
+            "node": "3. Groq Whisper Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Prepare Scout Prompt": {
+      "main": [
+        [
+          {
+            "node": "2. Basic LLM Chain (Scout)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Model (Scout)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "2. Basic LLM Chain (Scout)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Basic LLM Chain (Scout)": {
+      "main": [
+        [
+          {
+            "node": "3. Prepare Director Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Prepare Director Prompt": {
+      "main": [
+        [
+          {
+            "node": "4. Basic LLM Chain (Director)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Model (Director)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "4. Basic LLM Chain (Director)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Basic LLM Chain (Director)": {
+      "main": [
+        [
+          {
+            "node": "5. Split Clips",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Split Clips": {
+      "main": [
+        [
+          {
+            "node": "Loop Clips",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Sidecar JSON": {
+      "main": [
+        [
+          {
+            "node": "Loop Clips",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "767f04363e936506eae0879449536a54787511597d7e446272752446a3520170"
+  }
+}

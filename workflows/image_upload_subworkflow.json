@@ -1,0 +1,154 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {"name": "url"},
+            {"name": "phone"},
+            {"name": "nom_client"},
+            {"name": "ville_quartier"},
+            {"name": "surface"},
+            {"name": "situation_actuelle"},
+            {"name": "disponibilite_annuelle"},
+            {"name": "timing_et_etat"},
+            {"name": "score_sur_5"},
+            {"name": "appt_id", "type": "number"},
+            {"name": "liens_photos"}
+          ]
+        }
+      },
+      "id": "6fb73ad4-6581-4e93-b4d5-8869ae406d44",
+      "name": "Execute Subworkflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [3840, -1180]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.url.match(/mid=([^&]+)/)[1] }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "id": "7992434e-8df8-45f9-9026-de9abff4f413",
+      "name": "Get Fresh URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4040, -1180],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "continueOnFail": true,
+      "credentials": {
+        "whatsAppApi": {
+          "id": "A5i0TdmXFmQSw5T3",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// If Get Fresh URL failed, pass through with a flag\nconst input = $input.first().json;\nif (input.error || !input.url) {\n    const original = $('Execute Subworkflow').first().json;\n    return [{ json: { ...original, url: null, _failed: true } }];\n}\nreturn [{ json: input }];"
+      },
+      "id": "check-fresh-url",
+      "name": "Check Fresh URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4140, -1180]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "bf4abc1c-25cc-41cc-a176-82773802d613",
+      "name": "Download Binary File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4340, -1180],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "continueOnFail": true,
+      "credentials": {
+        "whatsAppApi": {
+          "id": "A5i0TdmXFmQSw5T3",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/files/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {"name": "folderPath", "value": "/appartements"},
+            {"name": "options", "value": "{\"access\":\"PUBLIC_INDEXABLE\"}"},
+            {"parameterType": "formBinaryData", "name": "file", "inputDataFieldName": "data"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "ca29b1f7-8c69-4147-bc2c-6d493c91aa79",
+      "name": "Upload to HubSpot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4540, -1180],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "continueOnFail": true,
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "5HBUs8WG3nCRPWi0",
+          "name": "HubSpot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst original = $('Execute Subworkflow').first().json;\nlet hsUrl = 'upload_echoue';\ntry {\n    const uploadResult = $input.first().json;\n    hsUrl = uploadResult.url || uploadResult.default_hosting_url || 'upload_echoue';\n} catch(e) {}\nconst finalItem = Object.assign({}, original);\nfinalItem.hubspot_url = hsUrl;\nreturn [{ json: finalItem }];\n"
+      },
+      "id": "bfca3f4f-3303-46ba-9a7c-4a763db25d35",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4740, -1180]
+    }
+  ],
+  "connections": {
+    "Execute Subworkflow": {
+      "main": [[{"node": "Get Fresh URL", "type": "main", "index": 0}]]
+    },
+    "Get Fresh URL": {
+      "main": [[{"node": "Check Fresh URL", "type": "main", "index": 0}]]
+    },
+    "Check Fresh URL": {
+      "main": [[{"node": "Download Binary File", "type": "main", "index": 0}]]
+    },
+    "Download Binary File": {
+      "main": [[{"node": "Upload to HubSpot", "type": "main", "index": 0}]]
+    },
+    "Upload to HubSpot": {
+      "main": [[{"node": "Format Output", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "767f04363e936506eae0879449536a54787511597d7e446272752446a3520170"
+  }
+}

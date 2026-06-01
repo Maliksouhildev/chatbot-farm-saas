@@ -1,0 +1,85 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "phone"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        -120
+      ],
+      "id": "12b39954-e919-416d-aa22-3d76deec630a",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "// On attrape la valeur de Redis, peu importe le nom que n8n lui donne\nconst redisData = Object.values($input.first().json)[0];\n\n// Si c'est vide, on annule\nif (!redisData) {\n  return [{ json: { status: \"AUCUNE_RESERVATION\", message: \"Le client n'a pas de réservation en attente. Continue la vente normale.\" } }];\n}\n\n// On convertit le texte de Redis en vrai JSON\nlet data;\ntry {\n    data = JSON.parse(redisData);\n} catch (e) {\n    return [{ json: { status: \"AUCUNE_RESERVATION\", message: \"Continue la vente.\" } }];\n}\n\n// On calcule le temps restant (12 heures)\nconst hoursLeft = Math.floor(12 - ((Date.now() - data.timestamp) / (1000 * 60 * 60)));\n\n// Si le délai est dépassé → traiter exactement comme AUCUNE_RESERVATION, ne pas mentionner l'expiration\nif (hoursLeft <= 0) {\n   return [{ json: { status: \"AUCUNE_RESERVATION\", message: \"Le client n'a pas de réservation en attente. Continue la vente normale.\" } }];\n}\n\n// Si tout est bon, on donne le feu vert à l'IA\nreturn [{ \n  json: { \n    status: \"EN_ATTENTE_DE_PAIEMENT\",\n    reservation_id: data.reservation_id,\n    heures_restantes: hoursLeft,\n    message_ia: `Le client a bloqué l'appartement. Il lui reste ${hoursLeft} heures. DEMANDE-LUI SON MOYEN DE PAIEMENT IMMEDIATEMENT.`\n  } \n}];\n"
+      },
+      "id": "50c5aed1-64f3-4fc0-b14f-62d818147034",
+      "name": "Format AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "={{ 'res_pending:' + $json.phone }}",
+        "options": {}
+      },
+      "id": "ac203d6d-6412-484d-bd0d-a419a837363a",
+      "name": "Redis: Check Status1",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        60,
+        -80
+      ],
+      "credentials": {
+        "redis": {
+          "id": "V8K02flgy9UVw9wq",
+          "name": "Redis account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Redis: Check Status1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis: Check Status1": {
+      "main": [
+        [
+          {
+            "node": "Format AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "767f04363e936506eae0879449536a54787511597d7e446272752446a3520170"
+  }
+}

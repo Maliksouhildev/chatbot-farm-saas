@@ -1,0 +1,1 @@
+const fs=require('fs');const w=(f,c)=>fs.writeFileSync(f,c,'utf8');
