@@ -1,0 +1,287 @@
+{
+  "createdAt": "2026-05-23T22:17:00.818Z",
+  "updatedAt": "2026-05-23T23:01:06.000Z",
+  "id": "lOTjhGDEfwYWTjQ8",
+  "name": "My workflow 5",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 17
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2120,
+        760
+      ],
+      "id": "d8164c4d-3f35-4e62-8844-510a30c3578c",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "filters": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        -1920,
+        760
+      ],
+      "id": "3c24fc29-a2ae-4c37-9cda-a6148582b366",
+      "name": "n8n",
+      "credentials": {
+        "n8nApi": {
+          "id": "8KvbgPHQ6QyBb0ot",
+          "name": "n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        -1720,
+        760
+      ],
+      "id": "0dc53b85-6fe8-49a4-9188-e4eb0a65126e",
+      "name": "Loop Workflows"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "operation": "get",
+        "owner": {
+          "value": "Maliksouhildev",
+          "mode": "name"
+        },
+        "repository": {
+          "value": "n8n",
+          "mode": "name"
+        },
+        "filePath": "=workflows/{{ $('Loop Workflows').item.json.id }}_{{ $('Loop Workflows').item.json.name.replace(/[^a-z0-9]/gi, '_').toLowerCase() }}.json",
+        "additionalParameters": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        -1500,
+        760
+      ],
+      "id": "137f60e6-1c6b-498c-9d8a-e2708b78ac2f",
+      "name": "Check if File Exists",
+      "credentials": {
+        "githubOAuth2Api": {
+          "id": "PAgURlhoUxcdEm01",
+          "name": "GitHub account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.sha }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1280,
+        760
+      ],
+      "id": "02bb5afc-a2d1-45cd-b16e-fe8ba1831b72",
+      "name": "If File Exists"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "operation": "edit",
+        "owner": {
+          "value": "Maliksouhildev",
+          "mode": "name"
+        },
+        "repository": {
+          "value": "n8n",
+          "mode": "name"
+        },
+        "filePath": "=workflows/{{ $('Loop Workflows').item.json.id }}_{{ $('Loop Workflows').item.json.name.replace(/[^a-z0-9]/gi, '_').toLowerCase() }}.json",
+        "fileContent": "={{ JSON.stringify($('Loop Workflows').item.json, null, 2) }}",
+        "commitMessage": "=Updated backup for {{ $('Loop Workflows').item.json.name }}"
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        -1060,
+        660
+      ],
+      "id": "6130f381-f60d-4532-b0ad-1c52a0ba9c51",
+      "name": "Update Existing Backup",
+      "credentials": {
+        "githubOAuth2Api": {
+          "id": "PAgURlhoUxcdEm01",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "owner": {
+          "value": "Maliksouhildev",
+          "mode": "name"
+        },
+        "repository": {
+          "value": "n8n",
+          "mode": "name"
+        },
+        "filePath": "=workflows/{{ $('Loop Workflows').item.json.id }}_{{ $('Loop Workflows').item.json.name.replace(/[^a-z0-9]/gi, '_').toLowerCase() }}.json",
+        "fileContent": "={{ JSON.stringify($('Loop Workflows').item.json, null, 2) }}",
+        "commitMessage": "=Initial backup for {{ $('Loop Workflows').item.json.name }}"
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        -1060,
+        860
+      ],
+      "id": "c3ad26e3-cf70-4c1e-9f2a-d7129fd50396",
+      "name": "Create New Backup",
+      "credentials": {
+        "githubOAuth2Api": {
+          "id": "PAgURlhoUxcdEm01",
+          "name": "GitHub account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "n8n",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "n8n": {
+      "main": [
+        [
+          {
+            "node": "Loop Workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Workflows": {
+      "main": [
+        [
+          {
+            "node": "Check if File Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if File Exists": {
+      "main": [
+        [
+          {
+            "node": "If File Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If File Exists": {
+      "main": [
+        [
+          {
+            "node": "Update Existing Backup",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create New Backup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Existing Backup": {
+      "main": [
+        [
+          {
+            "node": "Loop Workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create New Backup": {
+      "main": [
+        [
+          {
+            "node": "Loop Workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "df66b1c9-a7d0-440d-ad42-41b60a4dca0d",
+  "triggerCount": 0,
+  "tags": []
+}

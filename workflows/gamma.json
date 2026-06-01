@@ -1,0 +1,1394 @@
+{
+  "createdAt": "2026-03-17T15:35:14.824Z",
+  "updatedAt": "2026-04-27T21:11:47.000Z",
+  "id": "BRuAVtzgAycBejMY",
+  "name": "gamma",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "model": "pixtral-large-latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [
+        8040,
+        5560
+      ],
+      "id": "38360da6-20e2-4ab4-bcb5-e91fd1c2641d",
+      "name": "Mistral Pixtral Vision",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "GPkRAk0iPJOL3lzl",
+          "name": "Mistral Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "caption",
+              "value": "={{ $('Parse Comments & Stats').item.json.extracted_caption }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "transcription",
+              "value": "=🎤 Paroles: {{ $('Groq Transcription').first()?.json?.text || 'Aucune voix' }} | 🎵 Musique: {{ $('Shazam API').first()?.json?.track?.title || 'Non détectée' }} par {{ $('Shazam API').first()?.json?.track?.subtitle || 'Artiste inconnu' }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "comment_text",
+              "value": "={{ $('Format Initial').item.json.comment_text }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "community_context",
+              "value": "={{ $('Parse Comments & Stats').item.json.community_context }}",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "reel_stats",
+              "value": "={{ $('Parse Comments & Stats').item.json.reel_stats }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        7140,
+        4880
+      ],
+      "id": "72f8d7bc-2839-418b-a3f8-9b4ed3905e1d",
+      "name": "Combine for AI"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        6900,
+        4880
+      ],
+      "id": "a5c94dd7-6298-4be7-924a-1a42650078b3",
+      "name": "Merge All Data"
+    },
+    {
+      "parameters": {
+        "filePath": "/tmp/frame.jpg"
+      },
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        6420,
+        5000
+      ],
+      "id": "571f3d84-5b72-48c8-afa8-1ce1d1fb8d16",
+      "name": "Read Screenshot"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        6660,
+        4700
+      ],
+      "id": "4a498971-ec02-4512-9b2a-7a73ed09aca9",
+      "name": "Wait For Audio"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://shazam-song-recognition-api.p.rapidapi.com/recognize/file",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-rapidapi-host",
+              "value": "shazam-song-recognition-api.p.rapidapi.com"
+            },
+            {
+              "name": "x-rapidapi-key",
+              "value": "372b4f630dmshf6f909206ca9440p168d0cjsn9f2b806d1743"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6440,
+        4840
+      ],
+      "id": "188ca287-b0fd-4ea3-8796-c127d1bb6363",
+      "name": "Shazam API",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "whisper-large-v3"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        6420,
+        4600
+      ],
+      "id": "72340df1-c3bb-48ed-b810-86731ab58bb3",
+      "name": "Groq Transcription",
+      "credentials": {
+        "groqApi": {
+          "id": "PF1ZMT03O2E5waqU",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $binary.data.fileSize }}",
+              "operation": "notEqual",
+              "value2": "0 B"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        6140,
+        4720
+      ],
+      "id": "c652fb6d-b316-44e5-956c-4c28faa39eae",
+      "name": "Has Audio?"
+    },
+    {
+      "parameters": {
+        "filePath": "/tmp/audio.mp3"
+      },
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        5960,
+        4720
+      ],
+      "id": "bb80c563-37bd-46ad-9c20-56a1a7157e2f",
+      "name": "Read Audio"
+    },
+    {
+      "parameters": {
+        "command": "=sh -c \"cp /tmp/media_source.tmp /tmp/frame.jpg && touch /tmp/audio.mp3\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        5740,
+        5000
+      ],
+      "id": "41622807-e47a-49ee-94d9-ea6b8bfd1376",
+      "name": "Process Image"
+    },
+    {
+      "parameters": {
+        "command": "=sh -c \"ffmpeg -y -i /tmp/media_source.tmp -vn -acodec libmp3lame -b:a 32k /tmp/audio.mp3 || touch /tmp/audio.mp3; ffmpeg -y -i /tmp/media_source.tmp -vf 'fps=1/2,scale=320:-1,tile=3x1' -vframes 1 -q:v 2 /tmp/frame.jpg || cp /tmp/media_source.tmp /tmp/frame.jpg\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        5740,
+        4720
+      ],
+      "id": "6acd47e6-4def-4855-86e2-bd97e20d8a86",
+      "name": "Process Video",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $binary.data.mimeType }}",
+              "operation": "contains",
+              "value2": "video"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        5520,
+        4860
+      ],
+      "id": "c36fd5b0-32dc-428b-a0c7-604bb7a2c50d",
+      "name": "Is Video?"
+    },
+    {
+      "parameters": {
+        "fileName": "/tmp/media_source.tmp",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        5300,
+        4820
+      ],
+      "id": "c14f18e7-3ead-41f7-af7f-6f7e4d291dbc",
+      "name": "Save to Docker"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.download_url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4980,
+        4920
+      ],
+      "id": "deabc581-1990-4f97-862c-ef538439cf8c",
+      "name": "Download Media",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "let root = $input.item.json.data?.xdt_shortcode_media || $input.item.json;\n\n// 1. EXTRAIRE LES STATS DU REEL (Mode blindé)\nlet owner = root.owner?.username || \"Unknown\";\nlet views = root.video_view_count || root.view_count || 0;\nlet plays = root.video_play_count || root.play_count || 0;\nlet likes = root.edge_media_preview_like?.count || root.like_count || 0;\nlet caption = root.edge_media_to_caption?.edges?.[0]?.node?.text || root.caption?.text || root.caption || \"No caption\";\n\nlet reelStats = `Owner: @${owner} | Views: ${views} | Plays: ${plays} | Likes: ${likes}\\nCaption: ${caption}`;\n\n// 2. EXTRAIRE JUSQU'À 25 COMMENTAIRES (Recherche multi-chemins)\n// On cherche dans \"parent_comment\", \"preview_comment\", ou directement \"comments\"\nlet commentsData = root.edge_media_to_parent_comment?.edges || root.edge_media_preview_comment?.edges || root.comments || [];\nlet topComments = [];\nlet limit = Math.min(commentsData.length, 25);\n\nfor (let i = 0; i < limit; i++) {\n    // Gère la structure GraphQL (\"node\") ET la structure REST classique\n    let c = commentsData[i].node || commentsData[i];\n    if (!c) continue;\n    \n    let text = c.text || c.comment_text || \"\";\n    let username = c.owner?.username || c.user?.username || \"user\";\n    let cLikes = c.edge_liked_by?.count || c.like_count || c.comment_like_count || 0;\n    \n    let commentStr = `[${cLikes} likes] ${username}: \"${text}\"`;\n    \n    // Extraire les réponses\n    let repliesData = c.edge_threaded_comments?.edges || c.replies || [];\n    let replyLimit = Math.min(repliesData.length, 3);\n    for (let j = 0; j < replyLimit; j++) {\n        let r = repliesData[j].node || repliesData[j];\n        if(!r) continue;\n        let rText = r.text || r.comment_text || \"\";\n        let rUser = r.owner?.username || r.user?.username || \"user\";\n        commentStr += `\\n   -> Reply by ${rUser}: \"${rText}\"`;\n    }\n    topComments.push(commentStr);\n}\n\n// 3. PRÉPARER LA SORTIE\nlet finalContext = topComments.length > 0 ? topComments.join(\"\\n\\n\") : \"No comments found.\";\nlet download_url = root.video_url || root.display_url || root.display_resources?.[0]?.src || \"\";\n\n// Ajouter au JSON\nlet out = $input.item.json;\nout.reel_stats = reelStats;\nout.community_context = finalContext;\nout.extracted_caption = caption;\nout.download_url = download_url;\n\nreturn { json: out };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4820,
+        4860
+      ],
+      "id": "538afc4f-27b1-4af7-b5f6-bcc918e365b8",
+      "name": "Parse Comments & Stats"
+    },
+    {
+      "parameters": {
+        "url": "https://best-instagram-scraper.p.rapidapi.com/v1/instagram/post",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.post_url }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-rapidapi-key",
+              "value": "372b4f630dmshf6f909206ca9440p168d0cjsn9f2b806d1743"
+            },
+            {
+              "name": "x-rapidapi-host",
+              "value": "best-instagram-scraper.p.rapidapi.com"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4580,
+        4860
+      ],
+      "id": "668040d0-7190-4bbe-9f2a-e39d2de3de91",
+      "name": "Get Media Info (NEW API)",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "post_url",
+              "value": "={{ $json.mentioned_comment?.media?.permalink }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "comment_text",
+              "value": "={{ $json.mentioned_comment?.text }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "comment_id",
+              "value": "={{ $('Catch IG Comments').item.json.body.entry[0].changes[0].value.comment_id }}",
+              "type": "string"
+            },
+            {
+              "id": "f1e0195c",
+              "name": "username",
+              "value": "={{ $('Fetch 3rd Party Mention').item.json.mentioned_comment?.from?.username || $('Catch IG Comments').item.json.body.entry[0].changes[0].value.from?.username || \"Utilisateur_Inconnu\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4340,
+        4860
+      ],
+      "id": "d18291b3-aea7-4f04-9d69-2d8a03932a04",
+      "name": "Format Initial"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v20.0/{{ $json.body.entry[0].id }}?fields=mentioned_comment.comment_id({{ $json.body.entry[0].changes[0].value.comment_id }}){text,media{permalink},from{username}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer EAAWj7VyREzYBRKM0AZBexQK2iB3pKioZCdAO7HdFMPTWed0ZBZCDc1cR8JRz2KiN1zI7WEuWLgbchoyx37LwusMSuYWYlJNwCklujzSlUfu0OELaN3D7Hb3LdUxv1nboCxOHjBLTHrcxBmnXjfiMsctTKIZC7KN5n1KFdHmfBMZA8SgxCe73CpmduO7n5cbhxUopQ4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4140,
+        4840
+      ],
+      "id": "a70e7126-21ec-4005-9160-f7a962aaf1ab",
+      "name": "Fetch 3rd Party Mention",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "instagram-grok",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        3900,
+        4860
+      ],
+      "id": "5f674ca7-df62-4986-a743-61a3cc2ccad7",
+      "name": "Catch IG Comments",
+      "webhookId": "2701603a-5ba9-4468-9d97-f8480d8fc364"
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json?engine=google_lens&url={{ $('Combine for AI').item.json.download_url }}&api_key=f249279031d2e1ab5a4764cb955fbf6850662ba1847ff6123baebed1811ec17d",
+        "sendQuery": true,
+        "parametersQuery": {
+          "values": [
+            {
+              "name": "engine",
+              "valueProvider": "fieldValue",
+              "value": "google_lens"
+            },
+            {
+              "name": "url"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        7900,
+        5280
+      ],
+      "id": "20a9bd39-f840-4e7f-9bbd-0eaccb5fd951",
+      "name": "Google Lens Tool"
+    },
+    {
+      "parameters": {
+        "url": "https://api.sightengine.com/1.0/check.json",
+        "sendQuery": true,
+        "parametersQuery": {
+          "values": [
+            {
+              "name": "models",
+              "valueProvider": "fieldValue",
+              "value": "genai"
+            },
+            {
+              "name": "url"
+            },
+            {
+              "name": "api_user",
+              "valueProvider": "fieldValue",
+              "value": "SbAYD6S2bK32XUJYB4GQUZjjWsaB4kMi"
+            },
+            {
+              "name": "api_secret",
+              "valueProvider": "fieldValue",
+              "value": "206173279"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        8060,
+        5280
+      ],
+      "id": "4bb25f74-2c93-4f34-b567-5a6f69ee2963",
+      "name": "Sightengine Deepfake Tool"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Grab the main text data\nconst sourceData = $('Combine for AI').first().json || $input.item.json;\n\n// 2. Reach all the way back to explicitly grab the URL so it never gets lost\nconst parseData = $('Parse Comments & Stats').first().json || {};\nconst safeUrl = parseData.download_url || sourceData.download_url || \"No URL available\";\n\nconst q = (sourceData.comment_text || \"\").toString().toLowerCase();\nconst c = (sourceData.community_context || \"\").toString().toLowerCase();\n\nlet route = 'C'; \n\nif (q.match(/anime|movie|show|episode|season|where|location|place/i) || c.match(/season|episode/i)) {\n  route = 'A';\n} else if (q.match(/\\b(fake|ai|generated|deepfake|real)\\b/i)) {\n  route = 'B';\n} else if (q.match(/song|music|track|beat|audio|shazam/i)) {\n  route = 'D';\n}\n\nreturn { \n  json: { \n    ...sourceData, \n    download_url: safeUrl, // Forces the URL back into the payload\n    extracted_caption: sourceData.caption || sourceData.extracted_caption || \"No caption\", // Fixes the naming mismatch\n    route: route\n  } \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7900,
+        4600
+      ],
+      "id": "98f79354-8457-4f6b-bbeb-008d22166529",
+      "name": "Phase 2: Intent Router"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=User asks: {{ $json.comment_text }}\nContext (Caption): {{ $json.extracted_caption }}\n\nINSTRUCTIONS (OBEY STRICTLY):\n1. NO GUESSING FROM MEMORY: You MUST use the \"Tavily AI Search\" tool to research the answer, even if you think you know it.\n2. MATCH LANGUAGE: You MUST reply in the EXACT SAME LANGUAGE that the User asked the question in. (e.g., If they ask in Spanish, reply in Spanish. If Arabic, reply in Arabic).\n3. CITE REAL SOURCES: You must include a specific, credible source at the end of your reply based on your search. Do NOT just say \"Source: Reddit\". Say \"Source: [Website Name] - [Article Title]\".\n4. Synthesize the answer into 2-3 casual, highly accurate sentences.\n5. NEVER reveal you are an AI, a bot, or a language model. NEVER use phrases like \"I searched the web\" or \"Based on my research\". Deliver the answer naturally as if you are a regular person.\nTONE ROULETTE: Randomly choose one of these personas for your reply: 1. A hyped teenager (use slang and caps). 2. A lazy scroller (all lowercase, no punctuation). 3. An emoji abuser (replace words with emojis). Never format your answers the same way twice.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        8680,
+        4060
+      ],
+      "id": "de3b0176-9ebe-4c84-8029-a541b6da38d9",
+      "name": "The Locator Agent (Route A)"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=User asks: {{ $json.comment_text }}\nImage URL: {{ $json.download_url }}\n\nINSTRUCTIONS (OBEY STRICTLY):\n1. Use \"Sightengine Deepfake Tool\" on the URL to check for AI generation. If it fails, use \"Tavily AI Search\" to see if the internet has debunked this specific video.\n2. MATCH LANGUAGE: You MUST reply in the EXACT SAME LANGUAGE that the User asked the question in.\n3. Reply in 1-2 casual sentences with the deepfake probability or the truth.\n4. NEVER reveal you are an AI, a bot, or a language model. NEVER use phrases like \"I searched the web\" or \"Based on my research\". Deliver the answer naturally as if you are a regular person.\nTONE ROULETTE: Randomly choose one of these personas for your reply: 1. A hyped teenager (use slang and caps). 2. A lazy scroller (all lowercase, no punctuation). 3. An emoji abuser (replace words with emojis). Never format your answers the same way twice.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        8680,
+        4360
+      ],
+      "id": "1ed742b7-6f8d-4a9b-b41c-f61d40cb7185",
+      "name": "The Detective Agent (Route B)"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=User asks: {{ $json.comment_text }}\nContext: {{ $json.extracted_caption }}\n\nINSTRUCTIONS (OBEY STRICTLY):\n1. NO GUESSING FROM MEMORY: You are an investigative researcher. You MUST use \"Tavily AI Search\" (and \"Google Fact Check Tool\" if applicable) to find the absolute truth. Do not deduce the answer from the video context if it is a general knowledge question.\n2. MATCH LANGUAGE: You MUST reply in the EXACT SAME LANGUAGE that the User asked the question in. \n3. CITE REAL SOURCES: You must include a specific, credible source at the end of your reply based on your search. Say \"Source: [Website Name] - [Article Title]\".\n4. Be direct. Verify or debunk the user's question in 2-3 casual sentences.\n5. NEVER reveal you are an AI, a bot, or a language model. NEVER use phrases like \"I searched the web\" or \"Based on my research\". Deliver the answer naturally as if you are a regular person.\nTONE ROULETTE: Randomly choose one of these personas for your reply: 1. A hyped teenager (use slang and caps). 2. A lazy scroller (all lowercase, no punctuation). 3. An emoji abuser (replace words with emojis). Never format your answers the same way twice.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        8680,
+        4620
+      ],
+      "id": "97023b7e-13ce-4dc5-b6ca-bb920b5b8d60",
+      "name": "The Fact-Checker Agent (Route C)"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=User asks: {{ $json.comment_text }}\nAudio Context: {{ $json.transcription }}\n\nINSTRUCTIONS:\n1. If the audio context already has the song ID, just output it.\n2. If not, use SERP API to search the transcribed lyrics.\n3. Reply casually with the track name and artist.\n4. NEVER reveal you are an AI, a bot, or a language model. NEVER use phrases like \"I searched the web\" or \"Based on my research\". Deliver the answer naturally as if you are a regular person.\nTONE ROULETTE: Randomly choose one of these personas for your reply: 1. A hyped teenager (use slang and caps). 2. A lazy scroller (all lowercase, no punctuation). 3. An emoji abuser (replace words with emojis). Never format your answers the same way twice.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        8680,
+        4880
+      ],
+      "id": "1f3392bf-d747-4cbe-8620-c20c5560c135",
+      "name": "The DJ Agent (Route D)"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "A",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Visual"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "47dcef93-efa6-49cf-8e66-9e6ddd8e5fb7",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "B",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Authenticity"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "45ee2cf7-19de-47b1-88b8-0b1556a3d40e",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "C",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Claims"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "fd879800-29fd-4702-8217-8497eba774ae",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "D",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Audio"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        8420,
+        4540
+      ],
+      "id": "f3c08ceb-067f-4e05-9b29-236dcd2bdeba",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool to search the internet for fact-checks, debunked claims, or to verify if a specific TV show episode exists.",
+        "url": "https://factchecktools.googleapis.com/v1alpha1/claims:search",
+        "sendQuery": true,
+        "parametersQuery": {
+          "values": [
+            {
+              "name": "query"
+            },
+            {
+              "name": "key",
+              "valueProvider": "fieldValue",
+              "value": "AIzaSyCxHAIbxpUpy_VEKa2PH9QepV-45rZmndc"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        8560,
+        5260
+      ],
+      "id": "b7c6d196-0c0e-41ed-9ff5-47109ef7fd46",
+      "name": "Google Fact Check Tool1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e2a2a0a2-2f3b-4b2a-8b2b-2a2a2a2a2a2a",
+              "leftValue": "={{ $binary?.data ? true : false }}",
+              "rightValue": "={{ true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "name": "filter.operator.isTrue"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5180,
+        5160
+      ],
+      "id": "b525db17-9383-46bf-985b-c6b5417cf2da",
+      "name": "Did Download Succeed?"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool to perform deep internet searches. NEVER do basic searches. Always use this to look for expert opinions, Reddit discussions, or wiki-level facts to provide a comprehensive answer.",
+        "url": "https://serpapi.com/search.json",
+        "sendQuery": true,
+        "parametersQuery": {
+          "values": [
+            {
+              "name": "q"
+            },
+            {
+              "name": "api_key",
+              "valueProvider": "fieldValue",
+              "value": "f249279031d2e1ab5a4764cb955fbf6850662ba1847ff6123baebed1811ec17d"
+            },
+            {
+              "name": "engine",
+              "valueProvider": "fieldValue",
+              "value": "google"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        8340,
+        5300
+      ],
+      "id": "5c1c7657-7a92-48ff-bc2c-cae5665f7165",
+      "name": "Deep Search Tool"
+    },
+    {
+      "parameters": {
+        "toolDescription": "You MUST use this tool to answer ANY question about lore, movies, shows, or media. Do not attempt to answer without using this tool first.",
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendBody": true,
+        "parametersBody": {
+          "values": [
+            {}
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        9700,
+        4840
+      ],
+      "id": "d4f5b3b7-f596-429f-835e-b469dd23d90b",
+      "name": "Tavily AI Search"
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.floor(Math.random() * (15 - 3 + 1) + 3) }}",
+        "unit": "minutes"
+      },
+      "id": "d40e89c7-f9ee-4648-baee-e6d7dd121dfe",
+      "name": "Human Delay Timer",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        9980,
+        5120
+      ],
+      "webhookId": "webhook-wait-human"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5000/reply",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $('Format Initial').item.json.post_url }}\",\n  \"text\": {{ JSON.stringify(Array.isArray($json.output) ? $json.output.filter(i => i.type === 'text').map(i => i.text).join('') : $json.output) }},\n  \"comment_id\": \"{{ $('Format Initial').item.json.comment_id }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        10260,
+        5140
+      ],
+      "id": "dde9dbcb-b332-4545-a031-b0b4e8f26ce2",
+      "name": "Python Reply"
+    }
+  ],
+  "connections": {
+    "Mistral Pixtral Vision": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "The Fact-Checker Agent (Route C)",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "The DJ Agent (Route D)",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "The Detective Agent (Route B)",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "The Locator Agent (Route A)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine for AI": {
+      "main": [
+        [
+          {
+            "node": "Phase 2: Intent Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Data": {
+      "main": [
+        [
+          {
+            "node": "Combine for AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Screenshot": {
+      "main": [
+        [
+          {
+            "node": "Merge All Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Wait For Audio": {
+      "main": [
+        [
+          {
+            "node": "Merge All Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shazam API": {
+      "main": [
+        [
+          {
+            "node": "Wait For Audio",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Groq Transcription": {
+      "main": [
+        [
+          {
+            "node": "Wait For Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Audio?": {
+      "main": [
+        [
+          {
+            "node": "Groq Transcription",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Shazam API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait For Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Audio": {
+      "main": [
+        [
+          {
+            "node": "Has Audio?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Image": {
+      "main": [
+        [
+          {
+            "node": "Read Audio",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Screenshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Video": {
+      "main": [
+        [
+          {
+            "node": "Read Audio",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Screenshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Video?": {
+      "main": [
+        [
+          {
+            "node": "Process Video",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Docker": {
+      "main": [
+        [
+          {
+            "node": "Is Video?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Media": {
+      "main": [
+        [
+          {
+            "node": "Did Download Succeed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Comments & Stats": {
+      "main": [
+        [
+          {
+            "node": "Download Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Media Info (NEW API)": {
+      "main": [
+        [
+          {
+            "node": "Parse Comments & Stats",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Comments & Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Initial": {
+      "main": [
+        [
+          {
+            "node": "Get Media Info (NEW API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch 3rd Party Mention": {
+      "main": [
+        [
+          {
+            "node": "Format Initial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catch IG Comments": {
+      "main": [
+        [
+          {
+            "node": "Fetch 3rd Party Mention",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Lens Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "The Fact-Checker Agent (Route C)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "The DJ Agent (Route D)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "The Detective Agent (Route B)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "The Locator Agent (Route A)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sightengine Deepfake Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "The Fact-Checker Agent (Route C)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "The DJ Agent (Route D)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "The Detective Agent (Route B)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "The Locator Agent (Route A)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phase 2: Intent Router": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "The Locator Agent (Route A)": {
+      "main": [
+        [
+          {
+            "node": "Human Delay Timer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "The Detective Agent (Route B)": {
+      "main": [
+        [
+          {
+            "node": "Human Delay Timer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "The Fact-Checker Agent (Route C)": {
+      "main": [
+        [
+          {
+            "node": "Human Delay Timer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "The DJ Agent (Route D)": {
+      "main": [
+        [
+          {
+            "node": "Human Delay Timer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "The Locator Agent (Route A)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "The Detective Agent (Route B)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "The Fact-Checker Agent (Route C)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "The DJ Agent (Route D)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Fact Check Tool1": {
+      "ai_tool": [
+        [
+          {
+            "node": "The DJ Agent (Route D)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "The Fact-Checker Agent (Route C)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "The Detective Agent (Route B)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "The Locator Agent (Route A)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Did Download Succeed?": {
+      "main": [
+        [
+          {
+            "node": "Save to Docker",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Combine for AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deep Search Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "The DJ Agent (Route D)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "The Fact-Checker Agent (Route C)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "The Detective Agent (Route B)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "The Locator Agent (Route A)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily AI Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "The Locator Agent (Route A)",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "The Detective Agent (Route B)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Delay Timer": {
+      "main": [
+        [
+          {
+            "node": "Python Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Every 7 Mins (Doubled Speed!)": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "Catch IG Comments": [
+      {
+        "json": {
+          "headers": {
+            "host": "gavyn-eerier-kia.ngrok-free.dev",
+            "user-agent": "Webhooks/1.0 (https://fb.me/webhooks)",
+            "content-length": "198",
+            "accept": "*/*",
+            "content-type": "application/json",
+            "x-forwarded-for": "2a03:2880:21ff:8::",
+            "x-forwarded-host": "gavyn-eerier-kia.ngrok-free.dev",
+            "x-forwarded-proto": "https",
+            "x-hub-signature": "sha1=10d16bb07ebfab2ffa29d6fbc1a67ad3a469730b",
+            "x-hub-signature-256": "sha256=b3346ac2db859c1c682ab2bbf29e126278ae6e4986b1b61335ac54058697f386",
+            "accept-encoding": "gzip"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "entry": [
+              {
+                "id": "17841443024314585",
+                "time": 1777311823,
+                "changes": [
+                  {
+                    "value": {
+                      "media_id": "18087636491590158",
+                      "comment_id": "18062405177424882"
+                    },
+                    "field": "mentions"
+                  }
+                ]
+              }
+            ],
+            "object": "instagram"
+          },
+          "webhookUrl": "http://localhost:5678/webhook/instagram-grok",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "versionId": "459aa41e-4b7d-4b3c-bafe-d174d87f3ba7",
+  "triggerCount": 1,
+  "tags": []
+}
