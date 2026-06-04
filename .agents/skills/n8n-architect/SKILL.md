@@ -184,8 +184,9 @@ npx --yes @n8n-as-code/n8n-manager tunnel stop <id>
 
 ## Sync Discipline
 
-- Pull before reading or modifying an existing workflow.
-- Push after every modification.
+- **ALWAYS pull** from n8n before reading or modifying an existing workflow (`npx --yes n8nac pull <workflowId>`) to ensure you are editing the latest version from the server.
+- **ALWAYS push** after every modification (`npx --yes n8nac push <path-to-workflow.workflow.ts> --verify`).
+- **ALWAYS commit and push to Git** at the end of the work to ensure everything is backed up to GitHub (run `git add workflows/`, `git commit`, `git push`).
 - Use `list` to inspect workflow IDs, file paths, and sync status.
 
 ```bash

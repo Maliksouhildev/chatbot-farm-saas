@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : wsp : main
-// Nodes   : 162  |  Connections: 152
+// Nodes   : 161  |  Connections: 151
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // OpenaiChatModel                    lmChatOpenAi               [creds] [retry] [ai_languageModel]
 // WaImageVoyageur2                   whatsApp                   [creds]
 // If3                                if
-// WaImageVoyageur1                   whatsApp                   [creds]
+// WaImageVoyageur1                   whatsApp                   [creds] [retry]
 // If2                                if
 // IsRealMessage                      if
 // RecursiveCharacterTextSplitter     textSplitterRecursiveCharacterTextSplitter [retry] [ai_textSplitter]
@@ -34,7 +34,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // AgentSupportClient                 agent                      [AI] [retry]
 // OutilInfosHospitable1              toolWorkflow               [retry] [ai_tool] [ai_tool]
 // ExtraireImageVoyageur              code
-// WaImageVoyageur                    whatsApp                   [creds]
+// WaImageVoyageur                    whatsApp                   [creds] [retry]
 // If_                                if
 // Code1                              code
 // WebhookMetaVerify                  webhook
@@ -110,7 +110,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // RedisWipeVision                    redis                      [creds]
 // RedisGetPhotoUrls                  redis                      [creds]
 // ReactionDelay                      wait
-// MarkAsReadHttp                     httpRequest                [creds] [retry]
 // ResetPhotos                        toolWorkflow               [retry] [ai_tool]
 // RedisGetBranch                     redis                      [creds]
 // RechercheInformationsAgence        toolVectorStore            [AI] [retry] [ai_tool] [ai_tool] [ai_tool]
@@ -157,9 +156,9 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // CalculatePredominantLang           code
 // RedisSetLangStats                  redis                      [creds]
 // BuildBodyWaMediaInvalide           code
-// WaErreurMediaClient                httpRequest                [creds]
+// WaErreurMediaClient                httpRequest                [creds] [retry]
 // BuildBodyAdminError                code
-// WaAdminErrorAlert                  httpRequest                [creds]
+// WaAdminErrorAlert                  httpRequest                [creds] [retry]
 // RedisTagActiveClient24h            redis                      [creds]
 // RedisSetApptsStateImg              redis                      [creds]
 // ConvertAudioToBase64               code
@@ -318,7 +317,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //        → ReactionDelay
 //          → SendReactionHttp1
 //      → RedisTagActiveClient24h
-//    → MarkAsReadHttp
 // FilterDarjaArabic
 //    → BuildBodyWaEscaladeLangueLocale
 //      → WaEscaladeLangueLocale
@@ -335,9 +333,9 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // DefaultDataLoader1.uses({ ai_textSplitter: RecursiveCharacterTextSplitter })
 // QdrantInsert.uses({ ai_embedding: EmbeddingsOpenai, ai_document: [DefaultDataLoader1] })
 // QdrantVectorStore.uses({ ai_embedding: EmbeddingsOpenai1 })
-// AgentSupportClient.uses({ ai_languageModel: OpenaiChatModel3, ai_tool: [OutilInfosHospitable1, RechercheInformationsAgence], ai_memory: RedisChatMemory })
-// BookingAgentVoyageur.uses({ ai_tool: [ChercherCatalogueGs, OutilInfosHospitable1, DisponibilitesHospitable, VerifierStatutPaiement, RechercheInformationsAgence], ai_languageModel: OpenaiChatModel2, ai_memory: RedisChatMemory })
-// BookingAgentProprietaire.uses({ ai_languageModel: OpenaiChatModel1, ai_memory: RedisChatMemory, ai_tool: [ResetPhotos, RechercheInformationsAgence, OutilExportCrm] })
+// AgentSupportClient.uses({ ai_languageModel: OpenaiChatModel3, ai_memory: RedisChatMemory, ai_tool: [OutilInfosHospitable1, RechercheInformationsAgence] })
+// BookingAgentVoyageur.uses({ ai_memory: RedisChatMemory, ai_tool: [OutilInfosHospitable1, RechercheInformationsAgence, ChercherCatalogueGs, DisponibilitesHospitable, VerifierStatutPaiement], ai_languageModel: OpenaiChatModel2 })
+// BookingAgentProprietaire.uses({ ai_memory: RedisChatMemory, ai_tool: [RechercheInformationsAgence, ResetPhotos, OutilExportCrm], ai_languageModel: OpenaiChatModel1 })
 // GenererScriptGamma.uses({ ai_languageModel: OpenaiChatModel8, ai_memory: RedisChatMemory1 })
 // BasicLlmChain.uses({ ai_languageModel: OpenaiChatModel4 })
 // TraductionWaPoseQuestion1.uses({ ai_languageModel: OpenaiChatModel4 })
@@ -948,6 +946,9 @@ CONSTRAINT: Print ONLY a single word. No punctuation whatsoever.
         version: 1,
         position: [-2040, 2440],
         credentials: { whatsAppApi: { id: 'A5i0TdmXFmQSw5T3', name: 'WhatsApp account 2' } },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000,
     })
     WaImageVoyageur1 = {
         operation: 'send',
@@ -1107,7 +1108,7 @@ CONSTRAINT: Print ONLY a single word. No punctuation whatsoever.
             systemMessage: `=CURRENT DATE : {{ $now.format('yyyy-MM-dd') }}
 LOCAL CONTEXT : Conciergerie Le Bardo, Algiers. Web: https://reservation.conciergerie-le-bardo.com/
 
-You are the human and super warm assistant of the Conciergerie Le Bardo. You speak like a REAL person on WhatsApp, with kindness and naturalness, just like talking to a friend in Algeria. 
+You are the human and super warm assistant of the Conciergerie Le Bardo. You speak like a REAL person on WhatsApp, with kindness, naturalness, and a highly professional tone, just like talking to a friend in Algeria. 🚨 STRICT RULE: NEVER use any emojis. NEVER reveal you are an AI. 
 
 [WELCOME MESSAGE & BAD CONTEXT]
 If the client sends a simple hello, welcome them very naturally and ask if they are looking for an apartment, or if they want to entrust us with the management of theirs.
@@ -1183,6 +1184,9 @@ return {
         version: 1,
         position: [-780, 2020],
         credentials: { whatsAppApi: { id: 'A5i0TdmXFmQSw5T3', name: 'WhatsApp account 2' } },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000,
     })
     WaImageVoyageur = {
         operation: 'send',
@@ -1549,8 +1553,10 @@ Tu es l'agent de réservation EXCLUSIF de Conciergerie le Bardo. Mission unique 
    - JAMAIS de liens Markdown "[Texte](URL)". WhatsApp ne les affiche pas. Colle le lien brut directement.
    - JAMAIS de pipes (|) dans les noms d'appartements. Dis "l'appartement Le Marin à El Marsa", PAS "Le Marin | La Pérouse | Économique".
    - JAMAIS de CTA robotique comme "Souhaitez-vous procéder ?". Dis plutôt "Qu'est-ce que vous en pensez ?" ou "Ça vous dit ?" ou "Dites-moi si ça vous convient !".
+   - URLs DE RÉSERVATION (OBLIGATOIRE) : Tu DOIS ABSOLUMENT inclure le lien de réservation (URL Hospitable) de CHAQUE appartement que tu proposes, directement dans ton message. Ne demande JAMAIS "voulez-vous le lien ?", donne-le tout de suite.
    - Présente les équipements naturellement : "il est tout équipé, clim et WiFi compris" PAS une liste à puces.
 4. SEULE OPTION : Si l'outil "Verifier_TOUTE_La_Liste" ne retourne qu'UN SEUL appartement disponible, dis-le clairement à la fin : "C'est la seule option disponible pour ces dates, mais elle est vraiment bien !"
+5. GESTION DES DEMANDES "MORE" : Si le client demande "plus d'options", "more", ou "autre chose", TU DOIS OBLIGATOIREMENT exécuter l'outil "Verifier_TOUTE_La_Liste" en incrémentant le paramètre "page" (ex: page=2, page=3). NE RÉPÈTE JAMAIS les appartements précédents de ta mémoire. Si la page suivante ne retourne rien, alors seulement dis poliment qu'il n'y a pas d'autres propriétés disponibles pour ces dates.
 
 [TUNNEL DE CONVERSATION]
 - Découverte : Récupère UNIQUEMENT les 3 infos vitales → Date, Durée, Voyageurs.
@@ -1566,7 +1572,7 @@ Tu es l'agent de réservation EXCLUSIF de Conciergerie le Bardo. Mission unique 
   ⛔ NE RÉPÈTE JAMAIS "votre réservation est en attente" ou "votre réservation pour X est en attente". Le client le sait déjà.
   ⛔ Ne mets JAMAIS de pipes (|) dans les noms d'appartements.
   ⛔ Lis OBLIGATOIREMENT la conversation précédente avant de répondre pour savoir à quelle étape tu en es. Ne redemande JAMAIS une info déjà donnée.
-  ⛔ Émoticônes : max 1 par message, uniquement si ça s'y prête naturellement.
+  ⛔ AUCUN ÉMOJI : Ton ton doit être extrêmement professionnel et humain. N'utilise JAMAIS d'émojis. Ne révèle jamais que tu es une IA.
   
   Suis ce tunnel (une étape par message, en lisant l'historique) :
   1. Si aucune devise choisie encore → Demande simplement (ex: "Pour le règlement, tu préfères en Euros ou en Dinars ?") ⚠️ ATTENTION : Si le message du client mentionne déjà "Euros" ou "Dinars", c'est qu'il a choisi ! Ne lui redemande surtout pas la devise et passe directement à l'étape 2 ou 3.
@@ -1785,13 +1791,15 @@ CHAMP MANQUANT À DEMANDER : "{{$json.next_missing_field}}"
 
 Instructions par champ :
 - "ville_quartier" : Demande la ville ou le quartier de l'appartement.
-- "photos_transmises" : Demande poliment au client d'envoyer les photos de l'intérieur de l'appartement.
+- "photos_transmises" : Demande poliment au client d'envoyer les photos de l'intérieur de l'appartement. 
+🚨 RÈGLE DE SECOURS: Si le client te dit EXPLICITEMENT qu'il n'a pas les photos maintenant ou qu'il les enverra plus tard, dis-lui que c'est d'accord et passe au PROCHAIN champ manquant de la liste pour avancer, sans bloquer la conversation.
 - "surface" : Demande la surface de l'appartement.
 
 - "nombre_pieces" : Demande le nombre de pièces.
 - "date_disponibilite" : Demande à partir de quelle date l'appartement sera disponible. ⚠️ REGLE ABSOLUE : NE PARLE JAMAIS DE "RÉSERVER" NI DE "LOUER POUR VOUS". Le client est le PROPRIÉTAIRE. Demande juste quand son bien sera libre pour notre gestion.
 
 Si CHAMP MANQUANT = "ALL_FILLED" :
+⚠️ VÉRIFICATION FINALE OBLIGATOIRE: Regarde le [REAL-TIME DOSSIER STATE]. Si la propriété 'photos' ou 'photos_transmises' est vide, ou si le client n'a pas encore envoyé les photos, TU AS L'INTERDICTION ABSOLUE D'ALLER À L'ÉTAPE 1. Tu DOIS relancer le client pour les photos. Ne propose JAMAIS de sauvegarder le dossier s'il manque les photos.
 ETAPE 1 — Demande la confirmation finale au client (UNE SEULE FOIS) :
 Dis quelque chose comme : "Super, toutes les informations sont enregistrées ! Pour finaliser, puis-je confirmer votre dossier et le transmettre à notre équipe commerciale ?"
 
@@ -1802,7 +1810,7 @@ ETAPE 2 — Quand le client confirme (oui, ok, parfait, confirm, ih, yep...) :
 → ⛔ INTERDIT : mentionner Gamma, script commercial, ou tout outil interne.
 
 ABSOLUTE RULES:
-- ⛔ NEVER GO TO THE FINAL STEP IF photos_transmises IS false.
+- ⛔ NEVER GO TO THE FINAL STEP IF photos_transmises IS false. INVIOLABLE RULE: Do NOT propose to save the file or export to CRM until EVERY SINGLE piece of information (INCLUDING PICTURES) is gathered.
 - NEVER do a recap. NEVER say "I validate".
 - ONLY 1 QUESTION AT A TIME.
 [FLEXIBILITÉ DES PHOTOS] : Si le client propose d'envoyer les photos en avance (avant même que tu aies fini de demander le loyer, la surface, etc.), ACCEPTE IMMÉDIATEMENT avec enthousiasme (ex: "Oui bien sûr, envoyez-les moi !"). L'évaluation des photos se fera en temps réel. Une fois les photos validées par le système, tu devras simplement reprendre ton questionnaire là où tu t'étais arrêté pour demander les informations textuelles manquantes une par une.
@@ -3564,29 +3572,6 @@ return {
     };
 
     @node({
-        id: '73a099b8-d2bc-46dc-b4df-628c91429feb',
-        name: 'Mark As Read HTTP',
-        type: 'n8n-nodes-base.httpRequest',
-        version: 4.2,
-        position: [-13320, 4320],
-        credentials: { whatsAppApi: { id: 'A5i0TdmXFmQSw5T3', name: 'WhatsApp account 2' } },
-        retryOnFail: true,
-        maxTries: 2,
-        waitBetweenTries: 1500,
-    })
-    MarkAsReadHttp = {
-        method: 'POST',
-        url: 'https://graph.facebook.com/v19.0/1035565869637770/messages',
-        authentication: 'predefinedCredentialType',
-        nodeCredentialType: 'whatsAppApi',
-        sendBody: true,
-        contentType: 'raw',
-        rawContentType: 'application/json',
-        body: '={{ JSON.stringify({"messaging_product":"whatsapp","status":"read","message_id":$(\'Webhook (Receive Message)\').first().json.body.entry[0].changes[0].value.messages[0].id}) }}',
-        options: {},
-    };
-
-    @node({
         id: '4fe33d90-d161-4e01-8989-552f527feeeb',
         name: 'Reset_Photos',
         type: '@n8n/n8n-nodes-langchain.toolWorkflow',
@@ -3960,7 +3945,10 @@ const payload = JSON.stringify({
     "to": phone,
     "context": { "message_id": messageId },
     "type": "text",
-    "text": { "body": text, "preview_url": true }
+    "text": { "body": text, "preview_url": true },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000
 });
 
 return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phone } }));`,
@@ -4004,7 +3992,10 @@ const payload = JSON.stringify({
     "to": phone,
     "context": { "message_id": messageId },
     "type": "text",
-    "text": { "body": text, "preview_url": true }
+    "text": { "body": text, "preview_url": true },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000
 });
 
 return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phone } }));`,
@@ -4047,7 +4038,10 @@ const payload = JSON.stringify({
     "to": phone,
     "context": { "message_id": messageId },
     "type": "text",
-    "text": { "body": text, "preview_url": true }
+    "text": { "body": text, "preview_url": true },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000
 });
 
 return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phone } }));`,
@@ -4090,7 +4084,10 @@ const payload = JSON.stringify({
     "to": phone,
     "context": { "message_id": messageId },
     "type": "text",
-    "text": { "body": text, "preview_url": true }
+    "text": { "body": text, "preview_url": true },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000
 });
 
 return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phone } }));`,
@@ -4116,7 +4113,10 @@ const payload = JSON.stringify({
     "to": phone,
     "context": { "message_id": messageId },
     "type": "text",
-    "text": { "body": text, "preview_url": true }
+    "text": { "body": text, "preview_url": true },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000
 });
 
 return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phone } }));`,
@@ -4142,7 +4142,10 @@ const payload = JSON.stringify({
     "to": phone,
     "context": { "message_id": messageId },
     "type": "text",
-    "text": { "body": text, "preview_url": true }
+    "text": { "body": text, "preview_url": true },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000
 });
 
 return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phone } }));`,
@@ -4168,7 +4171,10 @@ const payload = JSON.stringify({
     "to": phone,
     "context": { "message_id": messageId },
     "type": "text",
-    "text": { "body": text, "preview_url": true }
+    "text": { "body": text, "preview_url": true },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000
 });
 
 return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phone } }));`,
@@ -4194,7 +4200,10 @@ const payload = JSON.stringify({
     "to": phone,
     "context": { "message_id": messageId },
     "type": "text",
-    "text": { "body": text, "preview_url": true }
+    "text": { "body": text, "preview_url": true },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000
 });
 
 return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phone } }));`,
@@ -4979,7 +4988,10 @@ const payload = JSON.stringify({
     "to": phone,
     "context": { "message_id": messageId },
     "type": "text",
-    "text": { "body": text, "preview_url": true }
+    "text": { "body": text, "preview_url": true },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000
 });
 
 return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phone } }));`,
@@ -4992,6 +5004,9 @@ return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phon
         version: 4.1,
         position: [-12040, 4180],
         credentials: { whatsAppApi: { id: 'A5i0TdmXFmQSw5T3', name: 'WhatsApp account 2' } },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000,
     })
     WaErreurMediaClient = {
         method: 'POST',
@@ -5025,7 +5040,10 @@ const payload = JSON.stringify({
     "recipient_type": "individual",
     "to": adminPhone,
     "type": "text",
-    "text": { "body": text, "preview_url": false }
+    "text": { "body": text, "preview_url": false },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000
 });
 
 return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phone } }));`,
@@ -5038,6 +5056,9 @@ return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phon
         version: 4.1,
         position: [-12040, 4340],
         credentials: { whatsAppApi: { id: 'A5i0TdmXFmQSw5T3', name: 'WhatsApp account 2' } },
+        retryOnFail: true,
+        maxTries: 5,
+        waitBetweenTries: 5000,
     })
     WaAdminErrorAlert = {
         method: 'POST',
@@ -5457,7 +5478,6 @@ return items.map(item => {
         this.If_.out(1).to(this.GenerateDynamicPromp4.in(0));
         this.WebhookMetaVerify.out(0).to(this.RespondToMeta.in(0));
         this.WebhookReceiveMessage.out(0).to(this.IsRealMessage.in(0));
-        this.WebhookReceiveMessage.out(0).to(this.MarkAsReadHttp.in(0));
         this.IsTextMessage.out(0).to(this.ExtractText.in(0));
         this.IsTextMessage.out(1).to(this._1GetImageUrl1.in(0));
         this.IsTextMessage.out(2).to(this._1GetAudioUrl.in(0));
@@ -5609,17 +5629,17 @@ return items.map(item => {
             ai_languageModel: this.OpenaiChatModel2.output,
             ai_memory: this.RedisChatMemory.output,
             ai_tool: [
-                this.ChercherCatalogueGs.output,
                 this.OutilInfosHospitable1.output,
+                this.RechercheInformationsAgence.output,
+                this.ChercherCatalogueGs.output,
                 this.DisponibilitesHospitable.output,
                 this.VerifierStatutPaiement.output,
-                this.RechercheInformationsAgence.output,
             ],
         });
         this.BookingAgentProprietaire.uses({
             ai_languageModel: this.OpenaiChatModel1.output,
             ai_memory: this.RedisChatMemory.output,
-            ai_tool: [this.ResetPhotos.output, this.RechercheInformationsAgence.output, this.OutilExportCrm.output],
+            ai_tool: [this.RechercheInformationsAgence.output, this.ResetPhotos.output, this.OutilExportCrm.output],
         });
         this.GenererScriptGamma.uses({
             ai_languageModel: this.OpenaiChatModel8.output,
