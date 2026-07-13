@@ -1,8 +1,8 @@
 {
   "workflows": {
     "QOHXjLEGpudJ5cki": {
-      "lastSyncedHash": "75f4de71051709f9345ca1fc3e7923e1473ca4850c3db1b567c4a19c601e0d4f",
-      "lastSyncedAt": "2026-06-04T10:34:38.000Z",
+      "lastSyncedHash": "66f4552b41c5e1e665dea8a60d2273134266f8a3ee5efd54891451914f2c2070",
+      "lastSyncedAt": "2026-07-13T07:58:04.219Z",
       "filename": "wsp _ main.workflow.ts"
     },
     "8lcSsO0JfacFeORG": {
@@ -16,8 +16,8 @@
       "filename": "wsp _ sync hospitable.workflow.ts"
     },
     "cpUwDbRPuJNAwpeM": {
-      "lastSyncedHash": "a722a40f9671e7eb6d09d85c8ac76a0921da607de66959b65a071af08a0ad600",
-      "lastSyncedAt": "2026-06-04T09:47:33.100Z",
+      "lastSyncedHash": "11acc92a356d838f7f27140c6d1b13507451dcfae0d860d8384651192fd668a4",
+      "lastSyncedAt": "2026-06-04T17:37:10.000Z",
       "filename": "wsp _ dispo.workflow.ts"
     },
     "MRFnDCvajn6YaxpI": {

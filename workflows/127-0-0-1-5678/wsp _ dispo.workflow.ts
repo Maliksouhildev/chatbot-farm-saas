@@ -2,26 +2,34 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : wsp : dispo
-// Nodes   : 6  |  Connections: 5
+// Nodes   : 10  |  Connections: 9
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
 // Property name                    Node type (short)         Flags
 // WhenExecutedByAnotherWorkflow      executeWorkflowTrigger
+// RedisGetPagination                 redis                      [creds]
+// CalculatePage                      code
+// RedisSetPagination                 redis                      [creds]
 // AnalyserLeDevis                    code
 // ApiQuoteHospitable1                httpRequest                [onError→regular] [creds] [retry]
 // MergeResults                       code
-// SplitIds                           code
+// LireGoogleSheets                   googleSheets               [creds]
+// FormatSheetsData                   code
 // ScrapeDevisesquare                 httpRequest                [onError→regular] [retry]
 //
 // ROUTING MAP
 // ──────────────────────────────────────────────────────────────────
 // WhenExecutedByAnotherWorkflow
-//    → ScrapeDevisesquare
-//      → SplitIds
-//        → ApiQuoteHospitable1
-//          → AnalyserLeDevis
-//            → MergeResults
+//    → RedisGetPagination
+//      → CalculatePage
+//        → RedisSetPagination
+//          → ScrapeDevisesquare
+//            → LireGoogleSheets
+//              → FormatSheetsData
+//                → ApiQuoteHospitable1
+//                  → AnalyserLeDevis
+//                    → MergeResults
 // </workflow-map>
 
 // =====================================================================
@@ -32,6 +40,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     id: 'cpUwDbRPuJNAwpeM',
     name: 'wsp : dispo',
     active: false,
+    projectId: 'eN0JyhHFEkunAK7Y',
     settings: { executionOrder: 'v1' },
 })
 export class WspDispoWorkflow {
@@ -44,7 +53,7 @@ export class WspDispoWorkflow {
         name: 'When Executed by Another Workflow',
         type: 'n8n-nodes-base.executeWorkflowTrigger',
         version: 1.1,
-        position: [-1180, -520],
+        position: [-1700, -460],
     })
     WhenExecutedByAnotherWorkflow = {
         workflowInputs: {
@@ -80,6 +89,68 @@ export class WspDispoWorkflow {
     };
 
     @node({
+        id: 'redis-get-pagination',
+        name: 'Redis Get Pagination',
+        type: 'n8n-nodes-base.redis',
+        version: 1,
+        position: [-1480, -460],
+        credentials: { redis: { id: 'V8K02flgy9UVw9wq', name: 'Redis account' } },
+    })
+    RedisGetPagination = {
+        operation: 'get',
+        key: '=pagination_{{ $json.query?.phone || $json.phone }}',
+        options: {},
+    };
+
+    @node({
+        id: 'calculate-page',
+        name: 'Calculate Page',
+        type: 'n8n-nodes-base.code',
+        version: 2,
+        position: [-1280, -460],
+    })
+    CalculatePage = {
+        jsCode: `const triggerData = $('When Executed by Another Workflow').first().json;
+const actualData = triggerData.query ? triggerData.query : triggerData;
+
+let previousState = null;
+const redisOutput = $input.first()?.json?.propertyName || $input.first()?.json?.value;
+if (redisOutput) {
+    try { previousState = JSON.parse(redisOutput); } catch(e) {}
+}
+
+let newPage = 1;
+if (previousState && 
+    previousState.start_date === actualData.start_date &&
+    previousState.end_date === actualData.end_date &&
+    previousState.guests == actualData.guests) {
+    newPage = (parseInt(previousState.page) || 1) + 1;
+}
+
+const newState = {
+    start_date: actualData.start_date,
+    end_date: actualData.end_date,
+    guests: actualData.guests,
+    page: newPage
+};
+return [{ json: { newState, pageToUse: newPage } }];`,
+    };
+
+    @node({
+        id: 'redis-set-pagination',
+        name: 'Redis Set Pagination',
+        type: 'n8n-nodes-base.redis',
+        version: 1,
+        position: [-1080, -460],
+        credentials: { redis: { id: 'V8K02flgy9UVw9wq', name: 'Redis account' } },
+    })
+    RedisSetPagination = {
+        operation: 'set',
+        key: "=pagination_{{ $('When Executed by Another Workflow').first().json.query?.phone || $('When Executed by Another Workflow').first().json.phone }}",
+        value: '={{ JSON.stringify($json.newState) }}',
+    };
+
+    @node({
         id: '2d6d10c7-e1eb-4572-9b9f-fbf285046565',
         name: 'Analyser le Devis',
         type: 'n8n-nodes-base.code',
@@ -90,7 +161,7 @@ export class WspDispoWorkflow {
         jsCode: `try {
     const results = [];
     const httpResponses = $input.all();
-    const originalIds = $('Split IDs').all();
+    const originalIds = $('Format Sheets Data').all();
 
     // 🟢 SCRAPING DEVISESQUARE
     let TAUX_CHANGE_DZD = 240; 
@@ -149,9 +220,13 @@ export class WspDispoWorkflow {
                 }
             } 
 
+            const propertyName = originalIds[i].json.Nom || property_id;
+            const propertyCapacite = originalIds[i].json.Capacite || "N/A";
+            const propertyDescription = originalIds[i].json.Description_Courte || "";
             results.push({ 
                 json: { 
-                    result: \`ID: \${property_id} -> STATUT: DISPONIBLE | PRIX: \${prixFinal} | LIEN HOSPITABLE: \${lienDirect}\` 
+                    result: \`[**\${propertyName}**] -> STATUT: DISPONIBLE | PRIX: \${prixFinal} | CAPACITÉ: \${propertyCapacite} | DESCRIPTION: \${propertyDescription} | LIEN: \${lienDirect}\`,
+                    propertyName: propertyName
                 } 
             });
         } else {
@@ -172,10 +247,11 @@ export class WspDispoWorkflow {
         name: 'API Quote Hospitable1',
         type: 'n8n-nodes-base.httpRequest',
         version: 4.2,
-        position: [-260, -520],
+        position: [-240, -620],
         credentials: { httpHeaderAuth: { id: 'fWa7mv4OTPOJ9HRv', name: 'Header Auth account' } },
         onError: 'continueRegularOutput',
         retryOnFail: true,
+        maxTries: 3,
         waitBetweenTries: 5000,
     })
     ApiQuoteHospitable1 = {
@@ -210,16 +286,16 @@ export class WspDispoWorkflow {
         position: [180, -600],
     })
     MergeResults = {
-        jsCode: `// Récupère les données du trigger pour la pagination
-const triggerData = $('When Executed by Another Workflow').first().json;
-const actualData = triggerData.query ? triggerData.query : triggerData;
-const page = parseInt(actualData.page) || 1;
+        jsCode: `// Récupère la page calculée par le noeud 'Calculate Page'
+const page = parseInt($('Calculate Page').first().json.pageToUse) || 1;
 const PAGE_SIZE = 3;
 
-// Combine tous les résultats DISPONIBLES
+// Combine tous les résultats DISPONIBLES et les trie par Nom pour garantir un ordre 100% déterministe
 const allResults = $input.all()
-    .map(item => item.json.result)
-    .filter(r => r && r.includes('STATUT: DISPONIBLE'));
+    .map(item => item.json)
+    .filter(r => r.result && r.result.includes('STATUT: DISPONIBLE'))
+    .sort((a, b) => a.propertyName.localeCompare(b.propertyName))
+    .map(item => item.result);
 
 // Calcule les indices de pagination
 const startIdx = (page - 1) * PAGE_SIZE;
@@ -235,37 +311,61 @@ if (pageResults.length === 0) {
 
 const combinedResults = pageResults.join('\\n\\n');
 const suffix = remaining > 0 
-    ? \`\\n\\n[INFO: Il reste \${remaining} appartement(s) disponible(s) non encore présenté(s). L'IA peut demander page=\${page + 1} pour les voir.]\`
+    ? \`\\n\\n[INFO: Il reste \${remaining} appartement(s) disponible(s) non encore présenté(s). L'IA a affiché la page \${page}. (NE LUI DIS PAS QU'IL RESTE DES OPTIONS SI LE CLIENT NE DEMANDE PAS)]\`
     : \`\\n\\n⛔ [INFO: Ce sont tous les appartements disponibles pour ces dates. NE RAPPELLE PAS CET OUTIL. Dis au client que toutes les options ont été présentées.]\`;
 
 return [{ json: { result: combinedResults + suffix } }];`,
     };
 
     @node({
-        id: '38fb03d3-73c5-410e-bc20-c5956c923951',
-        name: 'Split IDs',
+        id: 'd5da689a-a9b8-4a5d-a6d7-2c8dc86fb902',
+        name: 'Lire Google Sheets',
+        type: 'n8n-nodes-base.googleSheets',
+        version: 4.5,
+        position: [-700, -560],
+        credentials: { googleSheetsOAuth2Api: { id: 'GQ06erczX288ab4Y', name: 'Google Sheets account 2' } },
+    })
+    LireGoogleSheets = {
+        documentId: {
+            __rl: true,
+            value: '1a5i0CJA-wphmdeuY0vePPXJmrTtK0bgylQlIrhu1bDM',
+            mode: 'list',
+            cachedResultName: 'Catalogue Hospitable',
+            cachedResultUrl:
+                'https://docs.google.com/spreadsheets/d/1a5i0CJA-wphmdeuY0vePPXJmrTtK0bgylQlIrhu1bDM/edit?usp=drivesdk',
+        },
+        sheetName: {
+            __rl: true,
+            value: 'gid=0',
+            mode: 'list',
+            cachedResultName: 'Feuille 1',
+        },
+        options: {},
+    };
+
+    @node({
+        id: 'format-sheets-data',
+        name: 'Format Sheets Data',
         type: 'n8n-nodes-base.code',
         version: 2,
-        position: [-740, -520],
+        position: [-480, -600],
     })
-    SplitIds = {
+    FormatSheetsData = {
         jsCode: `const triggerData = $('When Executed by Another Workflow').first().json;
 const actualData = triggerData.query ? triggerData.query : triggerData;
 
-// CATALOGUE COMPLET — toujours utilisé pour garantir une recherche exhaustive
-// L'IA peut passer n'importe quoi dans property_ids, on ignore et on cherche sur tout le catalogue
-const CATALOGUE_COMPLET = "0e4dea37-7994-46d6-beab-67efe3499f5b,ed2e6d1d-0975-46ac-8dec-8d1885500112,d7979f36-0a9d-4380-bd2f-5dbd011ef55b,83216c4b-8612-4d0a-8da8-ea50f181a27b,4b6389a0-2672-4054-aa3e-3bd6847827de,11ae3d86-a80d-49fd-865a-69dd4d3576e7,12951e63-841e-41c5-a200-d24a485e0704,3d9dfb16-f4e6-41b5-834d-e6f1a2f3fd1b,41498064-88b5-4d25-a8e5-ce58be68c813,ba397f86-bcb2-4443-add2-cfb58ab6c418,f6c5de4e-46a4-4193-a072-14d7883f2fbc,0692ebed-1f44-4cfc-98a2-1364603bb05d,bd66df5b-1ddf-44a0-bd48-85eca8edd452,7b792df1-6fb3-47ec-87c4-b69c382584fb,907d81f3-9160-4dcb-8767-94e85662ef61";
-
-const ids = CATALOGUE_COMPLET.split(',');
-
-return ids.map(id => ({
-    json: {
-        property_id: id.trim(),
-        start_date: actualData.start_date,
-        end_date: actualData.end_date,
-        guests: actualData.guests
-    }
-}));`,
+return $input.all().map(item => {
+    const r = item.json;
+    return {
+        json: {
+            ...r,
+            property_id: r.Property_ID,
+            start_date: actualData.start_date,
+            end_date: actualData.end_date,
+            guests: actualData.guests
+        }
+    };
+}).filter(i => i.json.property_id);`,
     };
 
     @node({
@@ -273,7 +373,7 @@ return ids.map(id => ({
         name: 'Scrape DeviseSquare',
         type: 'n8n-nodes-base.httpRequest',
         version: 4.2,
-        position: [-960, -520],
+        position: [-880, -480],
         onError: 'continueRegularOutput',
         retryOnFail: true,
         maxTries: 5,
@@ -296,10 +396,14 @@ return ids.map(id => ({
 
     @links()
     defineRouting() {
-        this.WhenExecutedByAnotherWorkflow.out(0).to(this.ScrapeDevisesquare.in(0));
+        this.WhenExecutedByAnotherWorkflow.out(0).to(this.RedisGetPagination.in(0));
+        this.RedisGetPagination.out(0).to(this.CalculatePage.in(0));
+        this.CalculatePage.out(0).to(this.RedisSetPagination.in(0));
+        this.RedisSetPagination.out(0).to(this.ScrapeDevisesquare.in(0));
         this.AnalyserLeDevis.out(0).to(this.MergeResults.in(0));
         this.ApiQuoteHospitable1.out(0).to(this.AnalyserLeDevis.in(0));
-        this.SplitIds.out(0).to(this.ApiQuoteHospitable1.in(0));
-        this.ScrapeDevisesquare.out(0).to(this.SplitIds.in(0));
+        this.LireGoogleSheets.out(0).to(this.FormatSheetsData.in(0));
+        this.FormatSheetsData.out(0).to(this.ApiQuoteHospitable1.in(0));
+        this.ScrapeDevisesquare.out(0).to(this.LireGoogleSheets.in(0));
     }
 }

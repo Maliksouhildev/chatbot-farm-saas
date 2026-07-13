@@ -1,1 +1,5 @@
 .aider*
+extensions/
+scratch/
+exec*.json
+exec_*.json

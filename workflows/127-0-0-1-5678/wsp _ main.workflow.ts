@@ -2,7 +2,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 
 // <workflow-map>
 // Workflow : wsp : main
-// Nodes   : 161  |  Connections: 151
+// Nodes   : 154  |  Connections: 143
 //
 // NODE INDEX
 // ──────────────────────────────────────────────────────────────────
@@ -12,7 +12,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // _2DownloadImage1                   httpRequest                [creds] [retry]
 // _1GetImageUrl1                     httpRequest                [creds] [retry]
 // If4                                if
-// ChercherCatalogueGs                toolWorkflow               [retry] [ai_tool]
 // OnFormSubmission                   formTrigger
 // OpenaiChatModel7                   lmChatOpenAi               [creds] [retry] [ai_languageModel]
 // EmbeddingsOpenai1                  embeddingsOpenAi           [creds] [retry] [ai_embedding]
@@ -130,6 +129,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // CodeWipeMemory                     code
 // RedisNuclearDelete                 redis                      [creds]
 // StopSpam                           code
+// FormatVisionText                   code
 // _3AiVisionAnalysis1                agent                      [AI] [retry]
 // OpenaiChatModel10                  lmChatOpenAi               [creds] [retry] [ai_languageModel]
 // RedisGetFinalBatch                 redis                      [creds]
@@ -156,13 +156,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // CalculatePredominantLang           code
 // RedisSetLangStats                  redis                      [creds]
 // BuildBodyWaMediaInvalide           code
-// WaErreurMediaClient                httpRequest                [creds] [retry]
-// BuildBodyAdminError                code
-// WaAdminErrorAlert                  httpRequest                [creds] [retry]
-// RedisTagActiveClient24h            redis                      [creds]
-// RedisSetApptsStateImg              redis                      [creds]
-// ConvertAudioToBase64               code
-// GenerateDynamicPromp               code
 // GenerateDynamicPromp1              code
 // GenerateDynamicPromp2              code
 // GenerateDynamicPromp3              code
@@ -265,11 +258,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //                                                                                            → RedisCrmProprietaire
 //                                                                                              → WaScriptAdmin
 //                                                                                                → Code1 (↩ loop)
-//                                                                                       .out(4) → GenerateDynamicPromp
-//                                                                                          → TraductionWaDemandePhotosInit
-//                                                                                            → BuildBodyWaDemandePhotosInit
-//                                                                                              → WaDemandePhotosInit
-//                                                                                                → Code1 (↩ loop)
 //                                                                                       .out(5) → GenerateDynamicPromp1
 //                                                                                          → TraductionWaPoseQuestion1 (↩ loop)
 //                                                                                      → IsOffreFinished
@@ -296,27 +284,19 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //                                      → RedisGetFinalBatch
 //                                        → RedisGetApptsStateImg
 //                                          → TheBrainMoyenneMessage
-//                                            → RedisSetApptsStateImg
-//                                              → RedisSavePhotoUrls
-//                                                → RedisGetImageLang
-//                                                  → GenerateDynamicPromp8
-//                                                    → TraductionWaEvaluationPhotos
-//                                                      → SauvegarderMemoireIa
-//                                                        → WaEnvoiFinalUnique
-//                                                          → RedisClearPhotoBatch
 //           .out(2) → _1GetAudioUrl
 //              → _2DownloadAudio
 //                → HttpRequest
 //                  → FormatTranscribedText
 //                    → _1PrepRedisVars (↩ loop)
 //           .out(4) → BuildBodyWaMediaInvalide
-//              → WaErreurMediaClient
-//           .out(4) → BuildBodyAdminError
-//              → WaAdminErrorAlert
 //      → ReactionRandomizer
 //        → ReactionDelay
 //          → SendReactionHttp1
-//      → RedisTagActiveClient24h
+// TraductionWaDemandePhotosInit
+//    → BuildBodyWaDemandePhotosInit
+//      → WaDemandePhotosInit
+//        → Code1 (↩ loop)
 // FilterDarjaArabic
 //    → BuildBodyWaEscaladeLangueLocale
 //      → WaEscaladeLangueLocale
@@ -325,8 +305,15 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //            → WaReponseVocaleClient
 //              → CodeSetPause (↩ loop)
 //   .out(1) → RedisGetContext (↩ loop)
-// ConvertAudioToBase64
-//    → HttpRequest (↩ loop)
+// RedisSavePhotoUrls
+//    → FormatVisionText
+//      → _1PrepRedisVars (↩ loop)
+// RedisGetImageLang
+//    → GenerateDynamicPromp8
+//      → TraductionWaEvaluationPhotos
+//        → SauvegarderMemoireIa
+//          → WaEnvoiFinalUnique
+//            → RedisClearPhotoBatch
 //
 // AI CONNECTIONS
 // AiRouteur1.uses({ ai_languageModel: OpenaiChatModel, ai_memory: RedisChatMemory2 })
@@ -334,7 +321,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 // QdrantInsert.uses({ ai_embedding: EmbeddingsOpenai, ai_document: [DefaultDataLoader1] })
 // QdrantVectorStore.uses({ ai_embedding: EmbeddingsOpenai1 })
 // AgentSupportClient.uses({ ai_languageModel: OpenaiChatModel3, ai_memory: RedisChatMemory, ai_tool: [OutilInfosHospitable1, RechercheInformationsAgence] })
-// BookingAgentVoyageur.uses({ ai_memory: RedisChatMemory, ai_tool: [OutilInfosHospitable1, RechercheInformationsAgence, ChercherCatalogueGs, DisponibilitesHospitable, VerifierStatutPaiement], ai_languageModel: OpenaiChatModel2 })
+// BookingAgentVoyageur.uses({ ai_memory: RedisChatMemory, ai_tool: [OutilInfosHospitable1, RechercheInformationsAgence, DisponibilitesHospitable, VerifierStatutPaiement], ai_languageModel: OpenaiChatModel2 })
 // BookingAgentProprietaire.uses({ ai_memory: RedisChatMemory, ai_tool: [RechercheInformationsAgence, ResetPhotos, OutilExportCrm], ai_languageModel: OpenaiChatModel1 })
 // GenererScriptGamma.uses({ ai_languageModel: OpenaiChatModel8, ai_memory: RedisChatMemory1 })
 // BasicLlmChain.uses({ ai_languageModel: OpenaiChatModel4 })
@@ -355,7 +342,6 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
     id: 'QOHXjLEGpudJ5cki',
     name: 'wsp : main',
     active: true,
-    projectId: 'eN0JyhHFEkunAK7Y',
     settings: { executionOrder: 'v1' },
 })
 export class WspMainWorkflow {
@@ -662,44 +648,6 @@ CONSTRAINT: Print ONLY a single word. No punctuation whatsoever.
             combinator: 'and',
         },
         options: {},
-    };
-
-    @node({
-        id: '4fc1d620-8a06-4668-869e-af246ee168ba',
-        name: 'Chercher_Catalogue_GS',
-        type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-        version: 2,
-        position: [-3660, 2520],
-        retryOnFail: true,
-        maxTries: 2,
-        waitBetweenTries: 1500,
-    })
-    ChercherCatalogueGs = {
-        name: 'get_property_details_and_catalogue',
-        description:
-            "Retrieves the master catalogue of all properties from the database, including property_ids... AND provides the full descriptions, rules, and amenities (WiFi, parking, AC, pet policies) for our apartments. Call this tool at the beginning to get IDs, AND call this tool AGAIN whenever the user asks a specific question about an apartment's features or amenities.",
-        workflowId: {
-            __rl: true,
-            value: '8lcSsO0JfacFeORG',
-            mode: 'list',
-            cachedResultName: 'wsp : recherche catalogue',
-        },
-        workflowInputs: {
-            mappingMode: 'defineBelow',
-            value: {},
-            matchingColumns: [],
-            schema: [
-                {
-                    id: 'property_name',
-                    name: 'property_name',
-                    type: 'string',
-                    description: "Optional. The name of the property to inspect for amenities (e.g. 'Le Jasmin').",
-                    required: false,
-                },
-            ],
-            attemptToConvertTypes: false,
-            convertFieldsToString: false,
-        },
     };
 
     @node({
@@ -1556,7 +1504,8 @@ Tu es l'agent de réservation EXCLUSIF de Conciergerie le Bardo. Mission unique 
    - URLs DE RÉSERVATION (OBLIGATOIRE) : Tu DOIS ABSOLUMENT inclure le lien de réservation (URL Hospitable) de CHAQUE appartement que tu proposes, directement dans ton message. Ne demande JAMAIS "voulez-vous le lien ?", donne-le tout de suite.
    - Présente les équipements naturellement : "il est tout équipé, clim et WiFi compris" PAS une liste à puces.
 4. SEULE OPTION : Si l'outil "Verifier_TOUTE_La_Liste" ne retourne qu'UN SEUL appartement disponible, dis-le clairement à la fin : "C'est la seule option disponible pour ces dates, mais elle est vraiment bien !"
-5. GESTION DES DEMANDES "MORE" : Si le client demande "plus d'options", "more", ou "autre chose", TU DOIS OBLIGATOIREMENT exécuter l'outil "Verifier_TOUTE_La_Liste" en incrémentant le paramètre "page" (ex: page=2, page=3). NE RÉPÈTE JAMAIS les appartements précédents de ta mémoire. Si la page suivante ne retourne rien, alors seulement dis poliment qu'il n'y a pas d'autres propriétés disponibles pour ces dates.
+5. AFFICHER TOUS LES RÉSULTATS : TU DOIS ABSOLUMENT lister TOUS les appartements que l'outil te retourne. Ne cache aucune option. Si l'outil retourne 3 appartements, présente les 3.
+6. GESTION DES DEMANDES "MORE" : Si le client demande "plus d'options", "more", ou "autre chose", TU DOIS OBLIGATOIREMENT relancer l'outil "Verifier_TOUTE_La_Liste" ! (Le système gère la pagination tout seul, appelle juste l'outil normalement). NE RÉPÈTE JAMAIS les appartements de ta mémoire. S'il n'y a plus de résultats, alors seulement dis poliment qu'il n'y a pas d'autres propriétés disponibles pour ces dates.
 
 [TUNNEL DE CONVERSATION]
 - Découverte : Récupère UNIQUEMENT les 3 infos vitales → Date, Durée, Voyageurs.
@@ -1592,7 +1541,8 @@ Tu es l'agent de réservation EXCLUSIF de Conciergerie le Bardo. Mission unique 
 Tu as besoin de : DATE D'ARRIVÉE + DURÉE + NOMBRE DE VOYAGEURS.
 - ⛔ RÈGLE D'INTERPRÉTATION DIRECTE (DARJA) : "ghedoua", "ghadwa", "ghedwa", "demain", "tomorrow" = demain (Date.now() + 1 jour). "lyoum", "liyoum" = aujourd'hui. "simana", "smana" = 1 semaine (7 nuits). "chhar" = 1 mois. "wa7ed", "seul", "moi" = 1 voyageur. TRÈS IMPORTANT : TRADUIS MENTALEMENT "GHEDOUA" PAR DEMAIN POUR TES OUTILS.
 - ⛔ RÈGLE ABSOLUE DE NON-CONFIRMATION : Si le client donne les 3 infos (même de façon informelle ou en anglais ex: "rent for tomorow for one night for one person"), TU AS L'INTERDICTION FORMELLE DE LUI DEMANDER DE CONFIRMER. 
-- Ne redemande JAMAIS une information déjà donnée. 
+- Ne redemande JAMAIS une information déjà donnée.
+- ⛔ CONSERVATION DU CONTEXTE : Si le client fait une remarque (ex: "bug", "lol"), NE LUI REDEMANDE PAS SES DATES s'il les a déjà fournies dans la conversation. Si la recherche précédente a échoué (0 résultat), suggère-lui de changer ses critères (ex: "Il n'y a rien pour 100 voyageurs, voulez-vous réduire ce nombre ?") au lieu de lui redemander les dates. 
 - ⛔ INTERDICTION DE NARRATION : Dès que tu as les 3 infos (date, durée, voyageurs), n'écris JAMAIS de texte du genre "un instant je vérifie", et NE LUI DEMANDE SURTOUT PAS DE CONFIRMER. Tu DOIS IMMÉDIATEMENT appeler "get_property_details_and_catalogue" puis "Verifier_TOUTE_La_Liste" DANS LE MÊME TOUR DE PAROLE.
 
 ════════════════════════════════════════
@@ -1627,8 +1577,10 @@ SOUS-ÉTAPE B — Lance "Verifier_TOUTE_La_Liste" avec le numéro de PAGE correc
   Si le résultat de l'outil contient "AUCUNE_NOUVELLE_OPTION" ou "[INFO: Ce sont tous les appartements disponibles" :
   → ARRÊTE IMMÉDIATEMENT. N'appelle plus aucun outil. JAMAIS.
   → N'invente AUCUN appartement. N'utilise AUCUNE donnée de ta mémoire d'entraînement.
-  → Réponds UNIQUEMENT : "J'ai tout vérifié, ce sont les seules options disponibles pour vos dates. Aucune autre option n'est disponible pour le moment."
-  → Si le client dit "what else", "autre chose", "et sinon", "c'est tout ?" → répète la même phrase. NE CÈDE JAMAIS.
+  → DISTINCTION CRITIQUE POUR LA RÉPONSE :
+    * CAS 1 (0 RÉSULTAT AU TOTAL) : Si c'est ta toute PREMIÈRE recherche (tu n'as encore montré AUCUN appartement dans la conversation), réponds : "Je suis désolé, mais je n'ai trouvé aucun appartement correspondant à vos critères pour ces dates."
+    * CAS 2 (FIN DE LISTE) : Si tu as DÉJÀ proposé des appartements précédemment et que le client demande "plus d'options", réponds UNIQUEMENT : "J'ai tout vérifié, ce sont les seules options disponibles pour vos dates. Aucune autre option n'est disponible pour le moment."
+  → Si le client dit "what else", "autre chose", "et sinon", "c'est tout ?" → répète la phrase du CAS 2. NE CÈDE JAMAIS.
   → RÈGLE CRITIQUE : même si tu "crois" connaître d'autres appartements, ils n'existent PAS dans notre système. Tout appartement non issu de l'outil est une hallucination interdite.
   → Toute proposition d'appartement non fournie par l'outil dans CETTE conversation est une HALLUCINATION INTERDITE.
 - start_date = date d'arrivée, end_date = date de départ, guests = nombre de voyageurs.
@@ -1656,7 +1608,9 @@ Quand tu viens de proposer des appartements et que le client répond simplement 
 → Le système retournera automatiquement les 3 prochains appartements non déjà présentés.
 → NE RELANCE JAMAIS avec page=1 si tu as déjà présenté une première liste pour ces dates.
 Si le tool retourne "AUCUNE_NOUVELLE_OPTION" ou que le résultat de l'outil est vide / contient aucun appartement :
-→ TU DOIS DIRE : "J'ai tout montré ! Nous n'avons plus d'autres appartements disponibles pour ces dates."
+→ DISTINCTION CRITIQUE :
+  - Si tu n'as proposé AUCUN appartement avant : "Je suis désolé, je n'ai trouvé aucun appartement disponible avec ces critères."
+  - Si tu as DÉJÀ montré des appartements : "J'ai tout montré ! Nous n'avons plus d'autres appartements disponibles pour ces dates."
 → ⛔ RÈGLE D'OR ABSOLUE : Tu as l'INTERDICTION TOTALE ET SANS EXCEPTION d'inventer, de copier, de mémoriser ou de réutiliser des noms d'appartements qui ne proviennent pas du résultat de l'outil pour CET appel précis. Si l'outil ne retourne rien de nouveau → il n'y a rien. JAMAIS d'appartements de mémoire. JAMAIS de noms du catalogue. UNIQUEMENT ce que l'outil retourne à l'instant présent.
 
 ⛔ RÈGLE MULTI-INTENTIONS (Questions + Autres options) :
@@ -1811,13 +1765,15 @@ ETAPE 2 — Quand le client confirme (oui, ok, parfait, confirm, ih, yep...) :
 
 ABSOLUTE RULES:
 - ⛔ NEVER GO TO THE FINAL STEP IF photos_transmises IS false. INVIOLABLE RULE: Do NOT propose to save the file or export to CRM until EVERY SINGLE piece of information (INCLUDING PICTURES) is gathered.
+- ⛔ MULTIPLE APARTMENTS CHECK: If the client mentions a second apartment, you MUST ask for its details BEFORE exporting to CRM.
+- 📸 IMAGE MESSAGES: If you receive texts starting with "[NOTE SYSTÈME] Le système vient d'évaluer le lot de photos", it means the system just processed photos! You must read the verdict and reply to the client naturally about the photos. You must also consider the photo step as 100% COMPLETE.
 - NEVER do a recap. NEVER say "I validate".
 - ONLY 1 QUESTION AT A TIME.
 [FLEXIBILITÉ DES PHOTOS] : Si le client propose d'envoyer les photos en avance (avant même que tu aies fini de demander le loyer, la surface, etc.), ACCEPTE IMMÉDIATEMENT avec enthousiasme (ex: "Oui bien sûr, envoyez-les moi !"). L'évaluation des photos se fera en temps réel. Une fois les photos validées par le système, tu devras simplement reprendre ton questionnaire là où tu t'étais arrêté pour demander les informations textuelles manquantes une par une.
 
 - NEVER leave the user hanging after photo evaluation. You MUST ask the final confirmation question right away if all data is complete.
 
-[MOTOR LINGUISTIC LOCK - DANGER] : You MUST ABSOLUTELY reply in this exact language: {{ $('Set Context').first().json.langue_utilisateur }}. Even if the client just wrote their very last message in English or Arabic (e.g. "hello", "merci", "sure"), YOU REFUSE to copy the language of that short message. YOU KEEP the language: {{ $('Set Context').first().json.langue_utilisateur }}.
+[MOTOR LINGUISTIC LOCK - DANGER] : If {{ $('Set Context').first().json.langue_utilisateur }} is "Darja Algéroise", you MUST draft your response in PERFECT FRENCH. Do not attempt to speak Darja. A dedicated downstream AI will translate your French text into Darja. If the language is anything else, reply strictly in that language.
 
 [LOCATION RULE] : For localization, you operate ONLY in the greater Algiers area (Alger, Tipaza, Boumerdès). NEVER ask for exact address. If the client says "Hydra", that is SUFFICIENT. Do not ask other questions about location.
 
@@ -3188,15 +3144,6 @@ return [{ json: { report } }];`,
         jsCode: `const text = $('Debounced Text').first()?.json?.text || "";
 const sender = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].from;
 
-const staticData = $getWorkflowStaticData('global');
-const lastImageTs = staticData['last_image_ts_' + sender] || 0;
-// If an image was received in the last 45 seconds, the Image branch is handling the conversation
-if (Date.now() - lastImageTs < 45000) {
-    // SILENT ABORT: Stop the Text branch to avoid double responses
-    return [];
-}
-
-
 // Récupérer l'historique de Redis (provenant du nœud précédent)
 let oldHistoryStr = $input.first()?.json?.value || "";
 
@@ -3927,16 +3874,24 @@ let text = items[0].json.output || items[0].json.text || "";
 let _lang = "Français";
 try { _lang = $('Set Context').first().json.langue_utilisateur; } catch(e) {}
 
-if (_lang === 'Darja Algéroise') {
+if (_lang === 'Darja Algéroise' || _lang.includes('Darja')) {
     text = text.replace(/\\b3afak\\b/gi, 't3ich');
     text = text.replace(/\\b[q9]addach\\b/gi, 'ch7al');
+    text = text.replace(/\\b9adeh\\b/gi, 'ch7al');
     text = text.replace(/\\bmzyan\\b/gi, 'mlih');
-    text = text.replace(/\\bdaba\\b/gi, 'deba');
+    text = text.replace(/\\bdaba\\b/gi, 'dorka');
+    text = text.replace(/\\bsafi\\b/gi, '5las');
+    text = text.replace(/\\bdrari\\b/gi, 'wlad');
+    text = text.replace(/\\btawa\\b/gi, 'dorka');
+    text = text.replace(/\\bbarcha\\b/gi, 'bezzaf');
+    text = text.replace(/\\bzada\\b/gi, 'tani');
+    text = text.replace(/\\bt3aytli\\b/gi, 'teb3athli');
+    text = text.replace(/\\bnsendih\\b/gi, 'neb3athou');
     text = text.replace(/\\bt9al[b]?chi\\b/gi, 'tdawwer');
     text = text.replace(/\\bwah\\b/gi, 'ih');
     text = text.replace(/\\bm3oul\\b/gi, 'prévu');
     text = text.replace(/\\bt7ajer\\b/gi, 'réserver');
-    text = text.replace(/[\\u0600-\\u06FF]/g, '');
+    text = text.replace(/[\\u0600-\\u06FF]/g, ''); // Strip Arabic characters
 }
 
 const payload = JSON.stringify({
@@ -3974,16 +3929,24 @@ let text = items[0].json.output || items[0].json.text || "";
 let _lang = "Français";
 try { _lang = $('Set Context').first().json.langue_utilisateur; } catch(e) {}
 
-if (_lang === 'Darja Algéroise') {
+if (_lang === 'Darja Algéroise' || _lang.includes('Darja')) {
     text = text.replace(/\\b3afak\\b/gi, 't3ich');
     text = text.replace(/\\b[q9]addach\\b/gi, 'ch7al');
+    text = text.replace(/\\b9adeh\\b/gi, 'ch7al');
     text = text.replace(/\\bmzyan\\b/gi, 'mlih');
-    text = text.replace(/\\bdaba\\b/gi, 'deba');
+    text = text.replace(/\\bdaba\\b/gi, 'dorka');
+    text = text.replace(/\\bsafi\\b/gi, '5las');
+    text = text.replace(/\\bdrari\\b/gi, 'wlad');
+    text = text.replace(/\\btawa\\b/gi, 'dorka');
+    text = text.replace(/\\bbarcha\\b/gi, 'bezzaf');
+    text = text.replace(/\\bzada\\b/gi, 'tani');
+    text = text.replace(/\\bt3aytli\\b/gi, 'teb3athli');
+    text = text.replace(/\\bnsendih\\b/gi, 'neb3athou');
     text = text.replace(/\\bt9al[b]?chi\\b/gi, 'tdawwer');
     text = text.replace(/\\bwah\\b/gi, 'ih');
     text = text.replace(/\\bm3oul\\b/gi, 'prévu');
     text = text.replace(/\\bt7ajer\\b/gi, 'réserver');
-    text = text.replace(/[\\u0600-\\u06FF]/g, '');
+    text = text.replace(/[\\u0600-\\u06FF]/g, ''); // Strip Arabic characters
 }
 
 const payload = JSON.stringify({
@@ -4020,16 +3983,24 @@ const text = items[0].json.output || items[0].json.text || "";
 let _lang = "Français";
 try { _lang = $('Set Context').first().json.langue_utilisateur; } catch(e) {}
 
-if (_lang === 'Darja Algéroise') {
+if (_lang === 'Darja Algéroise' || _lang.includes('Darja')) {
     text = text.replace(/\\b3afak\\b/gi, 't3ich');
     text = text.replace(/\\b[q9]addach\\b/gi, 'ch7al');
+    text = text.replace(/\\b9adeh\\b/gi, 'ch7al');
     text = text.replace(/\\bmzyan\\b/gi, 'mlih');
-    text = text.replace(/\\bdaba\\b/gi, 'deba');
+    text = text.replace(/\\bdaba\\b/gi, 'dorka');
+    text = text.replace(/\\bsafi\\b/gi, '5las');
+    text = text.replace(/\\bdrari\\b/gi, 'wlad');
+    text = text.replace(/\\btawa\\b/gi, 'dorka');
+    text = text.replace(/\\bbarcha\\b/gi, 'bezzaf');
+    text = text.replace(/\\bzada\\b/gi, 'tani');
+    text = text.replace(/\\bt3aytli\\b/gi, 'teb3athli');
+    text = text.replace(/\\bnsendih\\b/gi, 'neb3athou');
     text = text.replace(/\\bt9al[b]?chi\\b/gi, 'tdawwer');
     text = text.replace(/\\bwah\\b/gi, 'ih');
     text = text.replace(/\\bm3oul\\b/gi, 'prévu');
     text = text.replace(/\\bt7ajer\\b/gi, 'réserver');
-    text = text.replace(/[\\u0600-\\u06FF]/g, '');
+    text = text.replace(/[\\u0600-\\u06FF]/g, ''); // Strip Arabic characters
 }
 
 const payload = JSON.stringify({
@@ -4066,16 +4037,24 @@ const text = items[0].json.output || items[0].json.text || "";
 let _lang = "Français";
 try { _lang = $('Set Context').first().json.langue_utilisateur; } catch(e) {}
 
-if (_lang === 'Darja Algéroise') {
+if (_lang === 'Darja Algéroise' || _lang.includes('Darja')) {
     text = text.replace(/\\b3afak\\b/gi, 't3ich');
     text = text.replace(/\\b[q9]addach\\b/gi, 'ch7al');
+    text = text.replace(/\\b9adeh\\b/gi, 'ch7al');
     text = text.replace(/\\bmzyan\\b/gi, 'mlih');
-    text = text.replace(/\\bdaba\\b/gi, 'deba');
+    text = text.replace(/\\bdaba\\b/gi, 'dorka');
+    text = text.replace(/\\bsafi\\b/gi, '5las');
+    text = text.replace(/\\bdrari\\b/gi, 'wlad');
+    text = text.replace(/\\btawa\\b/gi, 'dorka');
+    text = text.replace(/\\bbarcha\\b/gi, 'bezzaf');
+    text = text.replace(/\\bzada\\b/gi, 'tani');
+    text = text.replace(/\\bt3aytli\\b/gi, 'teb3athli');
+    text = text.replace(/\\bnsendih\\b/gi, 'neb3athou');
     text = text.replace(/\\bt9al[b]?chi\\b/gi, 'tdawwer');
     text = text.replace(/\\bwah\\b/gi, 'ih');
     text = text.replace(/\\bm3oul\\b/gi, 'prévu');
     text = text.replace(/\\bt7ajer\\b/gi, 'réserver');
-    text = text.replace(/[\\u0600-\\u06FF]/g, '');
+    text = text.replace(/[\\u0600-\\u06FF]/g, ''); // Strip Arabic characters
 }
 
 const payload = JSON.stringify({
@@ -4241,6 +4220,7 @@ const keys = [
     sender + 'fiche_8',
     sender + 'route_16',
     'res_pending:' + sender,
+    'pagination_' + sender,
     'recent_search:' + sender
 ];
 
@@ -4270,6 +4250,29 @@ return keys.map(key => ({ json: { key_to_delete: key } }));`,
     StopSpam = {
         jsCode: `// Keep only one item so we don't spam downstream nodes
 return [$input.first()];`,
+    };
+
+    @node({
+        id: '5124b498-313b-4cda-9755-2dc8d29c90d0',
+        name: 'Format Vision Text',
+        type: 'n8n-nodes-base.code',
+        version: 2,
+        position: [-10340, 4380],
+    })
+    FormatVisionText = {
+        jsCode: `const finalMessage = $input.first().json.final_message || "";
+const validCount = $input.first().json.validCount || 0;
+
+let prompt = "[NOTE SYSTÈME] Le système vient d'évaluer le lot de photos du client.\\n";
+prompt += "Verdict du système d'évaluation : \\"" + finalMessage + "\\"\\n";
+prompt += "Le nombre de photos intérieures valides est de " + validCount + ".\\n";
+prompt += "Si des photos manquent, encourage-le doucement. Si l'évaluation est un refus, annonce-le gentiment. Intègre ce verdict de manière très humaine et naturelle dans ta prochaine réponse au client.";
+
+return [{
+  json: {
+    text: prompt
+  }
+}];`,
     };
 
     @node({
@@ -4617,7 +4620,7 @@ return finalText;
         position: [-9840, 4400],
     })
     WaitAntiCollision = {
-        amount: '={{ Number(Object.values($json)[0]) * 2.5 }}',
+        amount: '={{ 0 }}',
     };
 
     @node({
@@ -4705,7 +4708,7 @@ return [{ json: { new_batch: JSON.stringify(currentBatch), photo_urls: photos.jo
         position: [-8740, 4400],
     })
     WaitDebounce = {
-        amount: 30,
+        amount: 2,
     };
 
     @node({
@@ -4978,201 +4981,17 @@ return [{
     })
     BuildBodyWaMediaInvalide = {
         jsCode: `const items = $input.all();
-const phone = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].from;
-const messageId = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].id;
-const text = "Désolé, je ne peux pas traiter ce type de fichier (vidéo, document, sticker, etc.). Pourriez-vous me transmettre votre demande sous forme de texte, message vocal ou photo ?";
-
-const payload = JSON.stringify({
-    "messaging_product": "whatsapp",
-    "recipient_type": "individual",
-    "to": phone,
-    "context": { "message_id": messageId },
-    "type": "text",
-    "text": { "body": text, "preview_url": true },
-        retryOnFail: true,
-        maxTries: 5,
-        waitBetweenTries: 5000
-});
-
-return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phone } }));`,
-    };
-
-    @node({
-        id: '43c4a681-472e-4e31-966d-1b3fdc61f0aa',
-        name: 'WA Erreur Media Client',
-        type: 'n8n-nodes-base.httpRequest',
-        version: 4.1,
-        position: [-12040, 4180],
-        credentials: { whatsAppApi: { id: 'A5i0TdmXFmQSw5T3', name: 'WhatsApp account 2' } },
-        retryOnFail: true,
-        maxTries: 5,
-        waitBetweenTries: 5000,
-    })
-    WaErreurMediaClient = {
-        method: 'POST',
-        url: 'https://graph.facebook.com/v18.0/1035565869637770/messages',
-        authentication: 'predefinedCredentialType',
-        nodeCredentialType: 'whatsAppApi',
-        sendBody: true,
-        specifyBody: 'json',
-        jsonBody: '={{ $json.waBody }}',
-        options: {},
-    };
-
-    @node({
-        id: '190a2dd7-1fbd-4baa-b99f-5c7f4d2f724b',
-        name: 'Build Body: Admin Error',
-        type: 'n8n-nodes-base.code',
-        version: 2,
-        position: [-12260, 4340],
-    })
-    BuildBodyAdminError = {
-        jsCode: `const items = $input.all();
-const phone = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].from;
-const name = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.contacts[0].profile.name || "Inconnu";
-const msgType = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].type;
-const adminPhone = "213551671229"; // Hardcoded Admin
-
-const text = "🚨 Le client " + name + " (" + phone + ") a envoyé un média non-supporté de type : " + msgType + ". Le bot lui a demandé de renvoyer cela sous un autre format.";
-
-const payload = JSON.stringify({
-    "messaging_product": "whatsapp",
-    "recipient_type": "individual",
-    "to": adminPhone,
-    "type": "text",
-    "text": { "body": text, "preview_url": false },
-        retryOnFail: true,
-        maxTries: 5,
-        waitBetweenTries: 5000
-});
-
-return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phone } }));`,
-    };
-
-    @node({
-        id: 'f369f408-c32d-4e8b-a7d0-b5b4c9e3b56d',
-        name: 'WA Admin Error Alert',
-        type: 'n8n-nodes-base.httpRequest',
-        version: 4.1,
-        position: [-12040, 4340],
-        credentials: { whatsAppApi: { id: 'A5i0TdmXFmQSw5T3', name: 'WhatsApp account 2' } },
-        retryOnFail: true,
-        maxTries: 5,
-        waitBetweenTries: 5000,
-    })
-    WaAdminErrorAlert = {
-        method: 'POST',
-        url: 'https://graph.facebook.com/v18.0/1035565869637770/messages',
-        authentication: 'predefinedCredentialType',
-        nodeCredentialType: 'whatsAppApi',
-        sendBody: true,
-        specifyBody: 'json',
-        jsonBody: '={{ $json.waBody }}',
-        options: {},
-    };
-
-    @node({
-        id: 'c08a8893-46c0-485f-8f72-f9380020aaa4',
-        name: 'Redis: Tag Active Client 24h',
-        type: 'n8n-nodes-base.redis',
-        version: 1,
-        position: [-11360, 5380],
-        credentials: { redis: { id: 'V8K02flgy9UVw9wq', name: 'Redis account' } },
-    })
-    RedisTagActiveClient24h = {
-        operation: 'set',
-        key: "={{ 'recent_search:' + $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].from }}",
-        value: 'true',
-    };
-
-    @node({
-        id: 'f6cc6cee-136f-4efe-b436-5ac981f83e92',
-        name: 'Redis Set Appts State (IMG)',
-        type: 'n8n-nodes-base.redis',
-        version: 1,
-        position: [-7660, 4400],
-        credentials: { redis: { id: 'V8K02flgy9UVw9wq', name: 'Redis account' } },
-    })
-    RedisSetApptsStateImg = {
-        operation: 'set',
-        key: '=appts_state_{{ $json.phone }}',
-        value: '={{ $json.updated_appts_state }}',
-    };
-
-    @node({
-        id: 'dfa8a2dc-0de9-4ee1-baf5-3ae60bfe05e4',
-        name: 'Convert Audio to Base64',
-        type: 'n8n-nodes-base.code',
-        version: 2,
-        position: [-12280, 3960],
-    })
-    ConvertAudioToBase64 = {
-        jsCode: `// Convert binary audio to base64 and build full GPT-4o Audio API request body
-const item = $input.first();
-const binaryData = item.binary?.data;
-
-if (!binaryData) {
-  throw new Error("No binary audio data found. Check '2. Download Audio' node.");
-}
-
-// n8n stores binary data already as base64 internally
-const base64Audio = binaryData.data;
-
-const DARJA_PROMPT = "Tu es un expert en Darja algérien et en français algérien. Transcris ce message vocal EXACTEMENT tel qu'il est dit, en respectant le dialecte naturel du locuteur. Règles absolues : 1) Si la personne parle en Darja, écris en Darja romanisé (lettres latines) mélangé de français, comme parlent les vrais Algériens au quotidien. 2) N\\'écris JAMAIS en arabe classique (pas de lettres arabes). 3) Si la personne parle en français, transcris en français. 4) Réponds UNIQUEMENT avec la transcription, sans commentaires ni explication.";
-
-// Build the full request body here to avoid nested expression issues in HTTP Request node
-const gptBody = JSON.stringify({
-  model: "gpt-4o-audio-preview",
-  messages: [{
-    role: "user",
-    content: [
-      {
-        type: "input_audio",
-        input_audio: {
-          data: base64Audio,
-          format: "ogg"
-        }
-      },
-      {
-        type: "text",
-        text: DARJA_PROMPT
-      }
-    ]
-  }],
-  max_tokens: 500
-});
-
-return [{
-  json: {
-    base64Audio: base64Audio,
-    gptBody: gptBody
-  }
-}];`,
-    };
-
-    @node({
-        id: 'e4ea01f7-7055-4151-ac38-69ad9ef4a965',
-        name: 'Generate Dynamic Promp',
-        type: 'n8n-nodes-base.code',
-        version: 2,
-        position: [-2160, 4420],
-    })
-    GenerateDynamicPromp = {
-        jsCode: `const items = $input.all();
 
 let targetLang = "Français";
 try {
     let calc = $('Calculate Predominant Lang').isExecuted ? $('Calculate Predominant Lang').first().json.dominant_lang : null;
-    if (calc && !calc.includes('Aucune') && !calc.includes('Darja')) { 
+    if (calc && !calc.includes('Aucune')) { 
         targetLang = calc; 
     } else {
         let l2 = $('Redis Get Text Lang').isExecuted ? $('Redis Get Text Lang').first().json.value : null;
-        if (l2 && !l2.includes('Aucune') && !l2.includes('Darja')) { targetLang = l2; }
+        if (l2 && !l2.includes('Aucune')) { targetLang = l2; }
     }
 } catch (e) {}
-
-// Force French if the system tries to default to Darja
-if (targetLang.includes('Darja')) targetLang = 'Français';
 
 let prompt = "Tu es une MACHINE DE TRADUCTION ET DE CORRECTION AUTOMATIQUE INVISIBLE. Tu n'es pas un assistant.\\n";
 prompt += "Ta fonction : traduire OU réécrire le texte EXCLUSIVEMENT dans la langue cible.\\n\\n";
@@ -5183,9 +5002,20 @@ prompt += "═══════════════════════
 prompt += "RÈGLES DE TRADUCTION STRICTE\\n";
 prompt += "════════════════════════════════════════════\\n";
 prompt += "▶ 1. TRADUCTION EXACTE : Tu DOIS traduire le texte d'origine EXCLUSIVEMENT vers la langue : " + targetLang + ".\\n";
-prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
-prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
-prompt += "▶ 4. STYLE : Conserve le ton naturel, amical et professionnel, ainsi que les emojis et la mise en forme.\\n\\n";
+
+if (targetLang.includes('Darja')) {
+    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : Tu es un traducteur expert spécialisé exclusivement dans la Darija de l'Algérois (Alger Centre).\\n";
+    prompt += "▶ 3. ARABIZI PUR : Tu DOIS écrire EXCLUSIVEMENT en lettres latines et chiffres (Franco-Arabe / Arabizi). L'utilisation de caractères arabes (comme باش, نعاونك) est STRICTEMENT INTERDITE.\\n";
+    prompt += "▶ 4. CHIFFRES PHONÉTIQUES : Utilise les chiffres pour les sons arabes : 3 (Ayn), 7 (Ha), 9 (Qaf), 5 (Kha). Exemples: ch7al, t3ich, mli7.\\n";
+    prompt += "▶ 5. INTERDIT (Marocain/Tunisien/Anglais) : N'utilise JAMAIS de mots marocains ('daba', 'safi', 'drari') ou tunisiens ('tawa', 'barcha', 'zada', '9adeh'). Utilise le vocabulaire algérois : 'dorka', 'rani', 'bark', 'wesh', 'bezzaf', 'ch7al', 'tani'. N'invente pas de franglais (ex: interdit de dire 'nsendih', dis 'neb3athou').\\n";
+    prompt += "▶ 6. EMPRUNTS FRANÇAIS : Intègre naturellement les mots français courants à Alger avec la conjugaison locale (ex: 'nconfirmilek', 'la voiture', 'l'appartement'). Ne sois pas trop formel.\\n";
+    prompt += "▶ 7. RESPECT : Même en Darija, garde un ton professionnel. Ne tutoie pas de manière trop familière si ce n'est pas approprié.\\n";
+} else {
+    prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
+    prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
+}
+
+prompt += "▶ 6. STYLE : Conserve le ton naturel, amical et professionnel, ainsi que les emojis et la mise en forme.\\n\\n";
 
 prompt += "[SORTIE]\\n";
 prompt += "Renvoie UNIQUEMENT le texte traduit/réécrit. Zéro introduction, zéro commentaire.";
@@ -5213,16 +5043,13 @@ return items.map(item => {
 let targetLang = "Français";
 try {
     let calc = $('Calculate Predominant Lang').isExecuted ? $('Calculate Predominant Lang').first().json.dominant_lang : null;
-    if (calc && !calc.includes('Aucune') && !calc.includes('Darja')) { 
+    if (calc && !calc.includes('Aucune')) { 
         targetLang = calc; 
     } else {
         let l2 = $('Redis Get Text Lang').isExecuted ? $('Redis Get Text Lang').first().json.value : null;
-        if (l2 && !l2.includes('Aucune') && !l2.includes('Darja')) { targetLang = l2; }
+        if (l2 && !l2.includes('Aucune')) { targetLang = l2; }
     }
 } catch (e) {}
-
-// Force French if the system tries to default to Darja
-if (targetLang.includes('Darja')) targetLang = 'Français';
 
 let prompt = "Tu es une MACHINE DE TRADUCTION ET DE CORRECTION AUTOMATIQUE INVISIBLE. Tu n'es pas un assistant.\\n";
 prompt += "Ta fonction : traduire OU réécrire le texte EXCLUSIVEMENT dans la langue cible.\\n\\n";
@@ -5233,9 +5060,20 @@ prompt += "═══════════════════════
 prompt += "RÈGLES DE TRADUCTION STRICTE\\n";
 prompt += "════════════════════════════════════════════\\n";
 prompt += "▶ 1. TRADUCTION EXACTE : Tu DOIS traduire le texte d'origine EXCLUSIVEMENT vers la langue : " + targetLang + ".\\n";
-prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
-prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
-prompt += "▶ 4. STYLE : Conserve le ton naturel, amical et professionnel, ainsi que les emojis et la mise en forme.\\n\\n";
+
+if (targetLang.includes('Darja')) {
+    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : Tu es un traducteur expert spécialisé exclusivement dans la Darija de l'Algérois (Alger Centre).\\n";
+    prompt += "▶ 3. ARABIZI PUR : Tu DOIS écrire EXCLUSIVEMENT en lettres latines et chiffres (Franco-Arabe / Arabizi). L'utilisation de caractères arabes (comme باش, نعاونك) est STRICTEMENT INTERDITE.\\n";
+    prompt += "▶ 4. CHIFFRES PHONÉTIQUES : Utilise les chiffres pour les sons arabes : 3 (Ayn), 7 (Ha), 9 (Qaf), 5 (Kha). Exemples: ch7al, t3ich, mli7.\\n";
+    prompt += "▶ 5. INTERDIT (Marocain/Tunisien/Anglais) : N'utilise JAMAIS de mots marocains ('daba', 'safi', 'drari') ou tunisiens ('tawa', 'barcha', 'zada', '9adeh'). Utilise le vocabulaire algérois : 'dorka', 'rani', 'bark', 'wesh', 'bezzaf', 'ch7al', 'tani'. N'invente pas de franglais (ex: interdit de dire 'nsendih', dis 'neb3athou').\\n";
+    prompt += "▶ 6. EMPRUNTS FRANÇAIS : Intègre naturellement les mots français courants à Alger avec la conjugaison locale (ex: 'nconfirmilek', 'la voiture', 'l'appartement'). Ne sois pas trop formel.\\n";
+    prompt += "▶ 7. RESPECT : Même en Darija, garde un ton professionnel. Ne tutoie pas de manière trop familière si ce n'est pas approprié.\\n";
+} else {
+    prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
+    prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
+}
+
+prompt += "▶ 6. STYLE : Conserve le ton naturel, amical et professionnel, ainsi que les emojis et la mise en forme.\\n\\n";
 
 prompt += "[SORTIE]\\n";
 prompt += "Renvoie UNIQUEMENT le texte traduit/réécrit. Zéro introduction, zéro commentaire.";
@@ -5263,16 +5101,13 @@ return items.map(item => {
 let targetLang = "Français";
 try {
     let calc = $('Calculate Predominant Lang').isExecuted ? $('Calculate Predominant Lang').first().json.dominant_lang : null;
-    if (calc && !calc.includes('Aucune') && !calc.includes('Darja')) { 
+    if (calc && !calc.includes('Aucune')) { 
         targetLang = calc; 
     } else {
         let l2 = $('Redis Get Text Lang').isExecuted ? $('Redis Get Text Lang').first().json.value : null;
-        if (l2 && !l2.includes('Aucune') && !l2.includes('Darja')) { targetLang = l2; }
+        if (l2 && !l2.includes('Aucune')) { targetLang = l2; }
     }
 } catch (e) {}
-
-// Force French if the system tries to default to Darja
-if (targetLang.includes('Darja')) targetLang = 'Français';
 
 let prompt = "Tu es une MACHINE DE TRADUCTION ET DE CORRECTION AUTOMATIQUE INVISIBLE. Tu n'es pas un assistant.\\n";
 prompt += "Ta fonction : traduire OU réécrire le texte EXCLUSIVEMENT dans la langue cible.\\n\\n";
@@ -5283,9 +5118,20 @@ prompt += "═══════════════════════
 prompt += "RÈGLES DE TRADUCTION STRICTE\\n";
 prompt += "════════════════════════════════════════════\\n";
 prompt += "▶ 1. TRADUCTION EXACTE : Tu DOIS traduire le texte d'origine EXCLUSIVEMENT vers la langue : " + targetLang + ".\\n";
-prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
-prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
-prompt += "▶ 4. STYLE : Conserve le ton naturel, amical et professionnel, ainsi que les emojis et la mise en forme.\\n\\n";
+
+if (targetLang.includes('Darja')) {
+    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : Tu es un traducteur expert spécialisé exclusivement dans la Darija de l'Algérois (Alger Centre).\\n";
+    prompt += "▶ 3. ARABIZI PUR : Tu DOIS écrire EXCLUSIVEMENT en lettres latines et chiffres (Franco-Arabe / Arabizi). L'utilisation de caractères arabes (comme باش, نعاونك) est STRICTEMENT INTERDITE.\\n";
+    prompt += "▶ 4. CHIFFRES PHONÉTIQUES : Utilise les chiffres pour les sons arabes : 3 (Ayn), 7 (Ha), 9 (Qaf), 5 (Kha). Exemples: ch7al, t3ich, mli7.\\n";
+    prompt += "▶ 5. INTERDIT (Marocain/Tunisien/Anglais) : N'utilise JAMAIS de mots marocains ('daba', 'safi', 'drari') ou tunisiens ('tawa', 'barcha', 'zada', '9adeh'). Utilise le vocabulaire algérois : 'dorka', 'rani', 'bark', 'wesh', 'bezzaf', 'ch7al', 'tani'. N'invente pas de franglais (ex: interdit de dire 'nsendih', dis 'neb3athou').\\n";
+    prompt += "▶ 6. EMPRUNTS FRANÇAIS : Intègre naturellement les mots français courants à Alger avec la conjugaison locale (ex: 'nconfirmilek', 'la voiture', 'l'appartement'). Ne sois pas trop formel.\\n";
+    prompt += "▶ 7. RESPECT : Même en Darija, garde un ton professionnel. Ne tutoie pas de manière trop familière si ce n'est pas approprié.\\n";
+} else {
+    prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
+    prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
+}
+
+prompt += "▶ 6. STYLE : Conserve le ton naturel, amical et professionnel, ainsi que les emojis et la mise en forme.\\n\\n";
 
 prompt += "[SORTIE]\\n";
 prompt += "Renvoie UNIQUEMENT le texte traduit/réécrit. Zéro introduction, zéro commentaire.";
@@ -5313,16 +5159,13 @@ return items.map(item => {
 let targetLang = "Français";
 try {
     let calc = $('Calculate Predominant Lang').isExecuted ? $('Calculate Predominant Lang').first().json.dominant_lang : null;
-    if (calc && !calc.includes('Aucune') && !calc.includes('Darja')) { 
+    if (calc && !calc.includes('Aucune')) { 
         targetLang = calc; 
     } else {
         let l2 = $('Redis Get Text Lang').isExecuted ? $('Redis Get Text Lang').first().json.value : null;
-        if (l2 && !l2.includes('Aucune') && !l2.includes('Darja')) { targetLang = l2; }
+        if (l2 && !l2.includes('Aucune')) { targetLang = l2; }
     }
 } catch (e) {}
-
-// Force French if the system tries to default to Darja
-if (targetLang.includes('Darja')) targetLang = 'Français';
 
 let prompt = "Tu es une MACHINE DE TRADUCTION ET DE CORRECTION AUTOMATIQUE INVISIBLE. Tu n'es pas un assistant.\\n";
 prompt += "Ta fonction : traduire OU réécrire le texte EXCLUSIVEMENT dans la langue cible.\\n\\n";
@@ -5333,9 +5176,20 @@ prompt += "═══════════════════════
 prompt += "RÈGLES DE TRADUCTION STRICTE\\n";
 prompt += "════════════════════════════════════════════\\n";
 prompt += "▶ 1. TRADUCTION EXACTE : Tu DOIS traduire le texte d'origine EXCLUSIVEMENT vers la langue : " + targetLang + ".\\n";
-prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
-prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
-prompt += "▶ 4. STYLE : Conserve le ton naturel, amical et professionnel, ainsi que les emojis et la mise en forme.\\n\\n";
+
+if (targetLang.includes('Darja')) {
+    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : Tu es un traducteur expert spécialisé exclusivement dans la Darija de l'Algérois (Alger Centre).\\n";
+    prompt += "▶ 3. ARABIZI PUR : Tu DOIS écrire EXCLUSIVEMENT en lettres latines et chiffres (Franco-Arabe / Arabizi). L'utilisation de caractères arabes (comme باش, نعاونك) est STRICTEMENT INTERDITE.\\n";
+    prompt += "▶ 4. CHIFFRES PHONÉTIQUES : Utilise les chiffres pour les sons arabes : 3 (Ayn), 7 (Ha), 9 (Qaf), 5 (Kha). Exemples: ch7al, t3ich, mli7.\\n";
+    prompt += "▶ 5. INTERDIT (Marocain/Tunisien/Anglais) : N'utilise JAMAIS de mots marocains ('daba', 'safi', 'drari') ou tunisiens ('tawa', 'barcha', 'zada', '9adeh'). Utilise le vocabulaire algérois : 'dorka', 'rani', 'bark', 'wesh', 'bezzaf', 'ch7al', 'tani'. N'invente pas de franglais (ex: interdit de dire 'nsendih', dis 'neb3athou').\\n";
+    prompt += "▶ 6. EMPRUNTS FRANÇAIS : Intègre naturellement les mots français courants à Alger avec la conjugaison locale (ex: 'nconfirmilek', 'la voiture', 'l'appartement'). Ne sois pas trop formel.\\n";
+    prompt += "▶ 7. RESPECT : Même en Darija, garde un ton professionnel. Ne tutoie pas de manière trop familière si ce n'est pas approprié.\\n";
+} else {
+    prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
+    prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
+}
+
+prompt += "▶ 6. STYLE : Conserve le ton naturel, amical et professionnel, ainsi que les emojis et la mise en forme.\\n\\n";
 
 prompt += "[SORTIE]\\n";
 prompt += "Renvoie UNIQUEMENT le texte traduit/réécrit. Zéro introduction, zéro commentaire.";
@@ -5363,16 +5217,13 @@ return items.map(item => {
 let targetLang = "Français";
 try {
     let calc = $('Calculate Predominant Lang').isExecuted ? $('Calculate Predominant Lang').first().json.dominant_lang : null;
-    if (calc && !calc.includes('Aucune') && !calc.includes('Darja')) { 
+    if (calc && !calc.includes('Aucune')) { 
         targetLang = calc; 
     } else {
         let l2 = $('Redis Get Text Lang').isExecuted ? $('Redis Get Text Lang').first().json.value : null;
-        if (l2 && !l2.includes('Aucune') && !l2.includes('Darja')) { targetLang = l2; }
+        if (l2 && !l2.includes('Aucune')) { targetLang = l2; }
     }
 } catch (e) {}
-
-// Force French if the system tries to default to Darja
-if (targetLang.includes('Darja')) targetLang = 'Français';
 
 let prompt = "Tu es une MACHINE DE TRADUCTION ET DE CORRECTION AUTOMATIQUE INVISIBLE. Tu n'es pas un assistant.\\n";
 prompt += "Ta fonction : traduire OU réécrire le texte EXCLUSIVEMENT dans la langue cible.\\n\\n";
@@ -5383,9 +5234,20 @@ prompt += "═══════════════════════
 prompt += "RÈGLES DE TRADUCTION STRICTE\\n";
 prompt += "════════════════════════════════════════════\\n";
 prompt += "▶ 1. TRADUCTION EXACTE : Tu DOIS traduire le texte d'origine EXCLUSIVEMENT vers la langue : " + targetLang + ".\\n";
-prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
-prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
-prompt += "▶ 4. STYLE : Conserve le ton naturel, amical et professionnel, ainsi que les emojis et la mise en forme.\\n\\n";
+
+if (targetLang.includes('Darja')) {
+    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : Tu es un traducteur expert spécialisé exclusivement dans la Darija de l'Algérois (Alger Centre).\\n";
+    prompt += "▶ 3. ARABIZI PUR : Tu DOIS écrire EXCLUSIVEMENT en lettres latines et chiffres (Franco-Arabe / Arabizi). L'utilisation de caractères arabes (comme باش, نعاونك) est STRICTEMENT INTERDITE.\\n";
+    prompt += "▶ 4. CHIFFRES PHONÉTIQUES : Utilise les chiffres pour les sons arabes : 3 (Ayn), 7 (Ha), 9 (Qaf), 5 (Kha). Exemples: ch7al, t3ich, mli7.\\n";
+    prompt += "▶ 5. INTERDIT (Marocain/Tunisien/Anglais) : N'utilise JAMAIS de mots marocains ('daba', 'safi', 'drari') ou tunisiens ('tawa', 'barcha', 'zada', '9adeh'). Utilise le vocabulaire algérois : 'dorka', 'rani', 'bark', 'wesh', 'bezzaf', 'ch7al', 'tani'. N'invente pas de franglais (ex: interdit de dire 'nsendih', dis 'neb3athou').\\n";
+    prompt += "▶ 6. EMPRUNTS FRANÇAIS : Intègre naturellement les mots français courants à Alger avec la conjugaison locale (ex: 'nconfirmilek', 'la voiture', 'l'appartement'). Ne sois pas trop formel.\\n";
+    prompt += "▶ 7. RESPECT : Même en Darija, garde un ton professionnel. Ne tutoie pas de manière trop familière si ce n'est pas approprié.\\n";
+} else {
+    prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
+    prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
+}
+
+prompt += "▶ 6. STYLE : Conserve le ton naturel, amical et professionnel, ainsi que les emojis et la mise en forme.\\n\\n";
 
 prompt += "[SORTIE]\\n";
 prompt += "Renvoie UNIQUEMENT le texte traduit/réécrit. Zéro introduction, zéro commentaire.";
@@ -5412,15 +5274,14 @@ return items.map(item => {
 
 let targetLang = "Français";
 try {
-    // Read the language directly from the previous node (Redis Get Image Lang)
-    let redisLang = items[0].json.value || items[0].json.propertyName;
-    if (redisLang && !redisLang.includes('Aucune') && !redisLang.includes('Darja')) {
-        targetLang = redisLang;
+    let calc = $('Calculate Predominant Lang').isExecuted ? $('Calculate Predominant Lang').first().json.dominant_lang : null;
+    if (calc && !calc.includes('Aucune')) { 
+        targetLang = calc; 
+    } else {
+        let l2 = $('Redis Get Text Lang').isExecuted ? $('Redis Get Text Lang').first().json.value : null;
+        if (l2 && !l2.includes('Aucune')) { targetLang = l2; }
     }
 } catch (e) {}
-
-// Force French if the system tries to default to Darja
-if (targetLang.includes('Darja')) targetLang = 'Français';
 
 let prompt = "Tu es une MACHINE DE TRADUCTION ET DE CORRECTION AUTOMATIQUE INVISIBLE. Tu n'es pas un assistant.\\n";
 prompt += "Ta fonction : traduire OU réécrire le texte EXCLUSIVEMENT dans la langue cible.\\n\\n";
@@ -5431,9 +5292,20 @@ prompt += "═══════════════════════
 prompt += "RÈGLES DE TRADUCTION STRICTE\\n";
 prompt += "════════════════════════════════════════════\\n";
 prompt += "▶ 1. TRADUCTION EXACTE : Tu DOIS traduire le texte d'origine EXCLUSIVEMENT vers la langue : " + targetLang + ".\\n";
-prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
-prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
-prompt += "▶ 4. STYLE : Conserve le ton naturel, amical et professionnel, ainsi que les emojis et la mise en forme.\\n\\n";
+
+if (targetLang.includes('Darja')) {
+    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : Tu es un traducteur expert spécialisé exclusivement dans la Darija de l'Algérois (Alger Centre).\\n";
+    prompt += "▶ 3. ARABIZI PUR : Tu DOIS écrire EXCLUSIVEMENT en lettres latines et chiffres (Franco-Arabe / Arabizi). L'utilisation de caractères arabes (comme باش, نعاونك) est STRICTEMENT INTERDITE.\\n";
+    prompt += "▶ 4. CHIFFRES PHONÉTIQUES : Utilise les chiffres pour les sons arabes : 3 (Ayn), 7 (Ha), 9 (Qaf), 5 (Kha). Exemples: ch7al, t3ich, mli7.\\n";
+    prompt += "▶ 5. INTERDIT (Marocain/Tunisien/Anglais) : N'utilise JAMAIS de mots marocains ('daba', 'safi', 'drari') ou tunisiens ('tawa', 'barcha', 'zada', '9adeh'). Utilise le vocabulaire algérois : 'dorka', 'rani', 'bark', 'wesh', 'bezzaf', 'ch7al', 'tani'. N'invente pas de franglais (ex: interdit de dire 'nsendih', dis 'neb3athou').\\n";
+    prompt += "▶ 6. EMPRUNTS FRANÇAIS : Intègre naturellement les mots français courants à Alger avec la conjugaison locale (ex: 'nconfirmilek', 'la voiture', 'l'appartement'). Ne sois pas trop formel.\\n";
+    prompt += "▶ 7. RESPECT : Même en Darija, garde un ton professionnel. Ne tutoie pas de manière trop familière si ce n'est pas approprié.\\n";
+} else {
+    prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
+    prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
+}
+
+prompt += "▶ 6. STYLE : Conserve le ton naturel, amical et professionnel, ainsi que les emojis et la mise en forme.\\n\\n";
 
 prompt += "[SORTIE]\\n";
 prompt += "Renvoie UNIQUEMENT le texte traduit/réécrit. Zéro introduction, zéro commentaire.";
@@ -5469,7 +5341,6 @@ return items.map(item => {
         this.If2.out(1).to(this.ExtraireImageVoyageur.in(0));
         this.IsRealMessage.out(0).to(this.CodeCheckPause.in(0));
         this.IsRealMessage.out(0).to(this.ReactionRandomizer.in(0));
-        this.IsRealMessage.out(0).to(this.RedisTagActiveClient24h.in(0));
         this.QdrantInsert.out(0).to(this.AgentSupportClient.in(0));
         this.AgentSupportClient.out(0).to(this.If3.in(0));
         this.ExtraireImageVoyageur.out(0).to(this.If_.in(0));
@@ -5482,7 +5353,6 @@ return items.map(item => {
         this.IsTextMessage.out(1).to(this._1GetImageUrl1.in(0));
         this.IsTextMessage.out(2).to(this._1GetAudioUrl.in(0));
         this.IsTextMessage.out(4).to(this.BuildBodyWaMediaInvalide.in(0));
-        this.IsTextMessage.out(4).to(this.BuildBodyAdminError.in(0));
         this.ExtractText.out(0).to(this.IfNuclearReset.in(0));
         this.TheRouter1.out(0).to(this.BookingAgentVoyageur.in(0));
         this.TheRouter1.out(1).to(this.RedisGetApptsState.in(0));
@@ -5496,7 +5366,6 @@ return items.map(item => {
         this.SwitchVille1.out(1).to(this.TraductionWaPoseQuestion1.in(0));
         this.SwitchVille1.out(2).to(this.RedisCrmHorsZone.in(0));
         this.SwitchVille1.out(3).to(this.WaAttenteClient.in(0));
-        this.SwitchVille1.out(4).to(this.GenerateDynamicPromp.in(0));
         this.SwitchVille1.out(5).to(this.GenerateDynamicPromp1.in(0));
         this.WaPoseQuestion1.out(0).to(this.Code1.in(0));
         this.WaRefus1.out(0).to(this.Code1.in(0));
@@ -5576,7 +5445,6 @@ return items.map(item => {
         this.StopSpam.out(0).to(this.BuildBodyWaResetConfirmation.in(0));
         this._3AiVisionAnalysis1.out(0).to(this.RedisCountNode.in(0));
         this.RedisGetFinalBatch.out(0).to(this.RedisGetApptsStateImg.in(0));
-        this.TheBrainMoyenneMessage.out(0).to(this.RedisSetApptsStateImg.in(0));
         this.SauvegarderMemoireIa.out(0).to(this.WaEnvoiFinalUnique.in(0));
         this.WaEnvoiFinalUnique.out(0).to(this.RedisClearPhotoBatch.in(0));
         this.TraductionWaEvaluationPhotos.out(0).to(this.SauvegarderMemoireIa.in(0));
@@ -5588,18 +5456,14 @@ return items.map(item => {
         this.WaitDebounce.out(0).to(this.RedisCheckCount.in(0));
         this.RedisCheckCount.out(0).to(this.IfCollisionDernierePhoto.in(0));
         this.IfCollisionDernierePhoto.out(0).to(this.RedisGetFinalBatch.in(0));
-        this.RedisSavePhotoUrls.out(0).to(this.RedisGetImageLang.in(0));
+        this.RedisSavePhotoUrls.out(0).to(this.FormatVisionText.in(0));
+        this.FormatVisionText.out(0).to(this._1PrepRedisVars.in(0));
         this.RedisSavePhotoUrlsAfterAppend.out(0).to(this.RedisSetBatch.in(0));
         this.RedisGetImageLang.out(0).to(this.GenerateDynamicPromp8.in(0));
         this.RedisGetApptsStateImg.out(0).to(this.TheBrainMoyenneMessage.in(0));
         this.RedisGetLangStats.out(0).to(this.CalculatePredominantLang.in(0));
         this.CalculatePredominantLang.out(0).to(this.RedisSetLangStats.in(0));
         this.RedisSetLangStats.out(0).to(this.RedisSetTextLang.in(0));
-        this.BuildBodyWaMediaInvalide.out(0).to(this.WaErreurMediaClient.in(0));
-        this.BuildBodyAdminError.out(0).to(this.WaAdminErrorAlert.in(0));
-        this.RedisSetApptsStateImg.out(0).to(this.RedisSavePhotoUrls.in(0));
-        this.ConvertAudioToBase64.out(0).to(this.HttpRequest.in(0));
-        this.GenerateDynamicPromp.out(0).to(this.TraductionWaDemandePhotosInit.in(0));
         this.GenerateDynamicPromp1.out(0).to(this.TraductionWaPoseQuestion1.in(0));
         this.GenerateDynamicPromp2.out(0).to(this.TraductionWaMessageSupport.in(0));
         this.GenerateDynamicPromp3.out(0).to(this.TraductionWaRefus1.in(0));
@@ -5631,7 +5495,6 @@ return items.map(item => {
             ai_tool: [
                 this.OutilInfosHospitable1.output,
                 this.RechercheInformationsAgence.output,
-                this.ChercherCatalogueGs.output,
                 this.DisponibilitesHospitable.output,
                 this.VerifierStatutPaiement.output,
             ],

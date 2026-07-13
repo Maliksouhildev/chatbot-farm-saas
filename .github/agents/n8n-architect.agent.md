@@ -5,7 +5,7 @@ description: Use when the user explicitly wants to create, edit, validate, sync,
 
 # n8n Architect
 
-Use this workspace agent for all n8n-as-code work: workspace readiness, migration, environments, managed local instances, tunnels, workflow authoring, validation, sync, push, and pull.
+Use this workspace agent for all n8n-as-code work: workspace readiness, environments, managed local instances, tunnels, workflow authoring, validation, sync, push, and pull.
 
 Use `npx --yes n8nac` as the primary interface. Use `npx --yes @n8n-as-code/n8n-manager` only for local managed runtime lifecycle, tunnels, and workflow presentation commands that are explicitly exposed by n8n-manager.
 
@@ -30,41 +30,15 @@ npx --yes n8nac env status --json
 
 ## Workspace Readiness
 
-Use the unified migration preflight before resolving the effective environment. The dry-run is safe and reports whether any workspace migration is required:
+Resolve the effective environment through the backend before workflow work:
 
 ```bash
-npx --yes n8nac workspace migrate --json
 npx --yes n8nac env status --json
 ```
 
-- Treat `workspace migrate --json` as the source of migration need.
-- Treat `env status --json` as the source of effective workspace readiness only after migration is not required or has been applied.
+- Treat `env status --json` as the source of effective workspace readiness.
 - Do not infer readiness from raw files, generated agent docs, or directory names.
-- If migration is required, do not edit config files by hand or continue with environment/workflow work until it has been applied or explicitly deferred by the user.
-
-## Migration
-
-Migration is one user-facing command. Do not reason about internal migration phases directly; summarize the report `operations` array when explaining what will change.
-
-1. Run the dry-run first:
-
-```bash
-npx --yes n8nac workspace migrate --json
-```
-
-2. If the dry-run reports `status: "dry-run"`, `required: true`, or otherwise indicates pending changes, stop and ask once before applying it. Do not run `workspace migrate --write` unless the user already directly requested applying migration.
-3. After confirmation, apply migration and re-check readiness:
-
-```bash
-npx --yes n8nac workspace migrate --write
-npx --yes n8nac workspace migrate --json
-npx --yes n8nac env status --json
-```
-
-- Do not run `workspace migrate --write` without explicit confirmation unless the user already directly requested applying migration.
-- When reporting a dry-run, summarize the unified `operations` list and ask for exactly one confirmation for `npx --yes n8nac workspace migrate --write`.
-- Do not ask separately for different operation types. `npx --yes n8nac workspace migrate --write` applies the required migration as one operation.
-- Do not run environment, workflow, or setup commands while `workspace migrate --json` still reports migration required.
+- If `env status --json` fails because the workspace is not configured, use `env add`, `env auth set`, and `env use` to create or select a V4 workspace environment.
 - Managed local instances remain machine-global runtime resources.
 - Workspace environments remain workspace-scoped and are managed through `npx --yes n8nac env ...`.
 
@@ -72,14 +46,12 @@ npx --yes n8nac env status --json
 
 1. `cd` to the context root.
 2. Run `npx --yes n8nac update-ai`, then read `AGENTS.md`.
-3. Run `npx --yes n8nac workspace migrate --json`.
-4. If migration is required, stop and ask for confirmation before `npx --yes n8nac workspace migrate --write` unless the user already requested applying migration.
-5. Run `npx --yes n8nac env status --json` after migration is not required or has been applied.
-6. If the context root is not ready, inspect managed local instances with `npx --yes @n8n-as-code/n8n-manager instance list`.
-7. Reuse an existing environment or managed local instance when suitable.
-8. If no suitable environment exists, stop and ask the user whether they want to connect a remote n8n URL or create/reuse a managed local n8n instance. Do not create infrastructure by default. If the user chooses a managed local instance, ask separately whether they want a public tunnel.
-9. Ask for host/API key only for an explicitly remote n8n environment.
-10. Configure the environment with:
+3. Run `npx --yes n8nac env status --json`.
+4. If the context root is not ready, inspect managed local instances with `npx --yes @n8n-as-code/n8n-manager instance list`.
+5. Reuse an existing environment or managed local instance when suitable.
+6. If no suitable environment exists, stop and ask the user whether they want to connect a remote n8n URL or create/reuse a managed local n8n instance. Do not create infrastructure by default. If the user chooses a managed local instance, ask separately whether they want a public tunnel.
+7. Ask for host/API key only for an explicitly remote n8n environment.
+8. Configure the environment with:
 
 ```bash
 npx --yes n8nac env add <name> --base-url <url> --workflows-path workflows/<name>
@@ -94,7 +66,7 @@ npx --yes n8nac env add Local --managed-instance <id> --workflows-path workflows
 npx --yes n8nac env use Local
 ```
 
-11. Run `npx --yes n8nac update-ai` after changing environments when the facade does not do it automatically.
+9. Run `npx --yes n8nac update-ai` after changing environments when the facade does not do it automatically.
 
 ## Environments
 
@@ -184,9 +156,8 @@ npx --yes @n8n-as-code/n8n-manager tunnel stop <id>
 
 ## Sync Discipline
 
-- **ALWAYS pull** from n8n before reading or modifying an existing workflow (`npx --yes n8nac pull <workflowId>`) to ensure you are editing the latest version from the server.
-- **ALWAYS push** after every modification (`npx --yes n8nac push <path-to-workflow.workflow.ts> --verify`).
-- **ALWAYS commit and push to Git** at the end of the work to ensure everything is backed up to GitHub (run `git add workflows/`, `git commit`, `git push`).
+- Pull before reading or modifying an existing workflow.
+- Push after every modification.
 - Use `list` to inspect workflow IDs, file paths, and sync status.
 
 ```bash
@@ -232,6 +203,40 @@ npx --yes n8nac skills validate <workflow.workflow.ts>
 - Treat schema output as the absolute source of truth even if examples or memory disagree.
 - Prefer the highest valid `typeVersion` returned by schema output.
 - For fixed collections such as Switch/If rules, Wait form fields, or nested options, read the full `node-info` output before writing values.
+
+## Optional Native n8n MCP Assist
+
+The `n8n-as-code` MCP server is a client adapter for N8NAC tools. The native n8n MCP server is a separate live n8n instance endpoint. Native n8n MCP can complement this workflow for native knowledge, live state, and runtime execution, but it does not replace `npx --yes n8nac`, bundled knowledge, `.workflow.ts`, Git, or the sync discipline.
+
+Use this routing policy:
+
+- Default to local `npx --yes n8nac` for code-first workflow authoring, validation, pull, push, credentials, execution history, and presentation. Use `npx --yes n8nac skills` as the bundled offline knowledge default.
+- Native MCP assist is configured per n8n-as-code environment. When creating or updating an environment, offer to configure it with `npx --yes n8nac native-mcp configure <environment> --token-stdin`; do not ask the user to manually configure a separate MCP server for Claude Code or the VS Code Workbench.
+- If native MCP assist is configured, use it where it complements n8n-as-code: read-only live discovery, server-side validation, native SDK/reference knowledge, live node definitions, credential metadata without secrets, execution inspection, projects, folders, and explicit runtime execution/test strategy when supported.
+- Check native availability with `npx --yes n8nac native-mcp status --include-tools --json` before relying on native tools.
+- For user requests about the current/live n8n instance, existing remote workflows, available nodes in this instance, credential metadata, projects, folders, executions, drift, or duplicate discovery, prefer native MCP read-only tools after the status check. Do not fall back to local `npx --yes n8nac list`, `fetch`, `verify`, or bundled `skills` as the primary source for those live-audit facts when native MCP read-only tools are available.
+- Do not expose native MCP assist on non-loopback HTTP/SSE transports unless the MCP transport is authenticated and `N8NAC_NATIVE_MCP_ALLOW_REMOTE=1` is explicitly set.
+- Do not request full live execution payloads with `includeData=true` unless the user explicitly needs payload data and `N8NAC_NATIVE_MCP_ALLOW_EXECUTION_DATA=1` is set.
+- Prefer `npx --yes n8nac test` when the execution strategy is to exercise the real webhook, chat, or form trigger contract.
+- Prefer native runtime execution only when the generated execution strategy explicitly calls for it and it does something better than `npx --yes n8nac test`, such as workflow ID execution, non-webhook workflow testing, native pin-data test preparation, or direct execution diagnostics.
+- Treat native execute/test as a side-effecting runtime action, like `npx --yes n8nac test`; do not run it just because the tool exists.
+- Do not use native MCP create, update, publish, unpublish, archive, or destructive data-table tools unless the user explicitly requests direct native MCP mode and the tool is gated by permissions.
+- If a workflow is ever created or changed through native MCP direct mode, immediately pull it back with `npx --yes n8nac pull <workflowId>` so the `.workflow.ts` file and Git remain the source of truth.
+- If native MCP validation and local validation disagree, stop and report the divergence instead of forcing a push or direct update.
+- Never put native MCP tokens in project files, generated docs, command arguments, or responses.
+
+Use-case routing examples:
+
+- Workflow authoring, editing, pull, push, sync, credentials, and durable workflow changes: use local `npx --yes n8nac` commands and `.workflow.ts` files.
+- Offline node knowledge, examples, documentation, and schema-first authoring: use local `npx --yes n8nac skills` commands first.
+- Live workflow discovery, drift investigation, projects, folders, credentials metadata, duplicate discovery, and execution inspection: prefer native MCP read-only tools when configured because the user is asking for current instance state.
+- Connected-version node definitions or server-side validation: prefer native MCP read-only tools when the user asks what is available in this instance or needs validation against the connected n8n version. Use bundled knowledge for offline authoring when live instance state is not needed.
+- Runtime execution: prefer `npx --yes n8nac test` for real webhook, chat, or form trigger contracts; prefer native runtime execution only for explicit workflow-ID execution, non-webhook testing, native pin-data preparation, or direct execution diagnostics.
+- Direct native workflow creation, update, publish, unpublish, archive, or destructive operations: do not use them as an automatic path; require an explicit direct-native request and sync-back plan.
+
+Do not treat the presence of any MCP server as permission to call native n8n MCP tools. Native n8n MCP is used if and only if the generated execution or investigation strategy needs live n8n capabilities that local N8NAC cannot provide as well.
+
+Native MCP assist is a complementary knowledge, live-state, and runtime enrichment path, not the primary authoring or sync path.
 
 ## Knowledge Commands
 
