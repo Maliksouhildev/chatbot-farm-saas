@@ -242,11 +242,12 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //                                                                                    → CodeBuildAdminReport1 (↩ loop)
 //                                                                                   .out(1) → DetectOffreEnvoyee
 //                                                                                      → SwitchVille1
-//                                                                                        → TraductionWaPoseQuestion1
-//                                                                                          → BuildBodyWaPoseQuestion1
-//                                                                                            → WaPoseQuestion1
-//                                                                                              → Code1 (↩ loop)
-//                                                                                       .out(1) → TraductionWaPoseQuestion1 (↩ loop)
+//                                                                                        → GenerateDynamicPromp1
+//                                                                                          → TraductionWaPoseQuestion1
+//                                                                                            → BuildBodyWaPoseQuestion1
+//                                                                                              → WaPoseQuestion1
+//                                                                                                → Code1 (↩ loop)
+//                                                                                       .out(1) → GenerateDynamicPromp1 (↩ loop)
 //                                                                                       .out(2) → RedisCrmHorsZone
 //                                                                                          → GenerateDynamicPromp3
 //                                                                                            → TraductionWaRefus1
@@ -258,8 +259,7 @@ import { workflow, node, links } from '@n8n-as-code/transformer';
 //                                                                                            → RedisCrmProprietaire
 //                                                                                              → WaScriptAdmin
 //                                                                                                → Code1 (↩ loop)
-//                                                                                       .out(5) → GenerateDynamicPromp1
-//                                                                                          → TraductionWaPoseQuestion1 (↩ loop)
+//                                                                                       .out(5) → GenerateDynamicPromp1 (↩ loop)
 //                                                                                      → IsOffreFinished
 //                                                                                        → RedisWipeAppt
 //                                                                                          → RedisWipeVision
@@ -2378,7 +2378,7 @@ return {
         id: '20908c12-a78b-4aaa-b6ff-e4618ca1fb74',
         name: 'Disponibilites_Hospitable',
         type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-        version: 2,
+        version: 1.3,
         position: [-3480, 2520],
         retryOnFail: true,
         maxTries: 2,
@@ -2494,7 +2494,7 @@ return {
         id: '4f88d8bb-9e67-41f5-b766-982e43a51f02',
         name: 'Verifier_Statut_Paiement',
         type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-        version: 2,
+        version: 1.3,
         position: [-3580, 2600],
         retryOnFail: true,
         maxTries: 2,
@@ -3448,6 +3448,7 @@ return {
                 caseSensitive: true,
                 leftWordBoundary: false,
                 rightWordBoundary: false,
+                typeValidation: 'strict',
             },
             conditions: [
                 {
@@ -3522,7 +3523,7 @@ return {
         id: '4fe33d90-d161-4e01-8989-552f527feeeb',
         name: 'Reset_Photos',
         type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-        version: 2,
+        version: 1.3,
         position: [-3940, 3020],
         retryOnFail: true,
         maxTries: 2,
@@ -3593,7 +3594,7 @@ return {
         id: '5d783ff8-3e53-4dc7-b708-6a25cbb0340f',
         name: 'Outil Export CRM',
         type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-        version: 2,
+        version: 1.3,
         position: [-4100, 3080],
         retryOnFail: true,
         maxTries: 2,
@@ -3866,32 +3867,71 @@ return [{ json: original }];`,
 const items = $input.all();
 const phone = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].from;
 const messageId = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].id;
-let text = items[0].json.output || items[0].json.text || "";
-
-
+let text = items[0].json.output || items[0].json.text || items[0].json.response || "";
 
 // SMART SANITIZATION FIREWALL
 let _lang = "Français";
 try { _lang = $('Set Context').first().json.langue_utilisateur; } catch(e) {}
+if (!_lang || _lang.includes('Aucune')) {
+    try { _lang = $('Calculate Predominant Lang').first().json.dominant_lang; } catch(e) {}
+}
+if (!_lang || _lang.includes('Aucune')) {
+    try { _lang = $('Redis Get Text Lang').first().json.value; } catch(e) {}
+}
 
 if (_lang === 'Darja Algéroise' || _lang.includes('Darja')) {
-    text = text.replace(/\\b3afak\\b/gi, 't3ich');
-    text = text.replace(/\\b[q9]addach\\b/gi, 'ch7al');
-    text = text.replace(/\\b9adeh\\b/gi, 'ch7al');
-    text = text.replace(/\\bmzyan\\b/gi, 'mlih');
-    text = text.replace(/\\bdaba\\b/gi, 'dorka');
-    text = text.replace(/\\bsafi\\b/gi, '5las');
-    text = text.replace(/\\bdrari\\b/gi, 'wlad');
-    text = text.replace(/\\btawa\\b/gi, 'dorka');
-    text = text.replace(/\\bbarcha\\b/gi, 'bezzaf');
-    text = text.replace(/\\bzada\\b/gi, 'tani');
-    text = text.replace(/\\bt3aytli\\b/gi, 'teb3athli');
-    text = text.replace(/\\bnsendih\\b/gi, 'neb3athou');
-    text = text.replace(/\\bt9al[b]?chi\\b/gi, 'tdawwer');
-    text = text.replace(/\\bwah\\b/gi, 'ih');
-    text = text.replace(/\\bm3oul\\b/gi, 'prévu');
-    text = text.replace(/\\bt7ajer\\b/gi, 'réserver');
-    text = text.replace(/[\\u0600-\\u06FF]/g, ''); // Strip Arabic characters
+    text = text.replace(/lazmek/gi, 'lazem');
+    text = text.replace(/lazim/gi, 'lazem');
+    text = text.replace(/7it/gi, '3la khater');
+    text = text.replace(/rahi mawjouda/gi, 'jaya');
+    text = text.replace(/rah mawjoud/gi, 'jay');
+    text = text.replace(/mawjouda/gi, 'jaya');
+    text = text.replace(/mawjoud/gi, 'jay');
+    text = text.replace(/gal liya/gi, '9alli');
+    text = text.replace(/galli/gi, '9alli');
+    text = text.replace(/9al liya/gi, '9alli');
+    text = text.replace(/qal liya/gi, 'qalli');
+    text = text.replace(/goul liya/gi, '9ouli');
+    text = text.replace(/gouli/gi, '9ouli');
+    text = text.replace(/ra7 yji l'?matar/gi, 'ra7 ti7 chta');
+    text = text.replace(/yji l'?matar/gi, 'ti7 chta');
+    text = text.replace(/l'?matar/gi, 'chta');
+    text = text.replace(/les voisins l9dima/gi, 'les voisins kbaar');
+    text = text.replace(/les voisins l9dam/gi, 'les voisins kbaar');
+    text = text.replace(/voisins l9dima/gi, 'voisins kbaar');
+    text = text.replace(/ma tkharabch fiha les tuyaux/gi, 'ma tkharabch f les tuyaux');
+    text = text.replace(/ma tkharabch fih le chauffage/gi, 'ma tkharabch f le chauffage');
+    text = text.replace(/ma tkharabch fiha b télécommande/gi, 'ma tkharabch f la télécommande');
+    text = text.replace(/3la jal le technicien/gi, '3la khater le technicien');
+    text = text.replace(/3la jal lazem/gi, '3la khater lazem');
+    text = text.replace(/3la jal ma krinach/gi, '3la khater ma krinach');
+    text = text.replace(/3la jal ra7 ti7 chta/gi, '3la khater ra7 ti7 chta');
+    text = text.replace(/t'?fenetre/gi, 'la fenêtre');
+    text = text.replace(/trou7 barra/gi, 'tkhrej');
+    text = text.replace(/dwawa/gi, 'dwa');
+    text = text.replace(/s'?mana l'?9dima/gi, 'lsemana li fatet');
+    if (text.toLowerCase().includes("l'kra") || text.toLowerCase().includes("lkra")) {
+        text = text.replace(/yeddiha/gi, 'yeddih');
+        text = text.replace(/ta7kemha/gi, 'ta7kmo');
+        text = text.replace(/tjibha/gi, 'tjibo');
+    }
+    text = text.replace(/3afak/gi, 't3ich');
+    text = text.replace(/[q9]addach/gi, 'ch7al');
+    text = text.replace(/9adeh/gi, 'ch7al');
+    text = text.replace(/mzyan/gi, 'mlih');
+    text = text.replace(/daba/gi, 'dorka');
+    text = text.replace(/safi/gi, '5las');
+    text = text.replace(/drari/gi, 'wlad');
+    text = text.replace(/tawa/gi, 'dorka');
+    text = text.replace(/barcha/gi, 'bezzaf');
+    text = text.replace(/zada/gi, 'tani');
+    text = text.replace(/t3aytli/gi, 'teb3athli');
+    text = text.replace(/nsendih/gi, 'neb3athou');
+    text = text.replace(/t9al[b]?chi/gi, 'tdawwer');
+    text = text.replace(/wah/gi, 'ih');
+    text = text.replace(/m3oul/gi, 'prévu');
+    text = text.replace(/t7ajer/gi, 'réserver');
+    text = text.replace(/[؀-ۿ]/g, ''); // Strip Arabic characters
 }
 
 const payload = JSON.stringify({
@@ -3921,32 +3961,71 @@ return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phon
 const items = $input.all();
 const phone = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].from;
 const messageId = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].id;
-let text = items[0].json.output || items[0].json.text || "";
-
-
+let text = items[0].json.output || items[0].json.text || items[0].json.response || "";
 
 // SMART SANITIZATION FIREWALL
 let _lang = "Français";
 try { _lang = $('Set Context').first().json.langue_utilisateur; } catch(e) {}
+if (!_lang || _lang.includes('Aucune')) {
+    try { _lang = $('Calculate Predominant Lang').first().json.dominant_lang; } catch(e) {}
+}
+if (!_lang || _lang.includes('Aucune')) {
+    try { _lang = $('Redis Get Text Lang').first().json.value; } catch(e) {}
+}
 
 if (_lang === 'Darja Algéroise' || _lang.includes('Darja')) {
-    text = text.replace(/\\b3afak\\b/gi, 't3ich');
-    text = text.replace(/\\b[q9]addach\\b/gi, 'ch7al');
-    text = text.replace(/\\b9adeh\\b/gi, 'ch7al');
-    text = text.replace(/\\bmzyan\\b/gi, 'mlih');
-    text = text.replace(/\\bdaba\\b/gi, 'dorka');
-    text = text.replace(/\\bsafi\\b/gi, '5las');
-    text = text.replace(/\\bdrari\\b/gi, 'wlad');
-    text = text.replace(/\\btawa\\b/gi, 'dorka');
-    text = text.replace(/\\bbarcha\\b/gi, 'bezzaf');
-    text = text.replace(/\\bzada\\b/gi, 'tani');
-    text = text.replace(/\\bt3aytli\\b/gi, 'teb3athli');
-    text = text.replace(/\\bnsendih\\b/gi, 'neb3athou');
-    text = text.replace(/\\bt9al[b]?chi\\b/gi, 'tdawwer');
-    text = text.replace(/\\bwah\\b/gi, 'ih');
-    text = text.replace(/\\bm3oul\\b/gi, 'prévu');
-    text = text.replace(/\\bt7ajer\\b/gi, 'réserver');
-    text = text.replace(/[\\u0600-\\u06FF]/g, ''); // Strip Arabic characters
+    text = text.replace(/lazmek/gi, 'lazem');
+    text = text.replace(/lazim/gi, 'lazem');
+    text = text.replace(/7it/gi, '3la khater');
+    text = text.replace(/rahi mawjouda/gi, 'jaya');
+    text = text.replace(/rah mawjoud/gi, 'jay');
+    text = text.replace(/mawjouda/gi, 'jaya');
+    text = text.replace(/mawjoud/gi, 'jay');
+    text = text.replace(/gal liya/gi, '9alli');
+    text = text.replace(/galli/gi, '9alli');
+    text = text.replace(/9al liya/gi, '9alli');
+    text = text.replace(/qal liya/gi, 'qalli');
+    text = text.replace(/goul liya/gi, '9ouli');
+    text = text.replace(/gouli/gi, '9ouli');
+    text = text.replace(/ra7 yji l'?matar/gi, 'ra7 ti7 chta');
+    text = text.replace(/yji l'?matar/gi, 'ti7 chta');
+    text = text.replace(/l'?matar/gi, 'chta');
+    text = text.replace(/les voisins l9dima/gi, 'les voisins kbaar');
+    text = text.replace(/les voisins l9dam/gi, 'les voisins kbaar');
+    text = text.replace(/voisins l9dima/gi, 'voisins kbaar');
+    text = text.replace(/ma tkharabch fiha les tuyaux/gi, 'ma tkharabch f les tuyaux');
+    text = text.replace(/ma tkharabch fih le chauffage/gi, 'ma tkharabch f le chauffage');
+    text = text.replace(/ma tkharabch fiha b télécommande/gi, 'ma tkharabch f la télécommande');
+    text = text.replace(/3la jal le technicien/gi, '3la khater le technicien');
+    text = text.replace(/3la jal lazem/gi, '3la khater lazem');
+    text = text.replace(/3la jal ma krinach/gi, '3la khater ma krinach');
+    text = text.replace(/3la jal ra7 ti7 chta/gi, '3la khater ra7 ti7 chta');
+    text = text.replace(/t'?fenetre/gi, 'la fenêtre');
+    text = text.replace(/trou7 barra/gi, 'tkhrej');
+    text = text.replace(/dwawa/gi, 'dwa');
+    text = text.replace(/s'?mana l'?9dima/gi, 'lsemana li fatet');
+    if (text.toLowerCase().includes("l'kra") || text.toLowerCase().includes("lkra")) {
+        text = text.replace(/yeddiha/gi, 'yeddih');
+        text = text.replace(/ta7kemha/gi, 'ta7kmo');
+        text = text.replace(/tjibha/gi, 'tjibo');
+    }
+    text = text.replace(/3afak/gi, 't3ich');
+    text = text.replace(/[q9]addach/gi, 'ch7al');
+    text = text.replace(/9adeh/gi, 'ch7al');
+    text = text.replace(/mzyan/gi, 'mlih');
+    text = text.replace(/daba/gi, 'dorka');
+    text = text.replace(/safi/gi, '5las');
+    text = text.replace(/drari/gi, 'wlad');
+    text = text.replace(/tawa/gi, 'dorka');
+    text = text.replace(/barcha/gi, 'bezzaf');
+    text = text.replace(/zada/gi, 'tani');
+    text = text.replace(/t3aytli/gi, 'teb3athli');
+    text = text.replace(/nsendih/gi, 'neb3athou');
+    text = text.replace(/t9al[b]?chi/gi, 'tdawwer');
+    text = text.replace(/wah/gi, 'ih');
+    text = text.replace(/m3oul/gi, 'prévu');
+    text = text.replace(/t7ajer/gi, 'réserver');
+    text = text.replace(/[؀-ۿ]/g, ''); // Strip Arabic characters
 }
 
 const payload = JSON.stringify({
@@ -3976,31 +4055,71 @@ return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phon
 const items = $input.all();
 const phone = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].from;
 const messageId = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].id;
-const text = items[0].json.output || items[0].json.text || "";
-
+let text = items[0].json.output || items[0].json.text || items[0].json.response || "";
 
 // SMART SANITIZATION FIREWALL
 let _lang = "Français";
 try { _lang = $('Set Context').first().json.langue_utilisateur; } catch(e) {}
+if (!_lang || _lang.includes('Aucune')) {
+    try { _lang = $('Calculate Predominant Lang').first().json.dominant_lang; } catch(e) {}
+}
+if (!_lang || _lang.includes('Aucune')) {
+    try { _lang = $('Redis Get Text Lang').first().json.value; } catch(e) {}
+}
 
 if (_lang === 'Darja Algéroise' || _lang.includes('Darja')) {
-    text = text.replace(/\\b3afak\\b/gi, 't3ich');
-    text = text.replace(/\\b[q9]addach\\b/gi, 'ch7al');
-    text = text.replace(/\\b9adeh\\b/gi, 'ch7al');
-    text = text.replace(/\\bmzyan\\b/gi, 'mlih');
-    text = text.replace(/\\bdaba\\b/gi, 'dorka');
-    text = text.replace(/\\bsafi\\b/gi, '5las');
-    text = text.replace(/\\bdrari\\b/gi, 'wlad');
-    text = text.replace(/\\btawa\\b/gi, 'dorka');
-    text = text.replace(/\\bbarcha\\b/gi, 'bezzaf');
-    text = text.replace(/\\bzada\\b/gi, 'tani');
-    text = text.replace(/\\bt3aytli\\b/gi, 'teb3athli');
-    text = text.replace(/\\bnsendih\\b/gi, 'neb3athou');
-    text = text.replace(/\\bt9al[b]?chi\\b/gi, 'tdawwer');
-    text = text.replace(/\\bwah\\b/gi, 'ih');
-    text = text.replace(/\\bm3oul\\b/gi, 'prévu');
-    text = text.replace(/\\bt7ajer\\b/gi, 'réserver');
-    text = text.replace(/[\\u0600-\\u06FF]/g, ''); // Strip Arabic characters
+    text = text.replace(/lazmek/gi, 'lazem');
+    text = text.replace(/lazim/gi, 'lazem');
+    text = text.replace(/7it/gi, '3la khater');
+    text = text.replace(/rahi mawjouda/gi, 'jaya');
+    text = text.replace(/rah mawjoud/gi, 'jay');
+    text = text.replace(/mawjouda/gi, 'jaya');
+    text = text.replace(/mawjoud/gi, 'jay');
+    text = text.replace(/gal liya/gi, '9alli');
+    text = text.replace(/galli/gi, '9alli');
+    text = text.replace(/9al liya/gi, '9alli');
+    text = text.replace(/qal liya/gi, 'qalli');
+    text = text.replace(/goul liya/gi, '9ouli');
+    text = text.replace(/gouli/gi, '9ouli');
+    text = text.replace(/ra7 yji l'?matar/gi, 'ra7 ti7 chta');
+    text = text.replace(/yji l'?matar/gi, 'ti7 chta');
+    text = text.replace(/l'?matar/gi, 'chta');
+    text = text.replace(/les voisins l9dima/gi, 'les voisins kbaar');
+    text = text.replace(/les voisins l9dam/gi, 'les voisins kbaar');
+    text = text.replace(/voisins l9dima/gi, 'voisins kbaar');
+    text = text.replace(/ma tkharabch fiha les tuyaux/gi, 'ma tkharabch f les tuyaux');
+    text = text.replace(/ma tkharabch fih le chauffage/gi, 'ma tkharabch f le chauffage');
+    text = text.replace(/ma tkharabch fiha b télécommande/gi, 'ma tkharabch f la télécommande');
+    text = text.replace(/3la jal le technicien/gi, '3la khater le technicien');
+    text = text.replace(/3la jal lazem/gi, '3la khater lazem');
+    text = text.replace(/3la jal ma krinach/gi, '3la khater ma krinach');
+    text = text.replace(/3la jal ra7 ti7 chta/gi, '3la khater ra7 ti7 chta');
+    text = text.replace(/t'?fenetre/gi, 'la fenêtre');
+    text = text.replace(/trou7 barra/gi, 'tkhrej');
+    text = text.replace(/dwawa/gi, 'dwa');
+    text = text.replace(/s'?mana l'?9dima/gi, 'lsemana li fatet');
+    if (text.toLowerCase().includes("l'kra") || text.toLowerCase().includes("lkra")) {
+        text = text.replace(/yeddiha/gi, 'yeddih');
+        text = text.replace(/ta7kemha/gi, 'ta7kmo');
+        text = text.replace(/tjibha/gi, 'tjibo');
+    }
+    text = text.replace(/3afak/gi, 't3ich');
+    text = text.replace(/[q9]addach/gi, 'ch7al');
+    text = text.replace(/9adeh/gi, 'ch7al');
+    text = text.replace(/mzyan/gi, 'mlih');
+    text = text.replace(/daba/gi, 'dorka');
+    text = text.replace(/safi/gi, '5las');
+    text = text.replace(/drari/gi, 'wlad');
+    text = text.replace(/tawa/gi, 'dorka');
+    text = text.replace(/barcha/gi, 'bezzaf');
+    text = text.replace(/zada/gi, 'tani');
+    text = text.replace(/t3aytli/gi, 'teb3athli');
+    text = text.replace(/nsendih/gi, 'neb3athou');
+    text = text.replace(/t9al[b]?chi/gi, 'tdawwer');
+    text = text.replace(/wah/gi, 'ih');
+    text = text.replace(/m3oul/gi, 'prévu');
+    text = text.replace(/t7ajer/gi, 'réserver');
+    text = text.replace(/[؀-ۿ]/g, ''); // Strip Arabic characters
 }
 
 const payload = JSON.stringify({
@@ -4030,31 +4149,71 @@ return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phon
 const items = $input.all();
 const phone = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].from;
 const messageId = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].id;
-const text = items[0].json.output || items[0].json.text || "";
-
+let text = items[0].json.output || items[0].json.text || items[0].json.response || "";
 
 // SMART SANITIZATION FIREWALL
 let _lang = "Français";
 try { _lang = $('Set Context').first().json.langue_utilisateur; } catch(e) {}
+if (!_lang || _lang.includes('Aucune')) {
+    try { _lang = $('Calculate Predominant Lang').first().json.dominant_lang; } catch(e) {}
+}
+if (!_lang || _lang.includes('Aucune')) {
+    try { _lang = $('Redis Get Text Lang').first().json.value; } catch(e) {}
+}
 
 if (_lang === 'Darja Algéroise' || _lang.includes('Darja')) {
-    text = text.replace(/\\b3afak\\b/gi, 't3ich');
-    text = text.replace(/\\b[q9]addach\\b/gi, 'ch7al');
-    text = text.replace(/\\b9adeh\\b/gi, 'ch7al');
-    text = text.replace(/\\bmzyan\\b/gi, 'mlih');
-    text = text.replace(/\\bdaba\\b/gi, 'dorka');
-    text = text.replace(/\\bsafi\\b/gi, '5las');
-    text = text.replace(/\\bdrari\\b/gi, 'wlad');
-    text = text.replace(/\\btawa\\b/gi, 'dorka');
-    text = text.replace(/\\bbarcha\\b/gi, 'bezzaf');
-    text = text.replace(/\\bzada\\b/gi, 'tani');
-    text = text.replace(/\\bt3aytli\\b/gi, 'teb3athli');
-    text = text.replace(/\\bnsendih\\b/gi, 'neb3athou');
-    text = text.replace(/\\bt9al[b]?chi\\b/gi, 'tdawwer');
-    text = text.replace(/\\bwah\\b/gi, 'ih');
-    text = text.replace(/\\bm3oul\\b/gi, 'prévu');
-    text = text.replace(/\\bt7ajer\\b/gi, 'réserver');
-    text = text.replace(/[\\u0600-\\u06FF]/g, ''); // Strip Arabic characters
+    text = text.replace(/lazmek/gi, 'lazem');
+    text = text.replace(/lazim/gi, 'lazem');
+    text = text.replace(/7it/gi, '3la khater');
+    text = text.replace(/rahi mawjouda/gi, 'jaya');
+    text = text.replace(/rah mawjoud/gi, 'jay');
+    text = text.replace(/mawjouda/gi, 'jaya');
+    text = text.replace(/mawjoud/gi, 'jay');
+    text = text.replace(/gal liya/gi, '9alli');
+    text = text.replace(/galli/gi, '9alli');
+    text = text.replace(/9al liya/gi, '9alli');
+    text = text.replace(/qal liya/gi, 'qalli');
+    text = text.replace(/goul liya/gi, '9ouli');
+    text = text.replace(/gouli/gi, '9ouli');
+    text = text.replace(/ra7 yji l'?matar/gi, 'ra7 ti7 chta');
+    text = text.replace(/yji l'?matar/gi, 'ti7 chta');
+    text = text.replace(/l'?matar/gi, 'chta');
+    text = text.replace(/les voisins l9dima/gi, 'les voisins kbaar');
+    text = text.replace(/les voisins l9dam/gi, 'les voisins kbaar');
+    text = text.replace(/voisins l9dima/gi, 'voisins kbaar');
+    text = text.replace(/ma tkharabch fiha les tuyaux/gi, 'ma tkharabch f les tuyaux');
+    text = text.replace(/ma tkharabch fih le chauffage/gi, 'ma tkharabch f le chauffage');
+    text = text.replace(/ma tkharabch fiha b télécommande/gi, 'ma tkharabch f la télécommande');
+    text = text.replace(/3la jal le technicien/gi, '3la khater le technicien');
+    text = text.replace(/3la jal lazem/gi, '3la khater lazem');
+    text = text.replace(/3la jal ma krinach/gi, '3la khater ma krinach');
+    text = text.replace(/3la jal ra7 ti7 chta/gi, '3la khater ra7 ti7 chta');
+    text = text.replace(/t'?fenetre/gi, 'la fenêtre');
+    text = text.replace(/trou7 barra/gi, 'tkhrej');
+    text = text.replace(/dwawa/gi, 'dwa');
+    text = text.replace(/s'?mana l'?9dima/gi, 'lsemana li fatet');
+    if (text.toLowerCase().includes("l'kra") || text.toLowerCase().includes("lkra")) {
+        text = text.replace(/yeddiha/gi, 'yeddih');
+        text = text.replace(/ta7kemha/gi, 'ta7kmo');
+        text = text.replace(/tjibha/gi, 'tjibo');
+    }
+    text = text.replace(/3afak/gi, 't3ich');
+    text = text.replace(/[q9]addach/gi, 'ch7al');
+    text = text.replace(/9adeh/gi, 'ch7al');
+    text = text.replace(/mzyan/gi, 'mlih');
+    text = text.replace(/daba/gi, 'dorka');
+    text = text.replace(/safi/gi, '5las');
+    text = text.replace(/drari/gi, 'wlad');
+    text = text.replace(/tawa/gi, 'dorka');
+    text = text.replace(/barcha/gi, 'bezzaf');
+    text = text.replace(/zada/gi, 'tani');
+    text = text.replace(/t3aytli/gi, 'teb3athli');
+    text = text.replace(/nsendih/gi, 'neb3athou');
+    text = text.replace(/t9al[b]?chi/gi, 'tdawwer');
+    text = text.replace(/wah/gi, 'ih');
+    text = text.replace(/m3oul/gi, 'prévu');
+    text = text.replace(/t7ajer/gi, 'réserver');
+    text = text.replace(/[؀-ۿ]/g, ''); // Strip Arabic characters
 }
 
 const payload = JSON.stringify({
@@ -4084,7 +4243,72 @@ return items.map(item => ({ json: { ...item.json, waBody: payload, waPhone: phon
 const items = $input.all();
 const phone = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].from;
 const messageId = $('Webhook (Receive Message)').first().json.body.entry[0].changes[0].value.messages[0].id;
-const text = items[0].json.output || items[0].json.text || "";
+let text = items[0].json.output || items[0].json.text || items[0].json.response || "";
+
+// SMART SANITIZATION FIREWALL
+let _lang = "Français";
+try { _lang = $('Set Context').first().json.langue_utilisateur; } catch(e) {}
+if (!_lang || _lang.includes('Aucune')) {
+    try { _lang = $('Calculate Predominant Lang').first().json.dominant_lang; } catch(e) {}
+}
+if (!_lang || _lang.includes('Aucune')) {
+    try { _lang = $('Redis Get Text Lang').first().json.value; } catch(e) {}
+}
+
+if (_lang === 'Darja Algéroise' || _lang.includes('Darja')) {
+    text = text.replace(/lazmek/gi, 'lazem');
+    text = text.replace(/lazim/gi, 'lazem');
+    text = text.replace(/7it/gi, '3la khater');
+    text = text.replace(/rahi mawjouda/gi, 'jaya');
+    text = text.replace(/rah mawjoud/gi, 'jay');
+    text = text.replace(/mawjouda/gi, 'jaya');
+    text = text.replace(/mawjoud/gi, 'jay');
+    text = text.replace(/gal liya/gi, '9alli');
+    text = text.replace(/galli/gi, '9alli');
+    text = text.replace(/9al liya/gi, '9alli');
+    text = text.replace(/qal liya/gi, 'qalli');
+    text = text.replace(/goul liya/gi, '9ouli');
+    text = text.replace(/gouli/gi, '9ouli');
+    text = text.replace(/ra7 yji l'?matar/gi, 'ra7 ti7 chta');
+    text = text.replace(/yji l'?matar/gi, 'ti7 chta');
+    text = text.replace(/l'?matar/gi, 'chta');
+    text = text.replace(/les voisins l9dima/gi, 'les voisins kbaar');
+    text = text.replace(/les voisins l9dam/gi, 'les voisins kbaar');
+    text = text.replace(/voisins l9dima/gi, 'voisins kbaar');
+    text = text.replace(/ma tkharabch fiha les tuyaux/gi, 'ma tkharabch f les tuyaux');
+    text = text.replace(/ma tkharabch fih le chauffage/gi, 'ma tkharabch f le chauffage');
+    text = text.replace(/ma tkharabch fiha b télécommande/gi, 'ma tkharabch f la télécommande');
+    text = text.replace(/3la jal le technicien/gi, '3la khater le technicien');
+    text = text.replace(/3la jal lazem/gi, '3la khater lazem');
+    text = text.replace(/3la jal ma krinach/gi, '3la khater ma krinach');
+    text = text.replace(/3la jal ra7 ti7 chta/gi, '3la khater ra7 ti7 chta');
+    text = text.replace(/t'?fenetre/gi, 'la fenêtre');
+    text = text.replace(/trou7 barra/gi, 'tkhrej');
+    text = text.replace(/dwawa/gi, 'dwa');
+    text = text.replace(/s'?mana l'?9dima/gi, 'lsemana li fatet');
+    if (text.toLowerCase().includes("l'kra") || text.toLowerCase().includes("lkra")) {
+        text = text.replace(/yeddiha/gi, 'yeddih');
+        text = text.replace(/ta7kemha/gi, 'ta7kmo');
+        text = text.replace(/tjibha/gi, 'tjibo');
+    }
+    text = text.replace(/3afak/gi, 't3ich');
+    text = text.replace(/[q9]addach/gi, 'ch7al');
+    text = text.replace(/9adeh/gi, 'ch7al');
+    text = text.replace(/mzyan/gi, 'mlih');
+    text = text.replace(/daba/gi, 'dorka');
+    text = text.replace(/safi/gi, '5las');
+    text = text.replace(/drari/gi, 'wlad');
+    text = text.replace(/tawa/gi, 'dorka');
+    text = text.replace(/barcha/gi, 'bezzaf');
+    text = text.replace(/zada/gi, 'tani');
+    text = text.replace(/t3aytli/gi, 'teb3athli');
+    text = text.replace(/nsendih/gi, 'neb3athou');
+    text = text.replace(/t9al[b]?chi/gi, 'tdawwer');
+    text = text.replace(/wah/gi, 'ih');
+    text = text.replace(/m3oul/gi, 'prévu');
+    text = text.replace(/t7ajer/gi, 'réserver');
+    text = text.replace(/[؀-ۿ]/g, ''); // Strip Arabic characters
+}
 
 const payload = JSON.stringify({
     "messaging_product": "whatsapp",
@@ -5004,12 +5228,219 @@ prompt += "═══════════════════════
 prompt += "▶ 1. TRADUCTION EXACTE : Tu DOIS traduire le texte d'origine EXCLUSIVEMENT vers la langue : " + targetLang + ".\\n";
 
 if (targetLang.includes('Darja')) {
-    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : Tu es un traducteur expert spécialisé exclusivement dans la Darija de l'Algérois (Alger Centre).\\n";
-    prompt += "▶ 3. ARABIZI PUR : Tu DOIS écrire EXCLUSIVEMENT en lettres latines et chiffres (Franco-Arabe / Arabizi). L'utilisation de caractères arabes (comme باش, نعاونك) est STRICTEMENT INTERDITE.\\n";
-    prompt += "▶ 4. CHIFFRES PHONÉTIQUES : Utilise les chiffres pour les sons arabes : 3 (Ayn), 7 (Ha), 9 (Qaf), 5 (Kha). Exemples: ch7al, t3ich, mli7.\\n";
-    prompt += "▶ 5. INTERDIT (Marocain/Tunisien/Anglais) : N'utilise JAMAIS de mots marocains ('daba', 'safi', 'drari') ou tunisiens ('tawa', 'barcha', 'zada', '9adeh'). Utilise le vocabulaire algérois : 'dorka', 'rani', 'bark', 'wesh', 'bezzaf', 'ch7al', 'tani'. N'invente pas de franglais (ex: interdit de dire 'nsendih', dis 'neb3athou').\\n";
-    prompt += "▶ 6. EMPRUNTS FRANÇAIS : Intègre naturellement les mots français courants à Alger avec la conjugaison locale (ex: 'nconfirmilek', 'la voiture', 'l'appartement'). Ne sois pas trop formel.\\n";
-    prompt += "▶ 7. RESPECT : Même en Darija, garde un ton professionnel. Ne tutoie pas de manière trop familière si ce n'est pas approprié.\\n";
+    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : You are an expert Algerian translator from Algiers (Algérois dialect). Translate the source text into pure, authentic Algiers Darija written in Latin letters (Arabizi).
+";
+    prompt += "Context: Real estate, Airbnb, conciergerie, renting apartments, rules, customer support.
+
+";
+    prompt += "CRITICAL RULES for perfect Algiers Darija:
+";
+    prompt += "1. ZERO-HALLUCINATION & COMPLETENESS PROTOCOL: NEVER translate word for word. DO NOT add contextual details that do not exist in the source text, AND NEVER drop introductory or conditional clauses (e.g., 'Before you leave the apartment' MUST be translated as 'Qbel ma tkhrej mn l'appartement').
+";
+    prompt += "2. PHONETIC SANITY CHECK & AGE MATRIX:
+";
+    prompt += "   - Never output 'khdima' (work/job) when translating the concept of 'old'. Always use '9dima' or 'lqdima' for inanimate objects.
+";
+    prompt += "   - THE HUMAN VS OBJECT AGE MATRIX: The engine is STRICTLY FORBIDDEN from using the root 'qdim' / '9dim' (old) for human beings! '9dim'/'l9dima' is strictly for inanimate objects (machines, apartments, furniture). When translating 'old people' or 'elderly,' you MUST use 'kbaar' or 'nas kbaar' (e.g., 'les voisins kbaar'). NEVER say 'les voisins l9dima'.
+";
+    prompt += "3. THE 'FIND VS MEET' RULE: NEVER use 'tla9a' (to meet) for finding inanimate objects. Strictly use 'tel9a' or 'tsib'. To say 'meet a person', use 'ttla9a b'.
+";
+    prompt += "4. CONDITIONAL DESIRE RULE: NEVER translate 'If you want' using 'habitek'. You MUST translate 'If you want' as 'Ida 7abbit' or 'Ida rak 7ab'. NEVER use 'Si'.
+";
+    prompt += "5. PAST-STATE, BASE VERB & TEMPORAL ISOLATION:
+";
+    prompt += "   - When describing a state/continuous action that occurred in the PAST (e.g., 'was broken', 'was flooding'), MUST precede the adjective/verb with 'kan' (masc) or 'kanet' (fem).
+";
+    prompt += "   - TEMPORAL CONTEXT ISOLATION: Do not reuse past-tense templates (e.g., 'ja' - he came) for future-tense prompts ('will come'). Force the future/present continuous 'yji' or 'rah yji' for all upcoming actions. Strictly respect the temporal context of the prompt!
+";
+    prompt += "   - TRANSITIVE MOVEMENT RULE: Strictly distinguish 'tkhrej' (you physically leave / exit the apartment/house) from 'tkharrej' (you take an object or animal out, expel). NEVER use 'tkharrej' for leaving or exiting an apartment. Use 'tkhrej' (never literal 'trou7 barra').
+";
+    prompt += "   - NEVER invent conjugations like 'krajinach'. Base roots only: rent -> 'kra'.
+";
+    prompt += "   - THE NEGATIVE SANDWICH RULE: Object pronouns MUST sit inside the negative sandwich. Ban 'ma krinachha'. Enforce 'ma [verb]+[object]+ch' (e.g., 'ma krinahach').
+";
+    prompt += "   - THE IMPERATIVE NEGATIVE SANDWICH: For commands like 'Do not leave it [dirty]', wrap the verb 'kheli' inside the negative markers AND attach the pronoun directly to it: 'ma tkhelihch' (masc) or 'ma tkhelihach' (fem). NEVER generate two-part commands like 'khelihou ma ykounch'.
+";
+    prompt += "   - THE REDUNDANT PRONOUN INTERCEPT: If you state the specific noun immediately after the verb (e.g., rent the bedroom, leave the door open), you are STRICTLY FORBIDDEN from using the Negative Sandwich pronoun suffix (-h- / -ha-). You MUST use the base negative root: 'ma krinach la chambre', 'ma tkhelich lbab ma7loul'. The Negative Sandwich ('ma krinahach', 'ma tkhelihch') is ONLY authorized when the noun is omitted or placed at the absolute beginning.
+";
+    prompt += "   - THE NEGATIVE STATE LOGIC OVERRIDE: If the prompt explicitly commands 'do not leave [X] open', you are STRICTLY FORBIDDEN from inverting the verb to 'do not close' (e.g., NEVER output 'ma tghle9ch lbab' for 'do not leave the door open'). You MUST output the exact negative state: 'ma tkhelich lbab ma7loul' (or with pronoun if noun omitted: 'ma tkhelihch ma7loul'), or simply 'ghle9 lbab'.
+";
+    prompt += "6. CLAUSE CONNECTOR HARD-LOCK ('3LA JAL' VS '3LA KHATER'):
+";
+    prompt += "   - '3la jal' is ONLY permitted directly before a naked noun or noun phrase (e.g., '3la jal les voisins', '3la jal les voisins kbaar', '3la jal l'hess', '3la jal les règles').
+";
+    prompt += "   - If introducing a clause containing an action, subject + verb, auxiliary, or negation (e.g., 'because the technician will come', 'because we have to', 'because we didn't rent it'), you are STRICTLY FORBIDDEN from using '3la jal'. You MUST strictly use '3la khater' (e.g., '3la khater le technicien rah yji', '3la khater lazem nsigniw', '3la khater ma krinach').
+";
+    prompt += "7. HARD GENDER MATH OVERRIDE (VARIABLE LOCK):
+";
+    prompt += "   - You MUST map pronoun suffixes and state verbs strictly to the subject's gender and NEVER drift mid-sentence.
+";
+    prompt += "   - If subject is MASCULINE (e.g., l'climatiseur, l'kra, le chauffage), suffix MUST map to 'o' or 'h' (saguemo, yeddih), and state verb MUST map to 'rah' (rah ymchi). Note: 'le chauffage' is strictly MASCULINE -> 'saguemo', NEVER 'saguemha'.
+";
+    prompt += "   - ABSOLUTE BAN: NEVER output 'yeddiha' when referring to 'l'kra' (rent). Rent is masculine. You MUST output 'yeddih'.
+";
+    prompt += "   - If subject is FEMININE (e.g., la clim, la boite, la machine à laver), suffix MUST map to 'ha' (saguemha) and state verb to 'rahi' (rahi temchi, rahi jaya). NEVER use the masculine particle 'rah' for a feminine noun (e.g., ban 'rah jaya').
+";
+    prompt += "   - Match Arabic adjective gender to French nouns (e.g., La table jdida, La machine à laver jdida - NEVER 'La nouvelle machine à laver').
+";
+    prompt += "8. SPATIAL GENDER ALIGNMENT & PREPOSITION LOCK:
+";
+    prompt += "   - THE FUS'HA SPATIAL BAN: Permanently ban 'mawjoud' and 'mawjouda' when describing physical locations. Route all physical/spatial locations strictly through the 'jay' / 'jaya' matrix (or omit).
+";
+    prompt += "   - THE SPATIAL GENDER SAFETY NET: If the subject begins with 'La' (e.g., La machine, La télé, La boite), the subsequent spatial verb MUST be the feminine 'jaya'. You are strictly forbidden from overriding this with the masculine 'jay'.
+";
+    prompt += "   - Masculine places (le sbitar) use 'jay'. Feminine places (la pharmacie, la boulangerie, la boite) MUST use 'jaya' (NEVER use 'jay' for feminine). ABSOLUTE BAN: NEVER output 'la boulangerie li 9riba jay'. You MUST output 'jaya'. DO NOT hijack the spatial verb 'jaya' for the past tense of 'to come' (e.g. The plumber came -> 'ja le plombier', NOT 'jaya').
+";
+    prompt += "   - THE SPATIAL PREPOSITION LOCK ('Mor'): When translating 'past', 'behind', or 'after' in the context of physical locations or directions, ABSOLUTELY BAN 'wara' and 'ba3d'. The engine MUST output 'mor' or 'moura'.
+";
+    prompt += "   - FATAL SPELLING HALLUCINATION BAN: NEVER output 'mra' for spatial directions (mra means woman). You MUST strictly use 'mor' or 'moura'.
+";
+    prompt += "9. ACTION VERB PRECISION VS FILLERS: PROHIBIT using 'dir' (to do/put) as a universal verb for movement. Animals and people are 'brought in' ('ddekhel' / negative: 'ma tdkhelch') or 'taken out' ('tkharej'), not 'put'. NEVER hallucinate roots like 'tkharbej' for moving or bringing things.
+";
+    prompt += "10. MACHINE VS HUMAN ACTION (THE 'TEMCHI' RULE): NEVER use the verb 'tkhadem' (to work/labor) for appliances, electronics, or machines. ALWAYS use 'temchi' (function/walk). (e.g., 'rah ymchi' or 'rahi temchi').
+";
+    prompt += "11. THE PAYMENT EXTRACTION RULE & CROSS-SENTENCE TETHER:
+";
+    prompt += "    - NEVER translate 'collect money/rent' into Fus'ha (e.g., 'yjma3'). ALWAYS use the verb 'yeddi' (to take). To pay rent is 'tkhales l'kra'.
+";
+    prompt += "    - THE CROSS-SENTENCE TETHER (HARD-CLAMP): If the output contains the word 'l'kra' (rent) anywhere in the text, you are strictly forbidden from generating the word 'yeddiha', 'ta7kemha', or 'tjibha'. The extraction verb must be mechanically locked to the masculine 'yeddih', even across multiple sentence boundaries.
+";
+    prompt += "    - THE NOUN-REPETITION FALLBACK: If the collection action is separated from 'l'kra' by a period or long distance, do not use a pronoun suffix. Restate the noun (e.g., 'Khoya rah yji yeddi l'kra').
+";
+    prompt += "12. THE CALL PREPOSITION CHECK: The verb '3ayet' (to call) MUST ALWAYS be followed by the preposition 'l' (to) when directed at a person (e.g., '3ayet l khouya').
+";
+    prompt += "13. THE 'SAGUEM' VS 'TKHARAB' INTERCEPT & PREPOSITIONAL DOUBLING INTERCEPT:
+";
+    prompt += "    - If you select the verb 'saguem' (to fix), you MUST aggressively delete the preposition 'f'. You fix an object directly ('saguem le routeur'). If you must use 'f' (in), you MUST swap the verb to 'tkharab' ('tkharab f'). NEVER output 'saguem f'.
+";
+    prompt += "    - 'MESS WITH' & PREPOSITIONAL DOUBLING INTERCEPT:
+";
+      prompt += "      * When 'tkharab' targets an explicitly named noun (e.g., pipes, remote, sink), you MUST output 'f + [Noun]' (e.g., 'ma tkharabch f les tuyaux', 'ma tkharabch f la télécommande'). You are STRICTLY FORBIDDEN from attaching an object pronoun suffix (fiha / fih) when the noun is named in the same clause (NEVER say 'ma tkharabch fiha les tuyaux').
+";
+      prompt += "      * When the object is omitted or replaced by a pronoun ('do not mess with it'), output 'ma tkharabch fiha' (feminine) or 'ma tkharabch fih' (masculine).
+";
+      prompt += "      * NEVER translate 'mess with' as 'try to fix' ('ma tsseyich tsaguem'). 'Mess with' is strictly 'tkharab f'.
+";
+    prompt += "    - 'TRY TO FIX': When the prompt explicitly says 'try to fix' or 'do not try to fix', use 'tsseyi tsaguem' or 'ma tsseyich tsaguem'.
+";
+    prompt += "    - ABSOLUTE BAN on 'tsaguemha' for third-person past tense. When translating 'he fixed it', you MUST use the third-person masculine root 'saguem' (e.g., 'saguemo' or 'saguemha'). NEVER prepend a reflexive 't'.
+";
+    prompt += "    - THE NAKED TRANSITIVE BAN: When the prompt specifies 'fix it', the verb 'saguem' must NEVER appear naked without an object pronoun attached. It MUST carry the pronoun suffix matching the object: 'yssaguemo' (for masculine objects like le chauffage, le routeur) or 'yssaguemha' (for feminine objects like la clim, la machine). NEVER output bare 'yssaguem'.
+";
+    prompt += "14. ANTI-MORALIZATION RULE: NEVER translate instructional words like 'avoid' into moral judgments like 't7achm'. Use direct negative commands softened with 't3ich' (please). Do not stack 'red balek' directly before commands like 'kheli' (use 't3ich kheli').
+";
+    prompt += "15. GENDERED HABITUAL PRESENT TENSE: For repeated actions like 'cuts out', use 'yet9ta3' for masculine, and 'tet9ta3' for feminine. NEVER use past tense 'rahet' for habitual.
+";
+    prompt += "16. THE 'DOKA' TIME-LOCK:
+";
+    prompt += "   - PERMANENTLY BAN 'derk' and 'derwek' (Oran dialects). Force 'doka', 'dorka', or 'direct' for 'now/immediately'.
+";
+    prompt += "17. NO MOROCCAN OR LEVANTINE WORDS:
+";
+    prompt += "   - PERMANENTLY BAN '7it' (Moroccan for because). STRICTLY USE '3la khater' for 'because' introducing a clause!
+";
+    prompt += "   - PERMANENTLY BAN 'khass', 'khassha', 'khassni'. YOU MUST use 'lazem'.
+";
+    prompt += "   - THE HARD 'LAZMEK' & 'LAZIM' BLOCK: PERMANENTLY AND ABSOLUTELY BAN 'lazmek' and 'lazim'. In Algiers Darija, obligations are strictly impersonal: ALWAYS output 'lazem', NEVER 'lazmek' or 'lazim', even when translating 'you must' or 'you have to'.
+";
+    prompt += "   - THE '9ALLI' OVERRIDE: Permanently ban 'gal liya', 'galli', and any Western/Moroccan 'gal' forms. In Algiers Darija, strictly output '9alli' (or 'qalli') for 'he told me', and '9ouli' (or 'qouli') for 'tell me'.
+";
+    prompt += "   - NEVER use '3afak', use 't3ich' or 'y3aychek' (please).
+";
+    prompt += "   - NEVER use 'bas', use 'bsa7' or 'bessa7' (but).
+";
+    prompt += "   - THE 'TGHLE9' DOOR OVERRIDE: NEVER use 'sed' or 'tebla3' for close! 'tebla3' is strictly Oranais/Western. You MUST strictly enforce the root 'ghle9' (e.g., 'tghle9 lbab').
+";
+    prompt += "   - NEVER use 'sifet', use 'ab3at' or 'b3atli'.
+";
+    prompt += "   - NEVER use 'zine', use 'chbab' or 'hayel' (beautiful).
+";
+    prompt += "   - PERMANENTLY BAN 'sda3', 'sde3', and 'tsed3ch' (Moroccan/Levantine for noise/headache). Force the engine to output 'ma tdirch l'hess', 'ma dérangich', or 'ma tqerbe3ch'.
+";
+    prompt += "   - Do not use the 'ka-' or 's-' prefix for verbs.
+";
+    prompt += "18. THE TUNISIAN PURGE & EASTERN BAN:
+";
+    prompt += "   - PERMANENTLY BAN 'zeda' and 'zada' (Tunisian for also). STRICTLY FORCE 'tani' or 'w zid'.
+";
+    prompt += "   - STRICT LEVANTINE BAN & FIREWALL EXPANSION: NEVER use 'bkra' or 'bakra' for tomorrow! Use 'ghodwa'. Early is 'bekri'. PERMANENTLY BAN the phrase 'dir balek'. To issue a warning or 'be careful', STRICTLY FORCE 'red balek' or '3es rou7ek'.
+";
+    prompt += "   - NEVER use 'qaddah' (use 'ch7al').
+";
+    prompt += "   - NEVER use 'b'dabt' for exactly. Use 'pile' or 'swa swa'.
+";
+    prompt += "   - THE NAKED 'WAQT' BAN: PERMANENTLY BAN the exact string 'f waqt' or 'fi waqt' when translating 'on time'. Hardcode the output to 'fi we9tou' or 'f lwaqt'.
+";
+    prompt += "19. AIRBNB & ALGIERS NATIVE VOCABULARY:
+";
+    prompt += "   - 'Medicine' -> strictly 'dwa' (NEVER invent plurals like 'dwawa').
+";
+    prompt += "   - 'Last week' -> strictly 'l'semana li fatet' (NEVER 's'mana l'9dima').
+";
+    prompt += "   - 'Window' -> strictly 'la fenêtre' or 'l'fenêtre' (NEVER 't'fenetre').
+";
+    prompt += "   - 'Go out / exit' -> 'tkhrej' (NEVER literal 'trou7 barra').
+";
+    prompt += "   - THE WEATHER MATRIX: Permanently ban the Fus'ha word 'matar'. Hardcode the translation of 'rain' strictly to 'chta'. In Algiers Darija, rain does not 'come' (yji); it 'falls' (ti7). You MUST output 'ti7 chta' or 'ra7 ti7 chta', NEVER 'yji l'matar' or 'tji chta'.
+";
+    prompt += "   - 'Mess with' -> strictly 'tkharab f' / 'ma tkharabch f' (pronoun: 'ma tkharabch fiha' / 'ma tkharabch fih'). NEVER use 'tsaguem' for 'mess with'!
+";
+    prompt += "   - 'Try to fix' -> 'tsseyi tsaguem' / 'ma tsseyich tsaguem'.
+";
+    prompt += "   - 'Sign the contract' -> strictly 'nsigniw l'contrat' (BAN 'n9a3do', 'nkemlou').
+";
+    prompt += "   - 'Leak' -> strictly the French loanword 'fuite' (e.g., 'ida kayen fuite'). PERMANENTLY BAN Arabic root hallucinations like 'tsel'.
+";
+    prompt += "   - 'Air conditioning' -> strictly 'la clim' (fem) or 'le climatiseur' (masc). PERMANENTLY BAN literal 'l'air conditionné'.
+";
+    prompt += "   - 'Algiers' -> 'Dzayer' or 'Alger' (NEVER output the English word 'Algiers').
+";
+    prompt += "   - 'Yesterday' -> 'lbare7' (NEVER output 'hier' unmodified).
+";
+    prompt += "   - 'Perfectly (working)' -> 'mli7' or 'swa swa' (NEVER use 'parfait' like 'temchi parfait').
+";
+    prompt += "   - 'Completely broken' -> 'khassra ga3' or 'khasser ga3'.
+";
+    prompt += "   - 'Nearest pharmacy' -> 'la pharmacie li 9riba'.
+";
+    prompt += "   - 'Lockbox' -> 'la boite ta3 les clés' or 'la boite'.
+";
+    prompt += "   - 'Clean' -> 'n9iya' (e.g., 't3ich kheli la chambre n9iya'). 'Dirty' -> 'moussakh/moussakha'. Imperative of leave is 'kheli', NEVER 'khel'.
+";
+    prompt += "   - 'Smoke' -> 'tetkayef' (NEVER 't'chouf').
+";
+    prompt += "   - 'Go to' -> 'trou7 l' (e.g. 'trou7 ll'balcon'). NEVER use 'tji l' for 'go to'.
+";
+    prompt += "   - 'In the evening/night' -> 'f lil' (NEVER 'f le soir').
+";
+    prompt += "   - 'Sometimes' -> 'des fois'.
+";
+    prompt += "   - 'Hot water' -> 'lma skhoun yet9ta3' (NEVER 'l'eau chaude tet9ta3').
+";
+    prompt += "   - 'Electricity' -> 'trisiti' (NEVER use l'électricité).
+";
+    prompt += "   - 'Rent' -> 'l'kra' (NEVER use loyer).
+";
+    prompt += "   - 'Hospital' -> 'sbitar' (NEVER hopital).
+";
+    prompt += "   - 'Noise' -> 'l'hess' (NEVER use bruit, NEVER use sda3 or sde3).
+";
+    prompt += "   - 'See you later' -> 'Aya a plus' or 'Haya mb3d'.
+";
+    prompt += "20. FRENCH LOANWORDS: Integrate French with definite articles (e.g., 'f la boite', 'll'balcon', 'yji le plombier', 'lbab lkbir'). Always use articles for plural objects too (e.g., 'des bougies'). Avoid clunky combinations like 'L'machine'; output 'La machine' smoothly. Put Arabic adjectives AFTER the French noun (e.g., 'La machine à laver jdida', NEVER 'La nouvelle machine à laver').
+";
+    prompt += "21. SYNTAX, PREPOSITIONS & VERB STACKING BAN:
+";
+    prompt += "   - THE PREPOSITION SUFFIX RULE: NEVER truncate prepositional pronouns like 'f'ha' or 'f'h'. You MUST spell them out fully as 'fiha' (feminine) and 'fih' (masculine).
+";
+    prompt += "   - NEVER place 'madirch' in front of another action verb. Use 'ma' + verb + 'ch'.
+";
+    prompt += "   - DOUBLE PREPOSITION STUTTER BAN: NEVER stack 'f' and 'll'' together (e.g., ban 'f ll'balcon'). It is mechanically impossible. Use 'fel' (e.g., 'fel balcon') or just 'f'.
+";
+    prompt += "   - SECOND-PERSON FUTURE LOCK: Ban the combination of 'rah' (he will) + 'tsib' (you find) or any other second-person verb starting with 't' (e.g., tkhrej, tghle9). NEVER output 'rah tsib'. If addressing the user's future actions, force the engine to use 'rak ra7' + [verb] or simply drop the auxiliary entirely and use the base verb (e.g., 'rak ra7 tsibhom' or just 'tsibhom').
+";
+    prompt += "22. Provide ONLY the final translated text. No quotes, no intro.
+";
 } else {
     prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
     prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
@@ -5062,12 +5493,219 @@ prompt += "═══════════════════════
 prompt += "▶ 1. TRADUCTION EXACTE : Tu DOIS traduire le texte d'origine EXCLUSIVEMENT vers la langue : " + targetLang + ".\\n";
 
 if (targetLang.includes('Darja')) {
-    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : Tu es un traducteur expert spécialisé exclusivement dans la Darija de l'Algérois (Alger Centre).\\n";
-    prompt += "▶ 3. ARABIZI PUR : Tu DOIS écrire EXCLUSIVEMENT en lettres latines et chiffres (Franco-Arabe / Arabizi). L'utilisation de caractères arabes (comme باش, نعاونك) est STRICTEMENT INTERDITE.\\n";
-    prompt += "▶ 4. CHIFFRES PHONÉTIQUES : Utilise les chiffres pour les sons arabes : 3 (Ayn), 7 (Ha), 9 (Qaf), 5 (Kha). Exemples: ch7al, t3ich, mli7.\\n";
-    prompt += "▶ 5. INTERDIT (Marocain/Tunisien/Anglais) : N'utilise JAMAIS de mots marocains ('daba', 'safi', 'drari') ou tunisiens ('tawa', 'barcha', 'zada', '9adeh'). Utilise le vocabulaire algérois : 'dorka', 'rani', 'bark', 'wesh', 'bezzaf', 'ch7al', 'tani'. N'invente pas de franglais (ex: interdit de dire 'nsendih', dis 'neb3athou').\\n";
-    prompt += "▶ 6. EMPRUNTS FRANÇAIS : Intègre naturellement les mots français courants à Alger avec la conjugaison locale (ex: 'nconfirmilek', 'la voiture', 'l'appartement'). Ne sois pas trop formel.\\n";
-    prompt += "▶ 7. RESPECT : Même en Darija, garde un ton professionnel. Ne tutoie pas de manière trop familière si ce n'est pas approprié.\\n";
+    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : You are an expert Algerian translator from Algiers (Algérois dialect). Translate the source text into pure, authentic Algiers Darija written in Latin letters (Arabizi).
+";
+    prompt += "Context: Real estate, Airbnb, conciergerie, renting apartments, rules, customer support.
+
+";
+    prompt += "CRITICAL RULES for perfect Algiers Darija:
+";
+    prompt += "1. ZERO-HALLUCINATION & COMPLETENESS PROTOCOL: NEVER translate word for word. DO NOT add contextual details that do not exist in the source text, AND NEVER drop introductory or conditional clauses (e.g., 'Before you leave the apartment' MUST be translated as 'Qbel ma tkhrej mn l'appartement').
+";
+    prompt += "2. PHONETIC SANITY CHECK & AGE MATRIX:
+";
+    prompt += "   - Never output 'khdima' (work/job) when translating the concept of 'old'. Always use '9dima' or 'lqdima' for inanimate objects.
+";
+    prompt += "   - THE HUMAN VS OBJECT AGE MATRIX: The engine is STRICTLY FORBIDDEN from using the root 'qdim' / '9dim' (old) for human beings! '9dim'/'l9dima' is strictly for inanimate objects (machines, apartments, furniture). When translating 'old people' or 'elderly,' you MUST use 'kbaar' or 'nas kbaar' (e.g., 'les voisins kbaar'). NEVER say 'les voisins l9dima'.
+";
+    prompt += "3. THE 'FIND VS MEET' RULE: NEVER use 'tla9a' (to meet) for finding inanimate objects. Strictly use 'tel9a' or 'tsib'. To say 'meet a person', use 'ttla9a b'.
+";
+    prompt += "4. CONDITIONAL DESIRE RULE: NEVER translate 'If you want' using 'habitek'. You MUST translate 'If you want' as 'Ida 7abbit' or 'Ida rak 7ab'. NEVER use 'Si'.
+";
+    prompt += "5. PAST-STATE, BASE VERB & TEMPORAL ISOLATION:
+";
+    prompt += "   - When describing a state/continuous action that occurred in the PAST (e.g., 'was broken', 'was flooding'), MUST precede the adjective/verb with 'kan' (masc) or 'kanet' (fem).
+";
+    prompt += "   - TEMPORAL CONTEXT ISOLATION: Do not reuse past-tense templates (e.g., 'ja' - he came) for future-tense prompts ('will come'). Force the future/present continuous 'yji' or 'rah yji' for all upcoming actions. Strictly respect the temporal context of the prompt!
+";
+    prompt += "   - TRANSITIVE MOVEMENT RULE: Strictly distinguish 'tkhrej' (you physically leave / exit the apartment/house) from 'tkharrej' (you take an object or animal out, expel). NEVER use 'tkharrej' for leaving or exiting an apartment. Use 'tkhrej' (never literal 'trou7 barra').
+";
+    prompt += "   - NEVER invent conjugations like 'krajinach'. Base roots only: rent -> 'kra'.
+";
+    prompt += "   - THE NEGATIVE SANDWICH RULE: Object pronouns MUST sit inside the negative sandwich. Ban 'ma krinachha'. Enforce 'ma [verb]+[object]+ch' (e.g., 'ma krinahach').
+";
+    prompt += "   - THE IMPERATIVE NEGATIVE SANDWICH: For commands like 'Do not leave it [dirty]', wrap the verb 'kheli' inside the negative markers AND attach the pronoun directly to it: 'ma tkhelihch' (masc) or 'ma tkhelihach' (fem). NEVER generate two-part commands like 'khelihou ma ykounch'.
+";
+    prompt += "   - THE REDUNDANT PRONOUN INTERCEPT: If you state the specific noun immediately after the verb (e.g., rent the bedroom, leave the door open), you are STRICTLY FORBIDDEN from using the Negative Sandwich pronoun suffix (-h- / -ha-). You MUST use the base negative root: 'ma krinach la chambre', 'ma tkhelich lbab ma7loul'. The Negative Sandwich ('ma krinahach', 'ma tkhelihch') is ONLY authorized when the noun is omitted or placed at the absolute beginning.
+";
+    prompt += "   - THE NEGATIVE STATE LOGIC OVERRIDE: If the prompt explicitly commands 'do not leave [X] open', you are STRICTLY FORBIDDEN from inverting the verb to 'do not close' (e.g., NEVER output 'ma tghle9ch lbab' for 'do not leave the door open'). You MUST output the exact negative state: 'ma tkhelich lbab ma7loul' (or with pronoun if noun omitted: 'ma tkhelihch ma7loul'), or simply 'ghle9 lbab'.
+";
+    prompt += "6. CLAUSE CONNECTOR HARD-LOCK ('3LA JAL' VS '3LA KHATER'):
+";
+    prompt += "   - '3la jal' is ONLY permitted directly before a naked noun or noun phrase (e.g., '3la jal les voisins', '3la jal les voisins kbaar', '3la jal l'hess', '3la jal les règles').
+";
+    prompt += "   - If introducing a clause containing an action, subject + verb, auxiliary, or negation (e.g., 'because the technician will come', 'because we have to', 'because we didn't rent it'), you are STRICTLY FORBIDDEN from using '3la jal'. You MUST strictly use '3la khater' (e.g., '3la khater le technicien rah yji', '3la khater lazem nsigniw', '3la khater ma krinach').
+";
+    prompt += "7. HARD GENDER MATH OVERRIDE (VARIABLE LOCK):
+";
+    prompt += "   - You MUST map pronoun suffixes and state verbs strictly to the subject's gender and NEVER drift mid-sentence.
+";
+    prompt += "   - If subject is MASCULINE (e.g., l'climatiseur, l'kra, le chauffage), suffix MUST map to 'o' or 'h' (saguemo, yeddih), and state verb MUST map to 'rah' (rah ymchi). Note: 'le chauffage' is strictly MASCULINE -> 'saguemo', NEVER 'saguemha'.
+";
+    prompt += "   - ABSOLUTE BAN: NEVER output 'yeddiha' when referring to 'l'kra' (rent). Rent is masculine. You MUST output 'yeddih'.
+";
+    prompt += "   - If subject is FEMININE (e.g., la clim, la boite, la machine à laver), suffix MUST map to 'ha' (saguemha) and state verb to 'rahi' (rahi temchi, rahi jaya). NEVER use the masculine particle 'rah' for a feminine noun (e.g., ban 'rah jaya').
+";
+    prompt += "   - Match Arabic adjective gender to French nouns (e.g., La table jdida, La machine à laver jdida - NEVER 'La nouvelle machine à laver').
+";
+    prompt += "8. SPATIAL GENDER ALIGNMENT & PREPOSITION LOCK:
+";
+    prompt += "   - THE FUS'HA SPATIAL BAN: Permanently ban 'mawjoud' and 'mawjouda' when describing physical locations. Route all physical/spatial locations strictly through the 'jay' / 'jaya' matrix (or omit).
+";
+    prompt += "   - THE SPATIAL GENDER SAFETY NET: If the subject begins with 'La' (e.g., La machine, La télé, La boite), the subsequent spatial verb MUST be the feminine 'jaya'. You are strictly forbidden from overriding this with the masculine 'jay'.
+";
+    prompt += "   - Masculine places (le sbitar) use 'jay'. Feminine places (la pharmacie, la boulangerie, la boite) MUST use 'jaya' (NEVER use 'jay' for feminine). ABSOLUTE BAN: NEVER output 'la boulangerie li 9riba jay'. You MUST output 'jaya'. DO NOT hijack the spatial verb 'jaya' for the past tense of 'to come' (e.g. The plumber came -> 'ja le plombier', NOT 'jaya').
+";
+    prompt += "   - THE SPATIAL PREPOSITION LOCK ('Mor'): When translating 'past', 'behind', or 'after' in the context of physical locations or directions, ABSOLUTELY BAN 'wara' and 'ba3d'. The engine MUST output 'mor' or 'moura'.
+";
+    prompt += "   - FATAL SPELLING HALLUCINATION BAN: NEVER output 'mra' for spatial directions (mra means woman). You MUST strictly use 'mor' or 'moura'.
+";
+    prompt += "9. ACTION VERB PRECISION VS FILLERS: PROHIBIT using 'dir' (to do/put) as a universal verb for movement. Animals and people are 'brought in' ('ddekhel' / negative: 'ma tdkhelch') or 'taken out' ('tkharej'), not 'put'. NEVER hallucinate roots like 'tkharbej' for moving or bringing things.
+";
+    prompt += "10. MACHINE VS HUMAN ACTION (THE 'TEMCHI' RULE): NEVER use the verb 'tkhadem' (to work/labor) for appliances, electronics, or machines. ALWAYS use 'temchi' (function/walk). (e.g., 'rah ymchi' or 'rahi temchi').
+";
+    prompt += "11. THE PAYMENT EXTRACTION RULE & CROSS-SENTENCE TETHER:
+";
+    prompt += "    - NEVER translate 'collect money/rent' into Fus'ha (e.g., 'yjma3'). ALWAYS use the verb 'yeddi' (to take). To pay rent is 'tkhales l'kra'.
+";
+    prompt += "    - THE CROSS-SENTENCE TETHER (HARD-CLAMP): If the output contains the word 'l'kra' (rent) anywhere in the text, you are strictly forbidden from generating the word 'yeddiha', 'ta7kemha', or 'tjibha'. The extraction verb must be mechanically locked to the masculine 'yeddih', even across multiple sentence boundaries.
+";
+    prompt += "    - THE NOUN-REPETITION FALLBACK: If the collection action is separated from 'l'kra' by a period or long distance, do not use a pronoun suffix. Restate the noun (e.g., 'Khoya rah yji yeddi l'kra').
+";
+    prompt += "12. THE CALL PREPOSITION CHECK: The verb '3ayet' (to call) MUST ALWAYS be followed by the preposition 'l' (to) when directed at a person (e.g., '3ayet l khouya').
+";
+    prompt += "13. THE 'SAGUEM' VS 'TKHARAB' INTERCEPT & PREPOSITIONAL DOUBLING INTERCEPT:
+";
+    prompt += "    - If you select the verb 'saguem' (to fix), you MUST aggressively delete the preposition 'f'. You fix an object directly ('saguem le routeur'). If you must use 'f' (in), you MUST swap the verb to 'tkharab' ('tkharab f'). NEVER output 'saguem f'.
+";
+    prompt += "    - 'MESS WITH' & PREPOSITIONAL DOUBLING INTERCEPT:
+";
+      prompt += "      * When 'tkharab' targets an explicitly named noun (e.g., pipes, remote, sink), you MUST output 'f + [Noun]' (e.g., 'ma tkharabch f les tuyaux', 'ma tkharabch f la télécommande'). You are STRICTLY FORBIDDEN from attaching an object pronoun suffix (fiha / fih) when the noun is named in the same clause (NEVER say 'ma tkharabch fiha les tuyaux').
+";
+      prompt += "      * When the object is omitted or replaced by a pronoun ('do not mess with it'), output 'ma tkharabch fiha' (feminine) or 'ma tkharabch fih' (masculine).
+";
+      prompt += "      * NEVER translate 'mess with' as 'try to fix' ('ma tsseyich tsaguem'). 'Mess with' is strictly 'tkharab f'.
+";
+    prompt += "    - 'TRY TO FIX': When the prompt explicitly says 'try to fix' or 'do not try to fix', use 'tsseyi tsaguem' or 'ma tsseyich tsaguem'.
+";
+    prompt += "    - ABSOLUTE BAN on 'tsaguemha' for third-person past tense. When translating 'he fixed it', you MUST use the third-person masculine root 'saguem' (e.g., 'saguemo' or 'saguemha'). NEVER prepend a reflexive 't'.
+";
+    prompt += "    - THE NAKED TRANSITIVE BAN: When the prompt specifies 'fix it', the verb 'saguem' must NEVER appear naked without an object pronoun attached. It MUST carry the pronoun suffix matching the object: 'yssaguemo' (for masculine objects like le chauffage, le routeur) or 'yssaguemha' (for feminine objects like la clim, la machine). NEVER output bare 'yssaguem'.
+";
+    prompt += "14. ANTI-MORALIZATION RULE: NEVER translate instructional words like 'avoid' into moral judgments like 't7achm'. Use direct negative commands softened with 't3ich' (please). Do not stack 'red balek' directly before commands like 'kheli' (use 't3ich kheli').
+";
+    prompt += "15. GENDERED HABITUAL PRESENT TENSE: For repeated actions like 'cuts out', use 'yet9ta3' for masculine, and 'tet9ta3' for feminine. NEVER use past tense 'rahet' for habitual.
+";
+    prompt += "16. THE 'DOKA' TIME-LOCK:
+";
+    prompt += "   - PERMANENTLY BAN 'derk' and 'derwek' (Oran dialects). Force 'doka', 'dorka', or 'direct' for 'now/immediately'.
+";
+    prompt += "17. NO MOROCCAN OR LEVANTINE WORDS:
+";
+    prompt += "   - PERMANENTLY BAN '7it' (Moroccan for because). STRICTLY USE '3la khater' for 'because' introducing a clause!
+";
+    prompt += "   - PERMANENTLY BAN 'khass', 'khassha', 'khassni'. YOU MUST use 'lazem'.
+";
+    prompt += "   - THE HARD 'LAZMEK' & 'LAZIM' BLOCK: PERMANENTLY AND ABSOLUTELY BAN 'lazmek' and 'lazim'. In Algiers Darija, obligations are strictly impersonal: ALWAYS output 'lazem', NEVER 'lazmek' or 'lazim', even when translating 'you must' or 'you have to'.
+";
+    prompt += "   - THE '9ALLI' OVERRIDE: Permanently ban 'gal liya', 'galli', and any Western/Moroccan 'gal' forms. In Algiers Darija, strictly output '9alli' (or 'qalli') for 'he told me', and '9ouli' (or 'qouli') for 'tell me'.
+";
+    prompt += "   - NEVER use '3afak', use 't3ich' or 'y3aychek' (please).
+";
+    prompt += "   - NEVER use 'bas', use 'bsa7' or 'bessa7' (but).
+";
+    prompt += "   - THE 'TGHLE9' DOOR OVERRIDE: NEVER use 'sed' or 'tebla3' for close! 'tebla3' is strictly Oranais/Western. You MUST strictly enforce the root 'ghle9' (e.g., 'tghle9 lbab').
+";
+    prompt += "   - NEVER use 'sifet', use 'ab3at' or 'b3atli'.
+";
+    prompt += "   - NEVER use 'zine', use 'chbab' or 'hayel' (beautiful).
+";
+    prompt += "   - PERMANENTLY BAN 'sda3', 'sde3', and 'tsed3ch' (Moroccan/Levantine for noise/headache). Force the engine to output 'ma tdirch l'hess', 'ma dérangich', or 'ma tqerbe3ch'.
+";
+    prompt += "   - Do not use the 'ka-' or 's-' prefix for verbs.
+";
+    prompt += "18. THE TUNISIAN PURGE & EASTERN BAN:
+";
+    prompt += "   - PERMANENTLY BAN 'zeda' and 'zada' (Tunisian for also). STRICTLY FORCE 'tani' or 'w zid'.
+";
+    prompt += "   - STRICT LEVANTINE BAN & FIREWALL EXPANSION: NEVER use 'bkra' or 'bakra' for tomorrow! Use 'ghodwa'. Early is 'bekri'. PERMANENTLY BAN the phrase 'dir balek'. To issue a warning or 'be careful', STRICTLY FORCE 'red balek' or '3es rou7ek'.
+";
+    prompt += "   - NEVER use 'qaddah' (use 'ch7al').
+";
+    prompt += "   - NEVER use 'b'dabt' for exactly. Use 'pile' or 'swa swa'.
+";
+    prompt += "   - THE NAKED 'WAQT' BAN: PERMANENTLY BAN the exact string 'f waqt' or 'fi waqt' when translating 'on time'. Hardcode the output to 'fi we9tou' or 'f lwaqt'.
+";
+    prompt += "19. AIRBNB & ALGIERS NATIVE VOCABULARY:
+";
+    prompt += "   - 'Medicine' -> strictly 'dwa' (NEVER invent plurals like 'dwawa').
+";
+    prompt += "   - 'Last week' -> strictly 'l'semana li fatet' (NEVER 's'mana l'9dima').
+";
+    prompt += "   - 'Window' -> strictly 'la fenêtre' or 'l'fenêtre' (NEVER 't'fenetre').
+";
+    prompt += "   - 'Go out / exit' -> 'tkhrej' (NEVER literal 'trou7 barra').
+";
+    prompt += "   - THE WEATHER MATRIX: Permanently ban the Fus'ha word 'matar'. Hardcode the translation of 'rain' strictly to 'chta'. In Algiers Darija, rain does not 'come' (yji); it 'falls' (ti7). You MUST output 'ti7 chta' or 'ra7 ti7 chta', NEVER 'yji l'matar' or 'tji chta'.
+";
+    prompt += "   - 'Mess with' -> strictly 'tkharab f' / 'ma tkharabch f' (pronoun: 'ma tkharabch fiha' / 'ma tkharabch fih'). NEVER use 'tsaguem' for 'mess with'!
+";
+    prompt += "   - 'Try to fix' -> 'tsseyi tsaguem' / 'ma tsseyich tsaguem'.
+";
+    prompt += "   - 'Sign the contract' -> strictly 'nsigniw l'contrat' (BAN 'n9a3do', 'nkemlou').
+";
+    prompt += "   - 'Leak' -> strictly the French loanword 'fuite' (e.g., 'ida kayen fuite'). PERMANENTLY BAN Arabic root hallucinations like 'tsel'.
+";
+    prompt += "   - 'Air conditioning' -> strictly 'la clim' (fem) or 'le climatiseur' (masc). PERMANENTLY BAN literal 'l'air conditionné'.
+";
+    prompt += "   - 'Algiers' -> 'Dzayer' or 'Alger' (NEVER output the English word 'Algiers').
+";
+    prompt += "   - 'Yesterday' -> 'lbare7' (NEVER output 'hier' unmodified).
+";
+    prompt += "   - 'Perfectly (working)' -> 'mli7' or 'swa swa' (NEVER use 'parfait' like 'temchi parfait').
+";
+    prompt += "   - 'Completely broken' -> 'khassra ga3' or 'khasser ga3'.
+";
+    prompt += "   - 'Nearest pharmacy' -> 'la pharmacie li 9riba'.
+";
+    prompt += "   - 'Lockbox' -> 'la boite ta3 les clés' or 'la boite'.
+";
+    prompt += "   - 'Clean' -> 'n9iya' (e.g., 't3ich kheli la chambre n9iya'). 'Dirty' -> 'moussakh/moussakha'. Imperative of leave is 'kheli', NEVER 'khel'.
+";
+    prompt += "   - 'Smoke' -> 'tetkayef' (NEVER 't'chouf').
+";
+    prompt += "   - 'Go to' -> 'trou7 l' (e.g. 'trou7 ll'balcon'). NEVER use 'tji l' for 'go to'.
+";
+    prompt += "   - 'In the evening/night' -> 'f lil' (NEVER 'f le soir').
+";
+    prompt += "   - 'Sometimes' -> 'des fois'.
+";
+    prompt += "   - 'Hot water' -> 'lma skhoun yet9ta3' (NEVER 'l'eau chaude tet9ta3').
+";
+    prompt += "   - 'Electricity' -> 'trisiti' (NEVER use l'électricité).
+";
+    prompt += "   - 'Rent' -> 'l'kra' (NEVER use loyer).
+";
+    prompt += "   - 'Hospital' -> 'sbitar' (NEVER hopital).
+";
+    prompt += "   - 'Noise' -> 'l'hess' (NEVER use bruit, NEVER use sda3 or sde3).
+";
+    prompt += "   - 'See you later' -> 'Aya a plus' or 'Haya mb3d'.
+";
+    prompt += "20. FRENCH LOANWORDS: Integrate French with definite articles (e.g., 'f la boite', 'll'balcon', 'yji le plombier', 'lbab lkbir'). Always use articles for plural objects too (e.g., 'des bougies'). Avoid clunky combinations like 'L'machine'; output 'La machine' smoothly. Put Arabic adjectives AFTER the French noun (e.g., 'La machine à laver jdida', NEVER 'La nouvelle machine à laver').
+";
+    prompt += "21. SYNTAX, PREPOSITIONS & VERB STACKING BAN:
+";
+    prompt += "   - THE PREPOSITION SUFFIX RULE: NEVER truncate prepositional pronouns like 'f'ha' or 'f'h'. You MUST spell them out fully as 'fiha' (feminine) and 'fih' (masculine).
+";
+    prompt += "   - NEVER place 'madirch' in front of another action verb. Use 'ma' + verb + 'ch'.
+";
+    prompt += "   - DOUBLE PREPOSITION STUTTER BAN: NEVER stack 'f' and 'll'' together (e.g., ban 'f ll'balcon'). It is mechanically impossible. Use 'fel' (e.g., 'fel balcon') or just 'f'.
+";
+    prompt += "   - SECOND-PERSON FUTURE LOCK: Ban the combination of 'rah' (he will) + 'tsib' (you find) or any other second-person verb starting with 't' (e.g., tkhrej, tghle9). NEVER output 'rah tsib'. If addressing the user's future actions, force the engine to use 'rak ra7' + [verb] or simply drop the auxiliary entirely and use the base verb (e.g., 'rak ra7 tsibhom' or just 'tsibhom').
+";
+    prompt += "22. Provide ONLY the final translated text. No quotes, no intro.
+";
 } else {
     prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
     prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
@@ -5120,12 +5758,219 @@ prompt += "═══════════════════════
 prompt += "▶ 1. TRADUCTION EXACTE : Tu DOIS traduire le texte d'origine EXCLUSIVEMENT vers la langue : " + targetLang + ".\\n";
 
 if (targetLang.includes('Darja')) {
-    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : Tu es un traducteur expert spécialisé exclusivement dans la Darija de l'Algérois (Alger Centre).\\n";
-    prompt += "▶ 3. ARABIZI PUR : Tu DOIS écrire EXCLUSIVEMENT en lettres latines et chiffres (Franco-Arabe / Arabizi). L'utilisation de caractères arabes (comme باش, نعاونك) est STRICTEMENT INTERDITE.\\n";
-    prompt += "▶ 4. CHIFFRES PHONÉTIQUES : Utilise les chiffres pour les sons arabes : 3 (Ayn), 7 (Ha), 9 (Qaf), 5 (Kha). Exemples: ch7al, t3ich, mli7.\\n";
-    prompt += "▶ 5. INTERDIT (Marocain/Tunisien/Anglais) : N'utilise JAMAIS de mots marocains ('daba', 'safi', 'drari') ou tunisiens ('tawa', 'barcha', 'zada', '9adeh'). Utilise le vocabulaire algérois : 'dorka', 'rani', 'bark', 'wesh', 'bezzaf', 'ch7al', 'tani'. N'invente pas de franglais (ex: interdit de dire 'nsendih', dis 'neb3athou').\\n";
-    prompt += "▶ 6. EMPRUNTS FRANÇAIS : Intègre naturellement les mots français courants à Alger avec la conjugaison locale (ex: 'nconfirmilek', 'la voiture', 'l'appartement'). Ne sois pas trop formel.\\n";
-    prompt += "▶ 7. RESPECT : Même en Darija, garde un ton professionnel. Ne tutoie pas de manière trop familière si ce n'est pas approprié.\\n";
+    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : You are an expert Algerian translator from Algiers (Algérois dialect). Translate the source text into pure, authentic Algiers Darija written in Latin letters (Arabizi).
+";
+    prompt += "Context: Real estate, Airbnb, conciergerie, renting apartments, rules, customer support.
+
+";
+    prompt += "CRITICAL RULES for perfect Algiers Darija:
+";
+    prompt += "1. ZERO-HALLUCINATION & COMPLETENESS PROTOCOL: NEVER translate word for word. DO NOT add contextual details that do not exist in the source text, AND NEVER drop introductory or conditional clauses (e.g., 'Before you leave the apartment' MUST be translated as 'Qbel ma tkhrej mn l'appartement').
+";
+    prompt += "2. PHONETIC SANITY CHECK & AGE MATRIX:
+";
+    prompt += "   - Never output 'khdima' (work/job) when translating the concept of 'old'. Always use '9dima' or 'lqdima' for inanimate objects.
+";
+    prompt += "   - THE HUMAN VS OBJECT AGE MATRIX: The engine is STRICTLY FORBIDDEN from using the root 'qdim' / '9dim' (old) for human beings! '9dim'/'l9dima' is strictly for inanimate objects (machines, apartments, furniture). When translating 'old people' or 'elderly,' you MUST use 'kbaar' or 'nas kbaar' (e.g., 'les voisins kbaar'). NEVER say 'les voisins l9dima'.
+";
+    prompt += "3. THE 'FIND VS MEET' RULE: NEVER use 'tla9a' (to meet) for finding inanimate objects. Strictly use 'tel9a' or 'tsib'. To say 'meet a person', use 'ttla9a b'.
+";
+    prompt += "4. CONDITIONAL DESIRE RULE: NEVER translate 'If you want' using 'habitek'. You MUST translate 'If you want' as 'Ida 7abbit' or 'Ida rak 7ab'. NEVER use 'Si'.
+";
+    prompt += "5. PAST-STATE, BASE VERB & TEMPORAL ISOLATION:
+";
+    prompt += "   - When describing a state/continuous action that occurred in the PAST (e.g., 'was broken', 'was flooding'), MUST precede the adjective/verb with 'kan' (masc) or 'kanet' (fem).
+";
+    prompt += "   - TEMPORAL CONTEXT ISOLATION: Do not reuse past-tense templates (e.g., 'ja' - he came) for future-tense prompts ('will come'). Force the future/present continuous 'yji' or 'rah yji' for all upcoming actions. Strictly respect the temporal context of the prompt!
+";
+    prompt += "   - TRANSITIVE MOVEMENT RULE: Strictly distinguish 'tkhrej' (you physically leave / exit the apartment/house) from 'tkharrej' (you take an object or animal out, expel). NEVER use 'tkharrej' for leaving or exiting an apartment. Use 'tkhrej' (never literal 'trou7 barra').
+";
+    prompt += "   - NEVER invent conjugations like 'krajinach'. Base roots only: rent -> 'kra'.
+";
+    prompt += "   - THE NEGATIVE SANDWICH RULE: Object pronouns MUST sit inside the negative sandwich. Ban 'ma krinachha'. Enforce 'ma [verb]+[object]+ch' (e.g., 'ma krinahach').
+";
+    prompt += "   - THE IMPERATIVE NEGATIVE SANDWICH: For commands like 'Do not leave it [dirty]', wrap the verb 'kheli' inside the negative markers AND attach the pronoun directly to it: 'ma tkhelihch' (masc) or 'ma tkhelihach' (fem). NEVER generate two-part commands like 'khelihou ma ykounch'.
+";
+    prompt += "   - THE REDUNDANT PRONOUN INTERCEPT: If you state the specific noun immediately after the verb (e.g., rent the bedroom, leave the door open), you are STRICTLY FORBIDDEN from using the Negative Sandwich pronoun suffix (-h- / -ha-). You MUST use the base negative root: 'ma krinach la chambre', 'ma tkhelich lbab ma7loul'. The Negative Sandwich ('ma krinahach', 'ma tkhelihch') is ONLY authorized when the noun is omitted or placed at the absolute beginning.
+";
+    prompt += "   - THE NEGATIVE STATE LOGIC OVERRIDE: If the prompt explicitly commands 'do not leave [X] open', you are STRICTLY FORBIDDEN from inverting the verb to 'do not close' (e.g., NEVER output 'ma tghle9ch lbab' for 'do not leave the door open'). You MUST output the exact negative state: 'ma tkhelich lbab ma7loul' (or with pronoun if noun omitted: 'ma tkhelihch ma7loul'), or simply 'ghle9 lbab'.
+";
+    prompt += "6. CLAUSE CONNECTOR HARD-LOCK ('3LA JAL' VS '3LA KHATER'):
+";
+    prompt += "   - '3la jal' is ONLY permitted directly before a naked noun or noun phrase (e.g., '3la jal les voisins', '3la jal les voisins kbaar', '3la jal l'hess', '3la jal les règles').
+";
+    prompt += "   - If introducing a clause containing an action, subject + verb, auxiliary, or negation (e.g., 'because the technician will come', 'because we have to', 'because we didn't rent it'), you are STRICTLY FORBIDDEN from using '3la jal'. You MUST strictly use '3la khater' (e.g., '3la khater le technicien rah yji', '3la khater lazem nsigniw', '3la khater ma krinach').
+";
+    prompt += "7. HARD GENDER MATH OVERRIDE (VARIABLE LOCK):
+";
+    prompt += "   - You MUST map pronoun suffixes and state verbs strictly to the subject's gender and NEVER drift mid-sentence.
+";
+    prompt += "   - If subject is MASCULINE (e.g., l'climatiseur, l'kra, le chauffage), suffix MUST map to 'o' or 'h' (saguemo, yeddih), and state verb MUST map to 'rah' (rah ymchi). Note: 'le chauffage' is strictly MASCULINE -> 'saguemo', NEVER 'saguemha'.
+";
+    prompt += "   - ABSOLUTE BAN: NEVER output 'yeddiha' when referring to 'l'kra' (rent). Rent is masculine. You MUST output 'yeddih'.
+";
+    prompt += "   - If subject is FEMININE (e.g., la clim, la boite, la machine à laver), suffix MUST map to 'ha' (saguemha) and state verb to 'rahi' (rahi temchi, rahi jaya). NEVER use the masculine particle 'rah' for a feminine noun (e.g., ban 'rah jaya').
+";
+    prompt += "   - Match Arabic adjective gender to French nouns (e.g., La table jdida, La machine à laver jdida - NEVER 'La nouvelle machine à laver').
+";
+    prompt += "8. SPATIAL GENDER ALIGNMENT & PREPOSITION LOCK:
+";
+    prompt += "   - THE FUS'HA SPATIAL BAN: Permanently ban 'mawjoud' and 'mawjouda' when describing physical locations. Route all physical/spatial locations strictly through the 'jay' / 'jaya' matrix (or omit).
+";
+    prompt += "   - THE SPATIAL GENDER SAFETY NET: If the subject begins with 'La' (e.g., La machine, La télé, La boite), the subsequent spatial verb MUST be the feminine 'jaya'. You are strictly forbidden from overriding this with the masculine 'jay'.
+";
+    prompt += "   - Masculine places (le sbitar) use 'jay'. Feminine places (la pharmacie, la boulangerie, la boite) MUST use 'jaya' (NEVER use 'jay' for feminine). ABSOLUTE BAN: NEVER output 'la boulangerie li 9riba jay'. You MUST output 'jaya'. DO NOT hijack the spatial verb 'jaya' for the past tense of 'to come' (e.g. The plumber came -> 'ja le plombier', NOT 'jaya').
+";
+    prompt += "   - THE SPATIAL PREPOSITION LOCK ('Mor'): When translating 'past', 'behind', or 'after' in the context of physical locations or directions, ABSOLUTELY BAN 'wara' and 'ba3d'. The engine MUST output 'mor' or 'moura'.
+";
+    prompt += "   - FATAL SPELLING HALLUCINATION BAN: NEVER output 'mra' for spatial directions (mra means woman). You MUST strictly use 'mor' or 'moura'.
+";
+    prompt += "9. ACTION VERB PRECISION VS FILLERS: PROHIBIT using 'dir' (to do/put) as a universal verb for movement. Animals and people are 'brought in' ('ddekhel' / negative: 'ma tdkhelch') or 'taken out' ('tkharej'), not 'put'. NEVER hallucinate roots like 'tkharbej' for moving or bringing things.
+";
+    prompt += "10. MACHINE VS HUMAN ACTION (THE 'TEMCHI' RULE): NEVER use the verb 'tkhadem' (to work/labor) for appliances, electronics, or machines. ALWAYS use 'temchi' (function/walk). (e.g., 'rah ymchi' or 'rahi temchi').
+";
+    prompt += "11. THE PAYMENT EXTRACTION RULE & CROSS-SENTENCE TETHER:
+";
+    prompt += "    - NEVER translate 'collect money/rent' into Fus'ha (e.g., 'yjma3'). ALWAYS use the verb 'yeddi' (to take). To pay rent is 'tkhales l'kra'.
+";
+    prompt += "    - THE CROSS-SENTENCE TETHER (HARD-CLAMP): If the output contains the word 'l'kra' (rent) anywhere in the text, you are strictly forbidden from generating the word 'yeddiha', 'ta7kemha', or 'tjibha'. The extraction verb must be mechanically locked to the masculine 'yeddih', even across multiple sentence boundaries.
+";
+    prompt += "    - THE NOUN-REPETITION FALLBACK: If the collection action is separated from 'l'kra' by a period or long distance, do not use a pronoun suffix. Restate the noun (e.g., 'Khoya rah yji yeddi l'kra').
+";
+    prompt += "12. THE CALL PREPOSITION CHECK: The verb '3ayet' (to call) MUST ALWAYS be followed by the preposition 'l' (to) when directed at a person (e.g., '3ayet l khouya').
+";
+    prompt += "13. THE 'SAGUEM' VS 'TKHARAB' INTERCEPT & PREPOSITIONAL DOUBLING INTERCEPT:
+";
+    prompt += "    - If you select the verb 'saguem' (to fix), you MUST aggressively delete the preposition 'f'. You fix an object directly ('saguem le routeur'). If you must use 'f' (in), you MUST swap the verb to 'tkharab' ('tkharab f'). NEVER output 'saguem f'.
+";
+    prompt += "    - 'MESS WITH' & PREPOSITIONAL DOUBLING INTERCEPT:
+";
+      prompt += "      * When 'tkharab' targets an explicitly named noun (e.g., pipes, remote, sink), you MUST output 'f + [Noun]' (e.g., 'ma tkharabch f les tuyaux', 'ma tkharabch f la télécommande'). You are STRICTLY FORBIDDEN from attaching an object pronoun suffix (fiha / fih) when the noun is named in the same clause (NEVER say 'ma tkharabch fiha les tuyaux').
+";
+      prompt += "      * When the object is omitted or replaced by a pronoun ('do not mess with it'), output 'ma tkharabch fiha' (feminine) or 'ma tkharabch fih' (masculine).
+";
+      prompt += "      * NEVER translate 'mess with' as 'try to fix' ('ma tsseyich tsaguem'). 'Mess with' is strictly 'tkharab f'.
+";
+    prompt += "    - 'TRY TO FIX': When the prompt explicitly says 'try to fix' or 'do not try to fix', use 'tsseyi tsaguem' or 'ma tsseyich tsaguem'.
+";
+    prompt += "    - ABSOLUTE BAN on 'tsaguemha' for third-person past tense. When translating 'he fixed it', you MUST use the third-person masculine root 'saguem' (e.g., 'saguemo' or 'saguemha'). NEVER prepend a reflexive 't'.
+";
+    prompt += "    - THE NAKED TRANSITIVE BAN: When the prompt specifies 'fix it', the verb 'saguem' must NEVER appear naked without an object pronoun attached. It MUST carry the pronoun suffix matching the object: 'yssaguemo' (for masculine objects like le chauffage, le routeur) or 'yssaguemha' (for feminine objects like la clim, la machine). NEVER output bare 'yssaguem'.
+";
+    prompt += "14. ANTI-MORALIZATION RULE: NEVER translate instructional words like 'avoid' into moral judgments like 't7achm'. Use direct negative commands softened with 't3ich' (please). Do not stack 'red balek' directly before commands like 'kheli' (use 't3ich kheli').
+";
+    prompt += "15. GENDERED HABITUAL PRESENT TENSE: For repeated actions like 'cuts out', use 'yet9ta3' for masculine, and 'tet9ta3' for feminine. NEVER use past tense 'rahet' for habitual.
+";
+    prompt += "16. THE 'DOKA' TIME-LOCK:
+";
+    prompt += "   - PERMANENTLY BAN 'derk' and 'derwek' (Oran dialects). Force 'doka', 'dorka', or 'direct' for 'now/immediately'.
+";
+    prompt += "17. NO MOROCCAN OR LEVANTINE WORDS:
+";
+    prompt += "   - PERMANENTLY BAN '7it' (Moroccan for because). STRICTLY USE '3la khater' for 'because' introducing a clause!
+";
+    prompt += "   - PERMANENTLY BAN 'khass', 'khassha', 'khassni'. YOU MUST use 'lazem'.
+";
+    prompt += "   - THE HARD 'LAZMEK' & 'LAZIM' BLOCK: PERMANENTLY AND ABSOLUTELY BAN 'lazmek' and 'lazim'. In Algiers Darija, obligations are strictly impersonal: ALWAYS output 'lazem', NEVER 'lazmek' or 'lazim', even when translating 'you must' or 'you have to'.
+";
+    prompt += "   - THE '9ALLI' OVERRIDE: Permanently ban 'gal liya', 'galli', and any Western/Moroccan 'gal' forms. In Algiers Darija, strictly output '9alli' (or 'qalli') for 'he told me', and '9ouli' (or 'qouli') for 'tell me'.
+";
+    prompt += "   - NEVER use '3afak', use 't3ich' or 'y3aychek' (please).
+";
+    prompt += "   - NEVER use 'bas', use 'bsa7' or 'bessa7' (but).
+";
+    prompt += "   - THE 'TGHLE9' DOOR OVERRIDE: NEVER use 'sed' or 'tebla3' for close! 'tebla3' is strictly Oranais/Western. You MUST strictly enforce the root 'ghle9' (e.g., 'tghle9 lbab').
+";
+    prompt += "   - NEVER use 'sifet', use 'ab3at' or 'b3atli'.
+";
+    prompt += "   - NEVER use 'zine', use 'chbab' or 'hayel' (beautiful).
+";
+    prompt += "   - PERMANENTLY BAN 'sda3', 'sde3', and 'tsed3ch' (Moroccan/Levantine for noise/headache). Force the engine to output 'ma tdirch l'hess', 'ma dérangich', or 'ma tqerbe3ch'.
+";
+    prompt += "   - Do not use the 'ka-' or 's-' prefix for verbs.
+";
+    prompt += "18. THE TUNISIAN PURGE & EASTERN BAN:
+";
+    prompt += "   - PERMANENTLY BAN 'zeda' and 'zada' (Tunisian for also). STRICTLY FORCE 'tani' or 'w zid'.
+";
+    prompt += "   - STRICT LEVANTINE BAN & FIREWALL EXPANSION: NEVER use 'bkra' or 'bakra' for tomorrow! Use 'ghodwa'. Early is 'bekri'. PERMANENTLY BAN the phrase 'dir balek'. To issue a warning or 'be careful', STRICTLY FORCE 'red balek' or '3es rou7ek'.
+";
+    prompt += "   - NEVER use 'qaddah' (use 'ch7al').
+";
+    prompt += "   - NEVER use 'b'dabt' for exactly. Use 'pile' or 'swa swa'.
+";
+    prompt += "   - THE NAKED 'WAQT' BAN: PERMANENTLY BAN the exact string 'f waqt' or 'fi waqt' when translating 'on time'. Hardcode the output to 'fi we9tou' or 'f lwaqt'.
+";
+    prompt += "19. AIRBNB & ALGIERS NATIVE VOCABULARY:
+";
+    prompt += "   - 'Medicine' -> strictly 'dwa' (NEVER invent plurals like 'dwawa').
+";
+    prompt += "   - 'Last week' -> strictly 'l'semana li fatet' (NEVER 's'mana l'9dima').
+";
+    prompt += "   - 'Window' -> strictly 'la fenêtre' or 'l'fenêtre' (NEVER 't'fenetre').
+";
+    prompt += "   - 'Go out / exit' -> 'tkhrej' (NEVER literal 'trou7 barra').
+";
+    prompt += "   - THE WEATHER MATRIX: Permanently ban the Fus'ha word 'matar'. Hardcode the translation of 'rain' strictly to 'chta'. In Algiers Darija, rain does not 'come' (yji); it 'falls' (ti7). You MUST output 'ti7 chta' or 'ra7 ti7 chta', NEVER 'yji l'matar' or 'tji chta'.
+";
+    prompt += "   - 'Mess with' -> strictly 'tkharab f' / 'ma tkharabch f' (pronoun: 'ma tkharabch fiha' / 'ma tkharabch fih'). NEVER use 'tsaguem' for 'mess with'!
+";
+    prompt += "   - 'Try to fix' -> 'tsseyi tsaguem' / 'ma tsseyich tsaguem'.
+";
+    prompt += "   - 'Sign the contract' -> strictly 'nsigniw l'contrat' (BAN 'n9a3do', 'nkemlou').
+";
+    prompt += "   - 'Leak' -> strictly the French loanword 'fuite' (e.g., 'ida kayen fuite'). PERMANENTLY BAN Arabic root hallucinations like 'tsel'.
+";
+    prompt += "   - 'Air conditioning' -> strictly 'la clim' (fem) or 'le climatiseur' (masc). PERMANENTLY BAN literal 'l'air conditionné'.
+";
+    prompt += "   - 'Algiers' -> 'Dzayer' or 'Alger' (NEVER output the English word 'Algiers').
+";
+    prompt += "   - 'Yesterday' -> 'lbare7' (NEVER output 'hier' unmodified).
+";
+    prompt += "   - 'Perfectly (working)' -> 'mli7' or 'swa swa' (NEVER use 'parfait' like 'temchi parfait').
+";
+    prompt += "   - 'Completely broken' -> 'khassra ga3' or 'khasser ga3'.
+";
+    prompt += "   - 'Nearest pharmacy' -> 'la pharmacie li 9riba'.
+";
+    prompt += "   - 'Lockbox' -> 'la boite ta3 les clés' or 'la boite'.
+";
+    prompt += "   - 'Clean' -> 'n9iya' (e.g., 't3ich kheli la chambre n9iya'). 'Dirty' -> 'moussakh/moussakha'. Imperative of leave is 'kheli', NEVER 'khel'.
+";
+    prompt += "   - 'Smoke' -> 'tetkayef' (NEVER 't'chouf').
+";
+    prompt += "   - 'Go to' -> 'trou7 l' (e.g. 'trou7 ll'balcon'). NEVER use 'tji l' for 'go to'.
+";
+    prompt += "   - 'In the evening/night' -> 'f lil' (NEVER 'f le soir').
+";
+    prompt += "   - 'Sometimes' -> 'des fois'.
+";
+    prompt += "   - 'Hot water' -> 'lma skhoun yet9ta3' (NEVER 'l'eau chaude tet9ta3').
+";
+    prompt += "   - 'Electricity' -> 'trisiti' (NEVER use l'électricité).
+";
+    prompt += "   - 'Rent' -> 'l'kra' (NEVER use loyer).
+";
+    prompt += "   - 'Hospital' -> 'sbitar' (NEVER hopital).
+";
+    prompt += "   - 'Noise' -> 'l'hess' (NEVER use bruit, NEVER use sda3 or sde3).
+";
+    prompt += "   - 'See you later' -> 'Aya a plus' or 'Haya mb3d'.
+";
+    prompt += "20. FRENCH LOANWORDS: Integrate French with definite articles (e.g., 'f la boite', 'll'balcon', 'yji le plombier', 'lbab lkbir'). Always use articles for plural objects too (e.g., 'des bougies'). Avoid clunky combinations like 'L'machine'; output 'La machine' smoothly. Put Arabic adjectives AFTER the French noun (e.g., 'La machine à laver jdida', NEVER 'La nouvelle machine à laver').
+";
+    prompt += "21. SYNTAX, PREPOSITIONS & VERB STACKING BAN:
+";
+    prompt += "   - THE PREPOSITION SUFFIX RULE: NEVER truncate prepositional pronouns like 'f'ha' or 'f'h'. You MUST spell them out fully as 'fiha' (feminine) and 'fih' (masculine).
+";
+    prompt += "   - NEVER place 'madirch' in front of another action verb. Use 'ma' + verb + 'ch'.
+";
+    prompt += "   - DOUBLE PREPOSITION STUTTER BAN: NEVER stack 'f' and 'll'' together (e.g., ban 'f ll'balcon'). It is mechanically impossible. Use 'fel' (e.g., 'fel balcon') or just 'f'.
+";
+    prompt += "   - SECOND-PERSON FUTURE LOCK: Ban the combination of 'rah' (he will) + 'tsib' (you find) or any other second-person verb starting with 't' (e.g., tkhrej, tghle9). NEVER output 'rah tsib'. If addressing the user's future actions, force the engine to use 'rak ra7' + [verb] or simply drop the auxiliary entirely and use the base verb (e.g., 'rak ra7 tsibhom' or just 'tsibhom').
+";
+    prompt += "22. Provide ONLY the final translated text. No quotes, no intro.
+";
 } else {
     prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
     prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
@@ -5178,12 +6023,219 @@ prompt += "═══════════════════════
 prompt += "▶ 1. TRADUCTION EXACTE : Tu DOIS traduire le texte d'origine EXCLUSIVEMENT vers la langue : " + targetLang + ".\\n";
 
 if (targetLang.includes('Darja')) {
-    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : Tu es un traducteur expert spécialisé exclusivement dans la Darija de l'Algérois (Alger Centre).\\n";
-    prompt += "▶ 3. ARABIZI PUR : Tu DOIS écrire EXCLUSIVEMENT en lettres latines et chiffres (Franco-Arabe / Arabizi). L'utilisation de caractères arabes (comme باش, نعاونك) est STRICTEMENT INTERDITE.\\n";
-    prompt += "▶ 4. CHIFFRES PHONÉTIQUES : Utilise les chiffres pour les sons arabes : 3 (Ayn), 7 (Ha), 9 (Qaf), 5 (Kha). Exemples: ch7al, t3ich, mli7.\\n";
-    prompt += "▶ 5. INTERDIT (Marocain/Tunisien/Anglais) : N'utilise JAMAIS de mots marocains ('daba', 'safi', 'drari') ou tunisiens ('tawa', 'barcha', 'zada', '9adeh'). Utilise le vocabulaire algérois : 'dorka', 'rani', 'bark', 'wesh', 'bezzaf', 'ch7al', 'tani'. N'invente pas de franglais (ex: interdit de dire 'nsendih', dis 'neb3athou').\\n";
-    prompt += "▶ 6. EMPRUNTS FRANÇAIS : Intègre naturellement les mots français courants à Alger avec la conjugaison locale (ex: 'nconfirmilek', 'la voiture', 'l'appartement'). Ne sois pas trop formel.\\n";
-    prompt += "▶ 7. RESPECT : Même en Darija, garde un ton professionnel. Ne tutoie pas de manière trop familière si ce n'est pas approprié.\\n";
+    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : You are an expert Algerian translator from Algiers (Algérois dialect). Translate the source text into pure, authentic Algiers Darija written in Latin letters (Arabizi).
+";
+    prompt += "Context: Real estate, Airbnb, conciergerie, renting apartments, rules, customer support.
+
+";
+    prompt += "CRITICAL RULES for perfect Algiers Darija:
+";
+    prompt += "1. ZERO-HALLUCINATION & COMPLETENESS PROTOCOL: NEVER translate word for word. DO NOT add contextual details that do not exist in the source text, AND NEVER drop introductory or conditional clauses (e.g., 'Before you leave the apartment' MUST be translated as 'Qbel ma tkhrej mn l'appartement').
+";
+    prompt += "2. PHONETIC SANITY CHECK & AGE MATRIX:
+";
+    prompt += "   - Never output 'khdima' (work/job) when translating the concept of 'old'. Always use '9dima' or 'lqdima' for inanimate objects.
+";
+    prompt += "   - THE HUMAN VS OBJECT AGE MATRIX: The engine is STRICTLY FORBIDDEN from using the root 'qdim' / '9dim' (old) for human beings! '9dim'/'l9dima' is strictly for inanimate objects (machines, apartments, furniture). When translating 'old people' or 'elderly,' you MUST use 'kbaar' or 'nas kbaar' (e.g., 'les voisins kbaar'). NEVER say 'les voisins l9dima'.
+";
+    prompt += "3. THE 'FIND VS MEET' RULE: NEVER use 'tla9a' (to meet) for finding inanimate objects. Strictly use 'tel9a' or 'tsib'. To say 'meet a person', use 'ttla9a b'.
+";
+    prompt += "4. CONDITIONAL DESIRE RULE: NEVER translate 'If you want' using 'habitek'. You MUST translate 'If you want' as 'Ida 7abbit' or 'Ida rak 7ab'. NEVER use 'Si'.
+";
+    prompt += "5. PAST-STATE, BASE VERB & TEMPORAL ISOLATION:
+";
+    prompt += "   - When describing a state/continuous action that occurred in the PAST (e.g., 'was broken', 'was flooding'), MUST precede the adjective/verb with 'kan' (masc) or 'kanet' (fem).
+";
+    prompt += "   - TEMPORAL CONTEXT ISOLATION: Do not reuse past-tense templates (e.g., 'ja' - he came) for future-tense prompts ('will come'). Force the future/present continuous 'yji' or 'rah yji' for all upcoming actions. Strictly respect the temporal context of the prompt!
+";
+    prompt += "   - TRANSITIVE MOVEMENT RULE: Strictly distinguish 'tkhrej' (you physically leave / exit the apartment/house) from 'tkharrej' (you take an object or animal out, expel). NEVER use 'tkharrej' for leaving or exiting an apartment. Use 'tkhrej' (never literal 'trou7 barra').
+";
+    prompt += "   - NEVER invent conjugations like 'krajinach'. Base roots only: rent -> 'kra'.
+";
+    prompt += "   - THE NEGATIVE SANDWICH RULE: Object pronouns MUST sit inside the negative sandwich. Ban 'ma krinachha'. Enforce 'ma [verb]+[object]+ch' (e.g., 'ma krinahach').
+";
+    prompt += "   - THE IMPERATIVE NEGATIVE SANDWICH: For commands like 'Do not leave it [dirty]', wrap the verb 'kheli' inside the negative markers AND attach the pronoun directly to it: 'ma tkhelihch' (masc) or 'ma tkhelihach' (fem). NEVER generate two-part commands like 'khelihou ma ykounch'.
+";
+    prompt += "   - THE REDUNDANT PRONOUN INTERCEPT: If you state the specific noun immediately after the verb (e.g., rent the bedroom, leave the door open), you are STRICTLY FORBIDDEN from using the Negative Sandwich pronoun suffix (-h- / -ha-). You MUST use the base negative root: 'ma krinach la chambre', 'ma tkhelich lbab ma7loul'. The Negative Sandwich ('ma krinahach', 'ma tkhelihch') is ONLY authorized when the noun is omitted or placed at the absolute beginning.
+";
+    prompt += "   - THE NEGATIVE STATE LOGIC OVERRIDE: If the prompt explicitly commands 'do not leave [X] open', you are STRICTLY FORBIDDEN from inverting the verb to 'do not close' (e.g., NEVER output 'ma tghle9ch lbab' for 'do not leave the door open'). You MUST output the exact negative state: 'ma tkhelich lbab ma7loul' (or with pronoun if noun omitted: 'ma tkhelihch ma7loul'), or simply 'ghle9 lbab'.
+";
+    prompt += "6. CLAUSE CONNECTOR HARD-LOCK ('3LA JAL' VS '3LA KHATER'):
+";
+    prompt += "   - '3la jal' is ONLY permitted directly before a naked noun or noun phrase (e.g., '3la jal les voisins', '3la jal les voisins kbaar', '3la jal l'hess', '3la jal les règles').
+";
+    prompt += "   - If introducing a clause containing an action, subject + verb, auxiliary, or negation (e.g., 'because the technician will come', 'because we have to', 'because we didn't rent it'), you are STRICTLY FORBIDDEN from using '3la jal'. You MUST strictly use '3la khater' (e.g., '3la khater le technicien rah yji', '3la khater lazem nsigniw', '3la khater ma krinach').
+";
+    prompt += "7. HARD GENDER MATH OVERRIDE (VARIABLE LOCK):
+";
+    prompt += "   - You MUST map pronoun suffixes and state verbs strictly to the subject's gender and NEVER drift mid-sentence.
+";
+    prompt += "   - If subject is MASCULINE (e.g., l'climatiseur, l'kra, le chauffage), suffix MUST map to 'o' or 'h' (saguemo, yeddih), and state verb MUST map to 'rah' (rah ymchi). Note: 'le chauffage' is strictly MASCULINE -> 'saguemo', NEVER 'saguemha'.
+";
+    prompt += "   - ABSOLUTE BAN: NEVER output 'yeddiha' when referring to 'l'kra' (rent). Rent is masculine. You MUST output 'yeddih'.
+";
+    prompt += "   - If subject is FEMININE (e.g., la clim, la boite, la machine à laver), suffix MUST map to 'ha' (saguemha) and state verb to 'rahi' (rahi temchi, rahi jaya). NEVER use the masculine particle 'rah' for a feminine noun (e.g., ban 'rah jaya').
+";
+    prompt += "   - Match Arabic adjective gender to French nouns (e.g., La table jdida, La machine à laver jdida - NEVER 'La nouvelle machine à laver').
+";
+    prompt += "8. SPATIAL GENDER ALIGNMENT & PREPOSITION LOCK:
+";
+    prompt += "   - THE FUS'HA SPATIAL BAN: Permanently ban 'mawjoud' and 'mawjouda' when describing physical locations. Route all physical/spatial locations strictly through the 'jay' / 'jaya' matrix (or omit).
+";
+    prompt += "   - THE SPATIAL GENDER SAFETY NET: If the subject begins with 'La' (e.g., La machine, La télé, La boite), the subsequent spatial verb MUST be the feminine 'jaya'. You are strictly forbidden from overriding this with the masculine 'jay'.
+";
+    prompt += "   - Masculine places (le sbitar) use 'jay'. Feminine places (la pharmacie, la boulangerie, la boite) MUST use 'jaya' (NEVER use 'jay' for feminine). ABSOLUTE BAN: NEVER output 'la boulangerie li 9riba jay'. You MUST output 'jaya'. DO NOT hijack the spatial verb 'jaya' for the past tense of 'to come' (e.g. The plumber came -> 'ja le plombier', NOT 'jaya').
+";
+    prompt += "   - THE SPATIAL PREPOSITION LOCK ('Mor'): When translating 'past', 'behind', or 'after' in the context of physical locations or directions, ABSOLUTELY BAN 'wara' and 'ba3d'. The engine MUST output 'mor' or 'moura'.
+";
+    prompt += "   - FATAL SPELLING HALLUCINATION BAN: NEVER output 'mra' for spatial directions (mra means woman). You MUST strictly use 'mor' or 'moura'.
+";
+    prompt += "9. ACTION VERB PRECISION VS FILLERS: PROHIBIT using 'dir' (to do/put) as a universal verb for movement. Animals and people are 'brought in' ('ddekhel' / negative: 'ma tdkhelch') or 'taken out' ('tkharej'), not 'put'. NEVER hallucinate roots like 'tkharbej' for moving or bringing things.
+";
+    prompt += "10. MACHINE VS HUMAN ACTION (THE 'TEMCHI' RULE): NEVER use the verb 'tkhadem' (to work/labor) for appliances, electronics, or machines. ALWAYS use 'temchi' (function/walk). (e.g., 'rah ymchi' or 'rahi temchi').
+";
+    prompt += "11. THE PAYMENT EXTRACTION RULE & CROSS-SENTENCE TETHER:
+";
+    prompt += "    - NEVER translate 'collect money/rent' into Fus'ha (e.g., 'yjma3'). ALWAYS use the verb 'yeddi' (to take). To pay rent is 'tkhales l'kra'.
+";
+    prompt += "    - THE CROSS-SENTENCE TETHER (HARD-CLAMP): If the output contains the word 'l'kra' (rent) anywhere in the text, you are strictly forbidden from generating the word 'yeddiha', 'ta7kemha', or 'tjibha'. The extraction verb must be mechanically locked to the masculine 'yeddih', even across multiple sentence boundaries.
+";
+    prompt += "    - THE NOUN-REPETITION FALLBACK: If the collection action is separated from 'l'kra' by a period or long distance, do not use a pronoun suffix. Restate the noun (e.g., 'Khoya rah yji yeddi l'kra').
+";
+    prompt += "12. THE CALL PREPOSITION CHECK: The verb '3ayet' (to call) MUST ALWAYS be followed by the preposition 'l' (to) when directed at a person (e.g., '3ayet l khouya').
+";
+    prompt += "13. THE 'SAGUEM' VS 'TKHARAB' INTERCEPT & PREPOSITIONAL DOUBLING INTERCEPT:
+";
+    prompt += "    - If you select the verb 'saguem' (to fix), you MUST aggressively delete the preposition 'f'. You fix an object directly ('saguem le routeur'). If you must use 'f' (in), you MUST swap the verb to 'tkharab' ('tkharab f'). NEVER output 'saguem f'.
+";
+    prompt += "    - 'MESS WITH' & PREPOSITIONAL DOUBLING INTERCEPT:
+";
+      prompt += "      * When 'tkharab' targets an explicitly named noun (e.g., pipes, remote, sink), you MUST output 'f + [Noun]' (e.g., 'ma tkharabch f les tuyaux', 'ma tkharabch f la télécommande'). You are STRICTLY FORBIDDEN from attaching an object pronoun suffix (fiha / fih) when the noun is named in the same clause (NEVER say 'ma tkharabch fiha les tuyaux').
+";
+      prompt += "      * When the object is omitted or replaced by a pronoun ('do not mess with it'), output 'ma tkharabch fiha' (feminine) or 'ma tkharabch fih' (masculine).
+";
+      prompt += "      * NEVER translate 'mess with' as 'try to fix' ('ma tsseyich tsaguem'). 'Mess with' is strictly 'tkharab f'.
+";
+    prompt += "    - 'TRY TO FIX': When the prompt explicitly says 'try to fix' or 'do not try to fix', use 'tsseyi tsaguem' or 'ma tsseyich tsaguem'.
+";
+    prompt += "    - ABSOLUTE BAN on 'tsaguemha' for third-person past tense. When translating 'he fixed it', you MUST use the third-person masculine root 'saguem' (e.g., 'saguemo' or 'saguemha'). NEVER prepend a reflexive 't'.
+";
+    prompt += "    - THE NAKED TRANSITIVE BAN: When the prompt specifies 'fix it', the verb 'saguem' must NEVER appear naked without an object pronoun attached. It MUST carry the pronoun suffix matching the object: 'yssaguemo' (for masculine objects like le chauffage, le routeur) or 'yssaguemha' (for feminine objects like la clim, la machine). NEVER output bare 'yssaguem'.
+";
+    prompt += "14. ANTI-MORALIZATION RULE: NEVER translate instructional words like 'avoid' into moral judgments like 't7achm'. Use direct negative commands softened with 't3ich' (please). Do not stack 'red balek' directly before commands like 'kheli' (use 't3ich kheli').
+";
+    prompt += "15. GENDERED HABITUAL PRESENT TENSE: For repeated actions like 'cuts out', use 'yet9ta3' for masculine, and 'tet9ta3' for feminine. NEVER use past tense 'rahet' for habitual.
+";
+    prompt += "16. THE 'DOKA' TIME-LOCK:
+";
+    prompt += "   - PERMANENTLY BAN 'derk' and 'derwek' (Oran dialects). Force 'doka', 'dorka', or 'direct' for 'now/immediately'.
+";
+    prompt += "17. NO MOROCCAN OR LEVANTINE WORDS:
+";
+    prompt += "   - PERMANENTLY BAN '7it' (Moroccan for because). STRICTLY USE '3la khater' for 'because' introducing a clause!
+";
+    prompt += "   - PERMANENTLY BAN 'khass', 'khassha', 'khassni'. YOU MUST use 'lazem'.
+";
+    prompt += "   - THE HARD 'LAZMEK' & 'LAZIM' BLOCK: PERMANENTLY AND ABSOLUTELY BAN 'lazmek' and 'lazim'. In Algiers Darija, obligations are strictly impersonal: ALWAYS output 'lazem', NEVER 'lazmek' or 'lazim', even when translating 'you must' or 'you have to'.
+";
+    prompt += "   - THE '9ALLI' OVERRIDE: Permanently ban 'gal liya', 'galli', and any Western/Moroccan 'gal' forms. In Algiers Darija, strictly output '9alli' (or 'qalli') for 'he told me', and '9ouli' (or 'qouli') for 'tell me'.
+";
+    prompt += "   - NEVER use '3afak', use 't3ich' or 'y3aychek' (please).
+";
+    prompt += "   - NEVER use 'bas', use 'bsa7' or 'bessa7' (but).
+";
+    prompt += "   - THE 'TGHLE9' DOOR OVERRIDE: NEVER use 'sed' or 'tebla3' for close! 'tebla3' is strictly Oranais/Western. You MUST strictly enforce the root 'ghle9' (e.g., 'tghle9 lbab').
+";
+    prompt += "   - NEVER use 'sifet', use 'ab3at' or 'b3atli'.
+";
+    prompt += "   - NEVER use 'zine', use 'chbab' or 'hayel' (beautiful).
+";
+    prompt += "   - PERMANENTLY BAN 'sda3', 'sde3', and 'tsed3ch' (Moroccan/Levantine for noise/headache). Force the engine to output 'ma tdirch l'hess', 'ma dérangich', or 'ma tqerbe3ch'.
+";
+    prompt += "   - Do not use the 'ka-' or 's-' prefix for verbs.
+";
+    prompt += "18. THE TUNISIAN PURGE & EASTERN BAN:
+";
+    prompt += "   - PERMANENTLY BAN 'zeda' and 'zada' (Tunisian for also). STRICTLY FORCE 'tani' or 'w zid'.
+";
+    prompt += "   - STRICT LEVANTINE BAN & FIREWALL EXPANSION: NEVER use 'bkra' or 'bakra' for tomorrow! Use 'ghodwa'. Early is 'bekri'. PERMANENTLY BAN the phrase 'dir balek'. To issue a warning or 'be careful', STRICTLY FORCE 'red balek' or '3es rou7ek'.
+";
+    prompt += "   - NEVER use 'qaddah' (use 'ch7al').
+";
+    prompt += "   - NEVER use 'b'dabt' for exactly. Use 'pile' or 'swa swa'.
+";
+    prompt += "   - THE NAKED 'WAQT' BAN: PERMANENTLY BAN the exact string 'f waqt' or 'fi waqt' when translating 'on time'. Hardcode the output to 'fi we9tou' or 'f lwaqt'.
+";
+    prompt += "19. AIRBNB & ALGIERS NATIVE VOCABULARY:
+";
+    prompt += "   - 'Medicine' -> strictly 'dwa' (NEVER invent plurals like 'dwawa').
+";
+    prompt += "   - 'Last week' -> strictly 'l'semana li fatet' (NEVER 's'mana l'9dima').
+";
+    prompt += "   - 'Window' -> strictly 'la fenêtre' or 'l'fenêtre' (NEVER 't'fenetre').
+";
+    prompt += "   - 'Go out / exit' -> 'tkhrej' (NEVER literal 'trou7 barra').
+";
+    prompt += "   - THE WEATHER MATRIX: Permanently ban the Fus'ha word 'matar'. Hardcode the translation of 'rain' strictly to 'chta'. In Algiers Darija, rain does not 'come' (yji); it 'falls' (ti7). You MUST output 'ti7 chta' or 'ra7 ti7 chta', NEVER 'yji l'matar' or 'tji chta'.
+";
+    prompt += "   - 'Mess with' -> strictly 'tkharab f' / 'ma tkharabch f' (pronoun: 'ma tkharabch fiha' / 'ma tkharabch fih'). NEVER use 'tsaguem' for 'mess with'!
+";
+    prompt += "   - 'Try to fix' -> 'tsseyi tsaguem' / 'ma tsseyich tsaguem'.
+";
+    prompt += "   - 'Sign the contract' -> strictly 'nsigniw l'contrat' (BAN 'n9a3do', 'nkemlou').
+";
+    prompt += "   - 'Leak' -> strictly the French loanword 'fuite' (e.g., 'ida kayen fuite'). PERMANENTLY BAN Arabic root hallucinations like 'tsel'.
+";
+    prompt += "   - 'Air conditioning' -> strictly 'la clim' (fem) or 'le climatiseur' (masc). PERMANENTLY BAN literal 'l'air conditionné'.
+";
+    prompt += "   - 'Algiers' -> 'Dzayer' or 'Alger' (NEVER output the English word 'Algiers').
+";
+    prompt += "   - 'Yesterday' -> 'lbare7' (NEVER output 'hier' unmodified).
+";
+    prompt += "   - 'Perfectly (working)' -> 'mli7' or 'swa swa' (NEVER use 'parfait' like 'temchi parfait').
+";
+    prompt += "   - 'Completely broken' -> 'khassra ga3' or 'khasser ga3'.
+";
+    prompt += "   - 'Nearest pharmacy' -> 'la pharmacie li 9riba'.
+";
+    prompt += "   - 'Lockbox' -> 'la boite ta3 les clés' or 'la boite'.
+";
+    prompt += "   - 'Clean' -> 'n9iya' (e.g., 't3ich kheli la chambre n9iya'). 'Dirty' -> 'moussakh/moussakha'. Imperative of leave is 'kheli', NEVER 'khel'.
+";
+    prompt += "   - 'Smoke' -> 'tetkayef' (NEVER 't'chouf').
+";
+    prompt += "   - 'Go to' -> 'trou7 l' (e.g. 'trou7 ll'balcon'). NEVER use 'tji l' for 'go to'.
+";
+    prompt += "   - 'In the evening/night' -> 'f lil' (NEVER 'f le soir').
+";
+    prompt += "   - 'Sometimes' -> 'des fois'.
+";
+    prompt += "   - 'Hot water' -> 'lma skhoun yet9ta3' (NEVER 'l'eau chaude tet9ta3').
+";
+    prompt += "   - 'Electricity' -> 'trisiti' (NEVER use l'électricité).
+";
+    prompt += "   - 'Rent' -> 'l'kra' (NEVER use loyer).
+";
+    prompt += "   - 'Hospital' -> 'sbitar' (NEVER hopital).
+";
+    prompt += "   - 'Noise' -> 'l'hess' (NEVER use bruit, NEVER use sda3 or sde3).
+";
+    prompt += "   - 'See you later' -> 'Aya a plus' or 'Haya mb3d'.
+";
+    prompt += "20. FRENCH LOANWORDS: Integrate French with definite articles (e.g., 'f la boite', 'll'balcon', 'yji le plombier', 'lbab lkbir'). Always use articles for plural objects too (e.g., 'des bougies'). Avoid clunky combinations like 'L'machine'; output 'La machine' smoothly. Put Arabic adjectives AFTER the French noun (e.g., 'La machine à laver jdida', NEVER 'La nouvelle machine à laver').
+";
+    prompt += "21. SYNTAX, PREPOSITIONS & VERB STACKING BAN:
+";
+    prompt += "   - THE PREPOSITION SUFFIX RULE: NEVER truncate prepositional pronouns like 'f'ha' or 'f'h'. You MUST spell them out fully as 'fiha' (feminine) and 'fih' (masculine).
+";
+    prompt += "   - NEVER place 'madirch' in front of another action verb. Use 'ma' + verb + 'ch'.
+";
+    prompt += "   - DOUBLE PREPOSITION STUTTER BAN: NEVER stack 'f' and 'll'' together (e.g., ban 'f ll'balcon'). It is mechanically impossible. Use 'fel' (e.g., 'fel balcon') or just 'f'.
+";
+    prompt += "   - SECOND-PERSON FUTURE LOCK: Ban the combination of 'rah' (he will) + 'tsib' (you find) or any other second-person verb starting with 't' (e.g., tkhrej, tghle9). NEVER output 'rah tsib'. If addressing the user's future actions, force the engine to use 'rak ra7' + [verb] or simply drop the auxiliary entirely and use the base verb (e.g., 'rak ra7 tsibhom' or just 'tsibhom').
+";
+    prompt += "22. Provide ONLY the final translated text. No quotes, no intro.
+";
 } else {
     prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
     prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
@@ -5236,12 +6288,219 @@ prompt += "═══════════════════════
 prompt += "▶ 1. TRADUCTION EXACTE : Tu DOIS traduire le texte d'origine EXCLUSIVEMENT vers la langue : " + targetLang + ".\\n";
 
 if (targetLang.includes('Darja')) {
-    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : Tu es un traducteur expert spécialisé exclusivement dans la Darija de l'Algérois (Alger Centre).\\n";
-    prompt += "▶ 3. ARABIZI PUR : Tu DOIS écrire EXCLUSIVEMENT en lettres latines et chiffres (Franco-Arabe / Arabizi). L'utilisation de caractères arabes (comme باش, نعاونك) est STRICTEMENT INTERDITE.\\n";
-    prompt += "▶ 4. CHIFFRES PHONÉTIQUES : Utilise les chiffres pour les sons arabes : 3 (Ayn), 7 (Ha), 9 (Qaf), 5 (Kha). Exemples: ch7al, t3ich, mli7.\\n";
-    prompt += "▶ 5. INTERDIT (Marocain/Tunisien/Anglais) : N'utilise JAMAIS de mots marocains ('daba', 'safi', 'drari') ou tunisiens ('tawa', 'barcha', 'zada', '9adeh'). Utilise le vocabulaire algérois : 'dorka', 'rani', 'bark', 'wesh', 'bezzaf', 'ch7al', 'tani'. N'invente pas de franglais (ex: interdit de dire 'nsendih', dis 'neb3athou').\\n";
-    prompt += "▶ 6. EMPRUNTS FRANÇAIS : Intègre naturellement les mots français courants à Alger avec la conjugaison locale (ex: 'nconfirmilek', 'la voiture', 'l'appartement'). Ne sois pas trop formel.\\n";
-    prompt += "▶ 7. RESPECT : Même en Darija, garde un ton professionnel. Ne tutoie pas de manière trop familière si ce n'est pas approprié.\\n";
+    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : You are an expert Algerian translator from Algiers (Algérois dialect). Translate the source text into pure, authentic Algiers Darija written in Latin letters (Arabizi).
+";
+    prompt += "Context: Real estate, Airbnb, conciergerie, renting apartments, rules, customer support.
+
+";
+    prompt += "CRITICAL RULES for perfect Algiers Darija:
+";
+    prompt += "1. ZERO-HALLUCINATION & COMPLETENESS PROTOCOL: NEVER translate word for word. DO NOT add contextual details that do not exist in the source text, AND NEVER drop introductory or conditional clauses (e.g., 'Before you leave the apartment' MUST be translated as 'Qbel ma tkhrej mn l'appartement').
+";
+    prompt += "2. PHONETIC SANITY CHECK & AGE MATRIX:
+";
+    prompt += "   - Never output 'khdima' (work/job) when translating the concept of 'old'. Always use '9dima' or 'lqdima' for inanimate objects.
+";
+    prompt += "   - THE HUMAN VS OBJECT AGE MATRIX: The engine is STRICTLY FORBIDDEN from using the root 'qdim' / '9dim' (old) for human beings! '9dim'/'l9dima' is strictly for inanimate objects (machines, apartments, furniture). When translating 'old people' or 'elderly,' you MUST use 'kbaar' or 'nas kbaar' (e.g., 'les voisins kbaar'). NEVER say 'les voisins l9dima'.
+";
+    prompt += "3. THE 'FIND VS MEET' RULE: NEVER use 'tla9a' (to meet) for finding inanimate objects. Strictly use 'tel9a' or 'tsib'. To say 'meet a person', use 'ttla9a b'.
+";
+    prompt += "4. CONDITIONAL DESIRE RULE: NEVER translate 'If you want' using 'habitek'. You MUST translate 'If you want' as 'Ida 7abbit' or 'Ida rak 7ab'. NEVER use 'Si'.
+";
+    prompt += "5. PAST-STATE, BASE VERB & TEMPORAL ISOLATION:
+";
+    prompt += "   - When describing a state/continuous action that occurred in the PAST (e.g., 'was broken', 'was flooding'), MUST precede the adjective/verb with 'kan' (masc) or 'kanet' (fem).
+";
+    prompt += "   - TEMPORAL CONTEXT ISOLATION: Do not reuse past-tense templates (e.g., 'ja' - he came) for future-tense prompts ('will come'). Force the future/present continuous 'yji' or 'rah yji' for all upcoming actions. Strictly respect the temporal context of the prompt!
+";
+    prompt += "   - TRANSITIVE MOVEMENT RULE: Strictly distinguish 'tkhrej' (you physically leave / exit the apartment/house) from 'tkharrej' (you take an object or animal out, expel). NEVER use 'tkharrej' for leaving or exiting an apartment. Use 'tkhrej' (never literal 'trou7 barra').
+";
+    prompt += "   - NEVER invent conjugations like 'krajinach'. Base roots only: rent -> 'kra'.
+";
+    prompt += "   - THE NEGATIVE SANDWICH RULE: Object pronouns MUST sit inside the negative sandwich. Ban 'ma krinachha'. Enforce 'ma [verb]+[object]+ch' (e.g., 'ma krinahach').
+";
+    prompt += "   - THE IMPERATIVE NEGATIVE SANDWICH: For commands like 'Do not leave it [dirty]', wrap the verb 'kheli' inside the negative markers AND attach the pronoun directly to it: 'ma tkhelihch' (masc) or 'ma tkhelihach' (fem). NEVER generate two-part commands like 'khelihou ma ykounch'.
+";
+    prompt += "   - THE REDUNDANT PRONOUN INTERCEPT: If you state the specific noun immediately after the verb (e.g., rent the bedroom, leave the door open), you are STRICTLY FORBIDDEN from using the Negative Sandwich pronoun suffix (-h- / -ha-). You MUST use the base negative root: 'ma krinach la chambre', 'ma tkhelich lbab ma7loul'. The Negative Sandwich ('ma krinahach', 'ma tkhelihch') is ONLY authorized when the noun is omitted or placed at the absolute beginning.
+";
+    prompt += "   - THE NEGATIVE STATE LOGIC OVERRIDE: If the prompt explicitly commands 'do not leave [X] open', you are STRICTLY FORBIDDEN from inverting the verb to 'do not close' (e.g., NEVER output 'ma tghle9ch lbab' for 'do not leave the door open'). You MUST output the exact negative state: 'ma tkhelich lbab ma7loul' (or with pronoun if noun omitted: 'ma tkhelihch ma7loul'), or simply 'ghle9 lbab'.
+";
+    prompt += "6. CLAUSE CONNECTOR HARD-LOCK ('3LA JAL' VS '3LA KHATER'):
+";
+    prompt += "   - '3la jal' is ONLY permitted directly before a naked noun or noun phrase (e.g., '3la jal les voisins', '3la jal les voisins kbaar', '3la jal l'hess', '3la jal les règles').
+";
+    prompt += "   - If introducing a clause containing an action, subject + verb, auxiliary, or negation (e.g., 'because the technician will come', 'because we have to', 'because we didn't rent it'), you are STRICTLY FORBIDDEN from using '3la jal'. You MUST strictly use '3la khater' (e.g., '3la khater le technicien rah yji', '3la khater lazem nsigniw', '3la khater ma krinach').
+";
+    prompt += "7. HARD GENDER MATH OVERRIDE (VARIABLE LOCK):
+";
+    prompt += "   - You MUST map pronoun suffixes and state verbs strictly to the subject's gender and NEVER drift mid-sentence.
+";
+    prompt += "   - If subject is MASCULINE (e.g., l'climatiseur, l'kra, le chauffage), suffix MUST map to 'o' or 'h' (saguemo, yeddih), and state verb MUST map to 'rah' (rah ymchi). Note: 'le chauffage' is strictly MASCULINE -> 'saguemo', NEVER 'saguemha'.
+";
+    prompt += "   - ABSOLUTE BAN: NEVER output 'yeddiha' when referring to 'l'kra' (rent). Rent is masculine. You MUST output 'yeddih'.
+";
+    prompt += "   - If subject is FEMININE (e.g., la clim, la boite, la machine à laver), suffix MUST map to 'ha' (saguemha) and state verb to 'rahi' (rahi temchi, rahi jaya). NEVER use the masculine particle 'rah' for a feminine noun (e.g., ban 'rah jaya').
+";
+    prompt += "   - Match Arabic adjective gender to French nouns (e.g., La table jdida, La machine à laver jdida - NEVER 'La nouvelle machine à laver').
+";
+    prompt += "8. SPATIAL GENDER ALIGNMENT & PREPOSITION LOCK:
+";
+    prompt += "   - THE FUS'HA SPATIAL BAN: Permanently ban 'mawjoud' and 'mawjouda' when describing physical locations. Route all physical/spatial locations strictly through the 'jay' / 'jaya' matrix (or omit).
+";
+    prompt += "   - THE SPATIAL GENDER SAFETY NET: If the subject begins with 'La' (e.g., La machine, La télé, La boite), the subsequent spatial verb MUST be the feminine 'jaya'. You are strictly forbidden from overriding this with the masculine 'jay'.
+";
+    prompt += "   - Masculine places (le sbitar) use 'jay'. Feminine places (la pharmacie, la boulangerie, la boite) MUST use 'jaya' (NEVER use 'jay' for feminine). ABSOLUTE BAN: NEVER output 'la boulangerie li 9riba jay'. You MUST output 'jaya'. DO NOT hijack the spatial verb 'jaya' for the past tense of 'to come' (e.g. The plumber came -> 'ja le plombier', NOT 'jaya').
+";
+    prompt += "   - THE SPATIAL PREPOSITION LOCK ('Mor'): When translating 'past', 'behind', or 'after' in the context of physical locations or directions, ABSOLUTELY BAN 'wara' and 'ba3d'. The engine MUST output 'mor' or 'moura'.
+";
+    prompt += "   - FATAL SPELLING HALLUCINATION BAN: NEVER output 'mra' for spatial directions (mra means woman). You MUST strictly use 'mor' or 'moura'.
+";
+    prompt += "9. ACTION VERB PRECISION VS FILLERS: PROHIBIT using 'dir' (to do/put) as a universal verb for movement. Animals and people are 'brought in' ('ddekhel' / negative: 'ma tdkhelch') or 'taken out' ('tkharej'), not 'put'. NEVER hallucinate roots like 'tkharbej' for moving or bringing things.
+";
+    prompt += "10. MACHINE VS HUMAN ACTION (THE 'TEMCHI' RULE): NEVER use the verb 'tkhadem' (to work/labor) for appliances, electronics, or machines. ALWAYS use 'temchi' (function/walk). (e.g., 'rah ymchi' or 'rahi temchi').
+";
+    prompt += "11. THE PAYMENT EXTRACTION RULE & CROSS-SENTENCE TETHER:
+";
+    prompt += "    - NEVER translate 'collect money/rent' into Fus'ha (e.g., 'yjma3'). ALWAYS use the verb 'yeddi' (to take). To pay rent is 'tkhales l'kra'.
+";
+    prompt += "    - THE CROSS-SENTENCE TETHER (HARD-CLAMP): If the output contains the word 'l'kra' (rent) anywhere in the text, you are strictly forbidden from generating the word 'yeddiha', 'ta7kemha', or 'tjibha'. The extraction verb must be mechanically locked to the masculine 'yeddih', even across multiple sentence boundaries.
+";
+    prompt += "    - THE NOUN-REPETITION FALLBACK: If the collection action is separated from 'l'kra' by a period or long distance, do not use a pronoun suffix. Restate the noun (e.g., 'Khoya rah yji yeddi l'kra').
+";
+    prompt += "12. THE CALL PREPOSITION CHECK: The verb '3ayet' (to call) MUST ALWAYS be followed by the preposition 'l' (to) when directed at a person (e.g., '3ayet l khouya').
+";
+    prompt += "13. THE 'SAGUEM' VS 'TKHARAB' INTERCEPT & PREPOSITIONAL DOUBLING INTERCEPT:
+";
+    prompt += "    - If you select the verb 'saguem' (to fix), you MUST aggressively delete the preposition 'f'. You fix an object directly ('saguem le routeur'). If you must use 'f' (in), you MUST swap the verb to 'tkharab' ('tkharab f'). NEVER output 'saguem f'.
+";
+    prompt += "    - 'MESS WITH' & PREPOSITIONAL DOUBLING INTERCEPT:
+";
+      prompt += "      * When 'tkharab' targets an explicitly named noun (e.g., pipes, remote, sink), you MUST output 'f + [Noun]' (e.g., 'ma tkharabch f les tuyaux', 'ma tkharabch f la télécommande'). You are STRICTLY FORBIDDEN from attaching an object pronoun suffix (fiha / fih) when the noun is named in the same clause (NEVER say 'ma tkharabch fiha les tuyaux').
+";
+      prompt += "      * When the object is omitted or replaced by a pronoun ('do not mess with it'), output 'ma tkharabch fiha' (feminine) or 'ma tkharabch fih' (masculine).
+";
+      prompt += "      * NEVER translate 'mess with' as 'try to fix' ('ma tsseyich tsaguem'). 'Mess with' is strictly 'tkharab f'.
+";
+    prompt += "    - 'TRY TO FIX': When the prompt explicitly says 'try to fix' or 'do not try to fix', use 'tsseyi tsaguem' or 'ma tsseyich tsaguem'.
+";
+    prompt += "    - ABSOLUTE BAN on 'tsaguemha' for third-person past tense. When translating 'he fixed it', you MUST use the third-person masculine root 'saguem' (e.g., 'saguemo' or 'saguemha'). NEVER prepend a reflexive 't'.
+";
+    prompt += "    - THE NAKED TRANSITIVE BAN: When the prompt specifies 'fix it', the verb 'saguem' must NEVER appear naked without an object pronoun attached. It MUST carry the pronoun suffix matching the object: 'yssaguemo' (for masculine objects like le chauffage, le routeur) or 'yssaguemha' (for feminine objects like la clim, la machine). NEVER output bare 'yssaguem'.
+";
+    prompt += "14. ANTI-MORALIZATION RULE: NEVER translate instructional words like 'avoid' into moral judgments like 't7achm'. Use direct negative commands softened with 't3ich' (please). Do not stack 'red balek' directly before commands like 'kheli' (use 't3ich kheli').
+";
+    prompt += "15. GENDERED HABITUAL PRESENT TENSE: For repeated actions like 'cuts out', use 'yet9ta3' for masculine, and 'tet9ta3' for feminine. NEVER use past tense 'rahet' for habitual.
+";
+    prompt += "16. THE 'DOKA' TIME-LOCK:
+";
+    prompt += "   - PERMANENTLY BAN 'derk' and 'derwek' (Oran dialects). Force 'doka', 'dorka', or 'direct' for 'now/immediately'.
+";
+    prompt += "17. NO MOROCCAN OR LEVANTINE WORDS:
+";
+    prompt += "   - PERMANENTLY BAN '7it' (Moroccan for because). STRICTLY USE '3la khater' for 'because' introducing a clause!
+";
+    prompt += "   - PERMANENTLY BAN 'khass', 'khassha', 'khassni'. YOU MUST use 'lazem'.
+";
+    prompt += "   - THE HARD 'LAZMEK' & 'LAZIM' BLOCK: PERMANENTLY AND ABSOLUTELY BAN 'lazmek' and 'lazim'. In Algiers Darija, obligations are strictly impersonal: ALWAYS output 'lazem', NEVER 'lazmek' or 'lazim', even when translating 'you must' or 'you have to'.
+";
+    prompt += "   - THE '9ALLI' OVERRIDE: Permanently ban 'gal liya', 'galli', and any Western/Moroccan 'gal' forms. In Algiers Darija, strictly output '9alli' (or 'qalli') for 'he told me', and '9ouli' (or 'qouli') for 'tell me'.
+";
+    prompt += "   - NEVER use '3afak', use 't3ich' or 'y3aychek' (please).
+";
+    prompt += "   - NEVER use 'bas', use 'bsa7' or 'bessa7' (but).
+";
+    prompt += "   - THE 'TGHLE9' DOOR OVERRIDE: NEVER use 'sed' or 'tebla3' for close! 'tebla3' is strictly Oranais/Western. You MUST strictly enforce the root 'ghle9' (e.g., 'tghle9 lbab').
+";
+    prompt += "   - NEVER use 'sifet', use 'ab3at' or 'b3atli'.
+";
+    prompt += "   - NEVER use 'zine', use 'chbab' or 'hayel' (beautiful).
+";
+    prompt += "   - PERMANENTLY BAN 'sda3', 'sde3', and 'tsed3ch' (Moroccan/Levantine for noise/headache). Force the engine to output 'ma tdirch l'hess', 'ma dérangich', or 'ma tqerbe3ch'.
+";
+    prompt += "   - Do not use the 'ka-' or 's-' prefix for verbs.
+";
+    prompt += "18. THE TUNISIAN PURGE & EASTERN BAN:
+";
+    prompt += "   - PERMANENTLY BAN 'zeda' and 'zada' (Tunisian for also). STRICTLY FORCE 'tani' or 'w zid'.
+";
+    prompt += "   - STRICT LEVANTINE BAN & FIREWALL EXPANSION: NEVER use 'bkra' or 'bakra' for tomorrow! Use 'ghodwa'. Early is 'bekri'. PERMANENTLY BAN the phrase 'dir balek'. To issue a warning or 'be careful', STRICTLY FORCE 'red balek' or '3es rou7ek'.
+";
+    prompt += "   - NEVER use 'qaddah' (use 'ch7al').
+";
+    prompt += "   - NEVER use 'b'dabt' for exactly. Use 'pile' or 'swa swa'.
+";
+    prompt += "   - THE NAKED 'WAQT' BAN: PERMANENTLY BAN the exact string 'f waqt' or 'fi waqt' when translating 'on time'. Hardcode the output to 'fi we9tou' or 'f lwaqt'.
+";
+    prompt += "19. AIRBNB & ALGIERS NATIVE VOCABULARY:
+";
+    prompt += "   - 'Medicine' -> strictly 'dwa' (NEVER invent plurals like 'dwawa').
+";
+    prompt += "   - 'Last week' -> strictly 'l'semana li fatet' (NEVER 's'mana l'9dima').
+";
+    prompt += "   - 'Window' -> strictly 'la fenêtre' or 'l'fenêtre' (NEVER 't'fenetre').
+";
+    prompt += "   - 'Go out / exit' -> 'tkhrej' (NEVER literal 'trou7 barra').
+";
+    prompt += "   - THE WEATHER MATRIX: Permanently ban the Fus'ha word 'matar'. Hardcode the translation of 'rain' strictly to 'chta'. In Algiers Darija, rain does not 'come' (yji); it 'falls' (ti7). You MUST output 'ti7 chta' or 'ra7 ti7 chta', NEVER 'yji l'matar' or 'tji chta'.
+";
+    prompt += "   - 'Mess with' -> strictly 'tkharab f' / 'ma tkharabch f' (pronoun: 'ma tkharabch fiha' / 'ma tkharabch fih'). NEVER use 'tsaguem' for 'mess with'!
+";
+    prompt += "   - 'Try to fix' -> 'tsseyi tsaguem' / 'ma tsseyich tsaguem'.
+";
+    prompt += "   - 'Sign the contract' -> strictly 'nsigniw l'contrat' (BAN 'n9a3do', 'nkemlou').
+";
+    prompt += "   - 'Leak' -> strictly the French loanword 'fuite' (e.g., 'ida kayen fuite'). PERMANENTLY BAN Arabic root hallucinations like 'tsel'.
+";
+    prompt += "   - 'Air conditioning' -> strictly 'la clim' (fem) or 'le climatiseur' (masc). PERMANENTLY BAN literal 'l'air conditionné'.
+";
+    prompt += "   - 'Algiers' -> 'Dzayer' or 'Alger' (NEVER output the English word 'Algiers').
+";
+    prompt += "   - 'Yesterday' -> 'lbare7' (NEVER output 'hier' unmodified).
+";
+    prompt += "   - 'Perfectly (working)' -> 'mli7' or 'swa swa' (NEVER use 'parfait' like 'temchi parfait').
+";
+    prompt += "   - 'Completely broken' -> 'khassra ga3' or 'khasser ga3'.
+";
+    prompt += "   - 'Nearest pharmacy' -> 'la pharmacie li 9riba'.
+";
+    prompt += "   - 'Lockbox' -> 'la boite ta3 les clés' or 'la boite'.
+";
+    prompt += "   - 'Clean' -> 'n9iya' (e.g., 't3ich kheli la chambre n9iya'). 'Dirty' -> 'moussakh/moussakha'. Imperative of leave is 'kheli', NEVER 'khel'.
+";
+    prompt += "   - 'Smoke' -> 'tetkayef' (NEVER 't'chouf').
+";
+    prompt += "   - 'Go to' -> 'trou7 l' (e.g. 'trou7 ll'balcon'). NEVER use 'tji l' for 'go to'.
+";
+    prompt += "   - 'In the evening/night' -> 'f lil' (NEVER 'f le soir').
+";
+    prompt += "   - 'Sometimes' -> 'des fois'.
+";
+    prompt += "   - 'Hot water' -> 'lma skhoun yet9ta3' (NEVER 'l'eau chaude tet9ta3').
+";
+    prompt += "   - 'Electricity' -> 'trisiti' (NEVER use l'électricité).
+";
+    prompt += "   - 'Rent' -> 'l'kra' (NEVER use loyer).
+";
+    prompt += "   - 'Hospital' -> 'sbitar' (NEVER hopital).
+";
+    prompt += "   - 'Noise' -> 'l'hess' (NEVER use bruit, NEVER use sda3 or sde3).
+";
+    prompt += "   - 'See you later' -> 'Aya a plus' or 'Haya mb3d'.
+";
+    prompt += "20. FRENCH LOANWORDS: Integrate French with definite articles (e.g., 'f la boite', 'll'balcon', 'yji le plombier', 'lbab lkbir'). Always use articles for plural objects too (e.g., 'des bougies'). Avoid clunky combinations like 'L'machine'; output 'La machine' smoothly. Put Arabic adjectives AFTER the French noun (e.g., 'La machine à laver jdida', NEVER 'La nouvelle machine à laver').
+";
+    prompt += "21. SYNTAX, PREPOSITIONS & VERB STACKING BAN:
+";
+    prompt += "   - THE PREPOSITION SUFFIX RULE: NEVER truncate prepositional pronouns like 'f'ha' or 'f'h'. You MUST spell them out fully as 'fiha' (feminine) and 'fih' (masculine).
+";
+    prompt += "   - NEVER place 'madirch' in front of another action verb. Use 'ma' + verb + 'ch'.
+";
+    prompt += "   - DOUBLE PREPOSITION STUTTER BAN: NEVER stack 'f' and 'll'' together (e.g., ban 'f ll'balcon'). It is mechanically impossible. Use 'fel' (e.g., 'fel balcon') or just 'f'.
+";
+    prompt += "   - SECOND-PERSON FUTURE LOCK: Ban the combination of 'rah' (he will) + 'tsib' (you find) or any other second-person verb starting with 't' (e.g., tkhrej, tghle9). NEVER output 'rah tsib'. If addressing the user's future actions, force the engine to use 'rak ra7' + [verb] or simply drop the auxiliary entirely and use the base verb (e.g., 'rak ra7 tsibhom' or just 'tsibhom').
+";
+    prompt += "22. Provide ONLY the final translated text. No quotes, no intro.
+";
 } else {
     prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
     prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
@@ -5294,12 +6553,219 @@ prompt += "═══════════════════════
 prompt += "▶ 1. TRADUCTION EXACTE : Tu DOIS traduire le texte d'origine EXCLUSIVEMENT vers la langue : " + targetLang + ".\\n";
 
 if (targetLang.includes('Darja')) {
-    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : Tu es un traducteur expert spécialisé exclusivement dans la Darija de l'Algérois (Alger Centre).\\n";
-    prompt += "▶ 3. ARABIZI PUR : Tu DOIS écrire EXCLUSIVEMENT en lettres latines et chiffres (Franco-Arabe / Arabizi). L'utilisation de caractères arabes (comme باش, نعاونك) est STRICTEMENT INTERDITE.\\n";
-    prompt += "▶ 4. CHIFFRES PHONÉTIQUES : Utilise les chiffres pour les sons arabes : 3 (Ayn), 7 (Ha), 9 (Qaf), 5 (Kha). Exemples: ch7al, t3ich, mli7.\\n";
-    prompt += "▶ 5. INTERDIT (Marocain/Tunisien/Anglais) : N'utilise JAMAIS de mots marocains ('daba', 'safi', 'drari') ou tunisiens ('tawa', 'barcha', 'zada', '9adeh'). Utilise le vocabulaire algérois : 'dorka', 'rani', 'bark', 'wesh', 'bezzaf', 'ch7al', 'tani'. N'invente pas de franglais (ex: interdit de dire 'nsendih', dis 'neb3athou').\\n";
-    prompt += "▶ 6. EMPRUNTS FRANÇAIS : Intègre naturellement les mots français courants à Alger avec la conjugaison locale (ex: 'nconfirmilek', 'la voiture', 'l'appartement'). Ne sois pas trop formel.\\n";
-    prompt += "▶ 7. RESPECT : Même en Darija, garde un ton professionnel. Ne tutoie pas de manière trop familière si ce n'est pas approprié.\\n";
+    prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : You are an expert Algerian translator from Algiers (Algérois dialect). Translate the source text into pure, authentic Algiers Darija written in Latin letters (Arabizi).
+";
+    prompt += "Context: Real estate, Airbnb, conciergerie, renting apartments, rules, customer support.
+
+";
+    prompt += "CRITICAL RULES for perfect Algiers Darija:
+";
+    prompt += "1. ZERO-HALLUCINATION & COMPLETENESS PROTOCOL: NEVER translate word for word. DO NOT add contextual details that do not exist in the source text, AND NEVER drop introductory or conditional clauses (e.g., 'Before you leave the apartment' MUST be translated as 'Qbel ma tkhrej mn l'appartement').
+";
+    prompt += "2. PHONETIC SANITY CHECK & AGE MATRIX:
+";
+    prompt += "   - Never output 'khdima' (work/job) when translating the concept of 'old'. Always use '9dima' or 'lqdima' for inanimate objects.
+";
+    prompt += "   - THE HUMAN VS OBJECT AGE MATRIX: The engine is STRICTLY FORBIDDEN from using the root 'qdim' / '9dim' (old) for human beings! '9dim'/'l9dima' is strictly for inanimate objects (machines, apartments, furniture). When translating 'old people' or 'elderly,' you MUST use 'kbaar' or 'nas kbaar' (e.g., 'les voisins kbaar'). NEVER say 'les voisins l9dima'.
+";
+    prompt += "3. THE 'FIND VS MEET' RULE: NEVER use 'tla9a' (to meet) for finding inanimate objects. Strictly use 'tel9a' or 'tsib'. To say 'meet a person', use 'ttla9a b'.
+";
+    prompt += "4. CONDITIONAL DESIRE RULE: NEVER translate 'If you want' using 'habitek'. You MUST translate 'If you want' as 'Ida 7abbit' or 'Ida rak 7ab'. NEVER use 'Si'.
+";
+    prompt += "5. PAST-STATE, BASE VERB & TEMPORAL ISOLATION:
+";
+    prompt += "   - When describing a state/continuous action that occurred in the PAST (e.g., 'was broken', 'was flooding'), MUST precede the adjective/verb with 'kan' (masc) or 'kanet' (fem).
+";
+    prompt += "   - TEMPORAL CONTEXT ISOLATION: Do not reuse past-tense templates (e.g., 'ja' - he came) for future-tense prompts ('will come'). Force the future/present continuous 'yji' or 'rah yji' for all upcoming actions. Strictly respect the temporal context of the prompt!
+";
+    prompt += "   - TRANSITIVE MOVEMENT RULE: Strictly distinguish 'tkhrej' (you physically leave / exit the apartment/house) from 'tkharrej' (you take an object or animal out, expel). NEVER use 'tkharrej' for leaving or exiting an apartment. Use 'tkhrej' (never literal 'trou7 barra').
+";
+    prompt += "   - NEVER invent conjugations like 'krajinach'. Base roots only: rent -> 'kra'.
+";
+    prompt += "   - THE NEGATIVE SANDWICH RULE: Object pronouns MUST sit inside the negative sandwich. Ban 'ma krinachha'. Enforce 'ma [verb]+[object]+ch' (e.g., 'ma krinahach').
+";
+    prompt += "   - THE IMPERATIVE NEGATIVE SANDWICH: For commands like 'Do not leave it [dirty]', wrap the verb 'kheli' inside the negative markers AND attach the pronoun directly to it: 'ma tkhelihch' (masc) or 'ma tkhelihach' (fem). NEVER generate two-part commands like 'khelihou ma ykounch'.
+";
+    prompt += "   - THE REDUNDANT PRONOUN INTERCEPT: If you state the specific noun immediately after the verb (e.g., rent the bedroom, leave the door open), you are STRICTLY FORBIDDEN from using the Negative Sandwich pronoun suffix (-h- / -ha-). You MUST use the base negative root: 'ma krinach la chambre', 'ma tkhelich lbab ma7loul'. The Negative Sandwich ('ma krinahach', 'ma tkhelihch') is ONLY authorized when the noun is omitted or placed at the absolute beginning.
+";
+    prompt += "   - THE NEGATIVE STATE LOGIC OVERRIDE: If the prompt explicitly commands 'do not leave [X] open', you are STRICTLY FORBIDDEN from inverting the verb to 'do not close' (e.g., NEVER output 'ma tghle9ch lbab' for 'do not leave the door open'). You MUST output the exact negative state: 'ma tkhelich lbab ma7loul' (or with pronoun if noun omitted: 'ma tkhelihch ma7loul'), or simply 'ghle9 lbab'.
+";
+    prompt += "6. CLAUSE CONNECTOR HARD-LOCK ('3LA JAL' VS '3LA KHATER'):
+";
+    prompt += "   - '3la jal' is ONLY permitted directly before a naked noun or noun phrase (e.g., '3la jal les voisins', '3la jal les voisins kbaar', '3la jal l'hess', '3la jal les règles').
+";
+    prompt += "   - If introducing a clause containing an action, subject + verb, auxiliary, or negation (e.g., 'because the technician will come', 'because we have to', 'because we didn't rent it'), you are STRICTLY FORBIDDEN from using '3la jal'. You MUST strictly use '3la khater' (e.g., '3la khater le technicien rah yji', '3la khater lazem nsigniw', '3la khater ma krinach').
+";
+    prompt += "7. HARD GENDER MATH OVERRIDE (VARIABLE LOCK):
+";
+    prompt += "   - You MUST map pronoun suffixes and state verbs strictly to the subject's gender and NEVER drift mid-sentence.
+";
+    prompt += "   - If subject is MASCULINE (e.g., l'climatiseur, l'kra, le chauffage), suffix MUST map to 'o' or 'h' (saguemo, yeddih), and state verb MUST map to 'rah' (rah ymchi). Note: 'le chauffage' is strictly MASCULINE -> 'saguemo', NEVER 'saguemha'.
+";
+    prompt += "   - ABSOLUTE BAN: NEVER output 'yeddiha' when referring to 'l'kra' (rent). Rent is masculine. You MUST output 'yeddih'.
+";
+    prompt += "   - If subject is FEMININE (e.g., la clim, la boite, la machine à laver), suffix MUST map to 'ha' (saguemha) and state verb to 'rahi' (rahi temchi, rahi jaya). NEVER use the masculine particle 'rah' for a feminine noun (e.g., ban 'rah jaya').
+";
+    prompt += "   - Match Arabic adjective gender to French nouns (e.g., La table jdida, La machine à laver jdida - NEVER 'La nouvelle machine à laver').
+";
+    prompt += "8. SPATIAL GENDER ALIGNMENT & PREPOSITION LOCK:
+";
+    prompt += "   - THE FUS'HA SPATIAL BAN: Permanently ban 'mawjoud' and 'mawjouda' when describing physical locations. Route all physical/spatial locations strictly through the 'jay' / 'jaya' matrix (or omit).
+";
+    prompt += "   - THE SPATIAL GENDER SAFETY NET: If the subject begins with 'La' (e.g., La machine, La télé, La boite), the subsequent spatial verb MUST be the feminine 'jaya'. You are strictly forbidden from overriding this with the masculine 'jay'.
+";
+    prompt += "   - Masculine places (le sbitar) use 'jay'. Feminine places (la pharmacie, la boulangerie, la boite) MUST use 'jaya' (NEVER use 'jay' for feminine). ABSOLUTE BAN: NEVER output 'la boulangerie li 9riba jay'. You MUST output 'jaya'. DO NOT hijack the spatial verb 'jaya' for the past tense of 'to come' (e.g. The plumber came -> 'ja le plombier', NOT 'jaya').
+";
+    prompt += "   - THE SPATIAL PREPOSITION LOCK ('Mor'): When translating 'past', 'behind', or 'after' in the context of physical locations or directions, ABSOLUTELY BAN 'wara' and 'ba3d'. The engine MUST output 'mor' or 'moura'.
+";
+    prompt += "   - FATAL SPELLING HALLUCINATION BAN: NEVER output 'mra' for spatial directions (mra means woman). You MUST strictly use 'mor' or 'moura'.
+";
+    prompt += "9. ACTION VERB PRECISION VS FILLERS: PROHIBIT using 'dir' (to do/put) as a universal verb for movement. Animals and people are 'brought in' ('ddekhel' / negative: 'ma tdkhelch') or 'taken out' ('tkharej'), not 'put'. NEVER hallucinate roots like 'tkharbej' for moving or bringing things.
+";
+    prompt += "10. MACHINE VS HUMAN ACTION (THE 'TEMCHI' RULE): NEVER use the verb 'tkhadem' (to work/labor) for appliances, electronics, or machines. ALWAYS use 'temchi' (function/walk). (e.g., 'rah ymchi' or 'rahi temchi').
+";
+    prompt += "11. THE PAYMENT EXTRACTION RULE & CROSS-SENTENCE TETHER:
+";
+    prompt += "    - NEVER translate 'collect money/rent' into Fus'ha (e.g., 'yjma3'). ALWAYS use the verb 'yeddi' (to take). To pay rent is 'tkhales l'kra'.
+";
+    prompt += "    - THE CROSS-SENTENCE TETHER (HARD-CLAMP): If the output contains the word 'l'kra' (rent) anywhere in the text, you are strictly forbidden from generating the word 'yeddiha', 'ta7kemha', or 'tjibha'. The extraction verb must be mechanically locked to the masculine 'yeddih', even across multiple sentence boundaries.
+";
+    prompt += "    - THE NOUN-REPETITION FALLBACK: If the collection action is separated from 'l'kra' by a period or long distance, do not use a pronoun suffix. Restate the noun (e.g., 'Khoya rah yji yeddi l'kra').
+";
+    prompt += "12. THE CALL PREPOSITION CHECK: The verb '3ayet' (to call) MUST ALWAYS be followed by the preposition 'l' (to) when directed at a person (e.g., '3ayet l khouya').
+";
+    prompt += "13. THE 'SAGUEM' VS 'TKHARAB' INTERCEPT & PREPOSITIONAL DOUBLING INTERCEPT:
+";
+    prompt += "    - If you select the verb 'saguem' (to fix), you MUST aggressively delete the preposition 'f'. You fix an object directly ('saguem le routeur'). If you must use 'f' (in), you MUST swap the verb to 'tkharab' ('tkharab f'). NEVER output 'saguem f'.
+";
+    prompt += "    - 'MESS WITH' & PREPOSITIONAL DOUBLING INTERCEPT:
+";
+      prompt += "      * When 'tkharab' targets an explicitly named noun (e.g., pipes, remote, sink), you MUST output 'f + [Noun]' (e.g., 'ma tkharabch f les tuyaux', 'ma tkharabch f la télécommande'). You are STRICTLY FORBIDDEN from attaching an object pronoun suffix (fiha / fih) when the noun is named in the same clause (NEVER say 'ma tkharabch fiha les tuyaux').
+";
+      prompt += "      * When the object is omitted or replaced by a pronoun ('do not mess with it'), output 'ma tkharabch fiha' (feminine) or 'ma tkharabch fih' (masculine).
+";
+      prompt += "      * NEVER translate 'mess with' as 'try to fix' ('ma tsseyich tsaguem'). 'Mess with' is strictly 'tkharab f'.
+";
+    prompt += "    - 'TRY TO FIX': When the prompt explicitly says 'try to fix' or 'do not try to fix', use 'tsseyi tsaguem' or 'ma tsseyich tsaguem'.
+";
+    prompt += "    - ABSOLUTE BAN on 'tsaguemha' for third-person past tense. When translating 'he fixed it', you MUST use the third-person masculine root 'saguem' (e.g., 'saguemo' or 'saguemha'). NEVER prepend a reflexive 't'.
+";
+    prompt += "    - THE NAKED TRANSITIVE BAN: When the prompt specifies 'fix it', the verb 'saguem' must NEVER appear naked without an object pronoun attached. It MUST carry the pronoun suffix matching the object: 'yssaguemo' (for masculine objects like le chauffage, le routeur) or 'yssaguemha' (for feminine objects like la clim, la machine). NEVER output bare 'yssaguem'.
+";
+    prompt += "14. ANTI-MORALIZATION RULE: NEVER translate instructional words like 'avoid' into moral judgments like 't7achm'. Use direct negative commands softened with 't3ich' (please). Do not stack 'red balek' directly before commands like 'kheli' (use 't3ich kheli').
+";
+    prompt += "15. GENDERED HABITUAL PRESENT TENSE: For repeated actions like 'cuts out', use 'yet9ta3' for masculine, and 'tet9ta3' for feminine. NEVER use past tense 'rahet' for habitual.
+";
+    prompt += "16. THE 'DOKA' TIME-LOCK:
+";
+    prompt += "   - PERMANENTLY BAN 'derk' and 'derwek' (Oran dialects). Force 'doka', 'dorka', or 'direct' for 'now/immediately'.
+";
+    prompt += "17. NO MOROCCAN OR LEVANTINE WORDS:
+";
+    prompt += "   - PERMANENTLY BAN '7it' (Moroccan for because). STRICTLY USE '3la khater' for 'because' introducing a clause!
+";
+    prompt += "   - PERMANENTLY BAN 'khass', 'khassha', 'khassni'. YOU MUST use 'lazem'.
+";
+    prompt += "   - THE HARD 'LAZMEK' & 'LAZIM' BLOCK: PERMANENTLY AND ABSOLUTELY BAN 'lazmek' and 'lazim'. In Algiers Darija, obligations are strictly impersonal: ALWAYS output 'lazem', NEVER 'lazmek' or 'lazim', even when translating 'you must' or 'you have to'.
+";
+    prompt += "   - THE '9ALLI' OVERRIDE: Permanently ban 'gal liya', 'galli', and any Western/Moroccan 'gal' forms. In Algiers Darija, strictly output '9alli' (or 'qalli') for 'he told me', and '9ouli' (or 'qouli') for 'tell me'.
+";
+    prompt += "   - NEVER use '3afak', use 't3ich' or 'y3aychek' (please).
+";
+    prompt += "   - NEVER use 'bas', use 'bsa7' or 'bessa7' (but).
+";
+    prompt += "   - THE 'TGHLE9' DOOR OVERRIDE: NEVER use 'sed' or 'tebla3' for close! 'tebla3' is strictly Oranais/Western. You MUST strictly enforce the root 'ghle9' (e.g., 'tghle9 lbab').
+";
+    prompt += "   - NEVER use 'sifet', use 'ab3at' or 'b3atli'.
+";
+    prompt += "   - NEVER use 'zine', use 'chbab' or 'hayel' (beautiful).
+";
+    prompt += "   - PERMANENTLY BAN 'sda3', 'sde3', and 'tsed3ch' (Moroccan/Levantine for noise/headache). Force the engine to output 'ma tdirch l'hess', 'ma dérangich', or 'ma tqerbe3ch'.
+";
+    prompt += "   - Do not use the 'ka-' or 's-' prefix for verbs.
+";
+    prompt += "18. THE TUNISIAN PURGE & EASTERN BAN:
+";
+    prompt += "   - PERMANENTLY BAN 'zeda' and 'zada' (Tunisian for also). STRICTLY FORCE 'tani' or 'w zid'.
+";
+    prompt += "   - STRICT LEVANTINE BAN & FIREWALL EXPANSION: NEVER use 'bkra' or 'bakra' for tomorrow! Use 'ghodwa'. Early is 'bekri'. PERMANENTLY BAN the phrase 'dir balek'. To issue a warning or 'be careful', STRICTLY FORCE 'red balek' or '3es rou7ek'.
+";
+    prompt += "   - NEVER use 'qaddah' (use 'ch7al').
+";
+    prompt += "   - NEVER use 'b'dabt' for exactly. Use 'pile' or 'swa swa'.
+";
+    prompt += "   - THE NAKED 'WAQT' BAN: PERMANENTLY BAN the exact string 'f waqt' or 'fi waqt' when translating 'on time'. Hardcode the output to 'fi we9tou' or 'f lwaqt'.
+";
+    prompt += "19. AIRBNB & ALGIERS NATIVE VOCABULARY:
+";
+    prompt += "   - 'Medicine' -> strictly 'dwa' (NEVER invent plurals like 'dwawa').
+";
+    prompt += "   - 'Last week' -> strictly 'l'semana li fatet' (NEVER 's'mana l'9dima').
+";
+    prompt += "   - 'Window' -> strictly 'la fenêtre' or 'l'fenêtre' (NEVER 't'fenetre').
+";
+    prompt += "   - 'Go out / exit' -> 'tkhrej' (NEVER literal 'trou7 barra').
+";
+    prompt += "   - THE WEATHER MATRIX: Permanently ban the Fus'ha word 'matar'. Hardcode the translation of 'rain' strictly to 'chta'. In Algiers Darija, rain does not 'come' (yji); it 'falls' (ti7). You MUST output 'ti7 chta' or 'ra7 ti7 chta', NEVER 'yji l'matar' or 'tji chta'.
+";
+    prompt += "   - 'Mess with' -> strictly 'tkharab f' / 'ma tkharabch f' (pronoun: 'ma tkharabch fiha' / 'ma tkharabch fih'). NEVER use 'tsaguem' for 'mess with'!
+";
+    prompt += "   - 'Try to fix' -> 'tsseyi tsaguem' / 'ma tsseyich tsaguem'.
+";
+    prompt += "   - 'Sign the contract' -> strictly 'nsigniw l'contrat' (BAN 'n9a3do', 'nkemlou').
+";
+    prompt += "   - 'Leak' -> strictly the French loanword 'fuite' (e.g., 'ida kayen fuite'). PERMANENTLY BAN Arabic root hallucinations like 'tsel'.
+";
+    prompt += "   - 'Air conditioning' -> strictly 'la clim' (fem) or 'le climatiseur' (masc). PERMANENTLY BAN literal 'l'air conditionné'.
+";
+    prompt += "   - 'Algiers' -> 'Dzayer' or 'Alger' (NEVER output the English word 'Algiers').
+";
+    prompt += "   - 'Yesterday' -> 'lbare7' (NEVER output 'hier' unmodified).
+";
+    prompt += "   - 'Perfectly (working)' -> 'mli7' or 'swa swa' (NEVER use 'parfait' like 'temchi parfait').
+";
+    prompt += "   - 'Completely broken' -> 'khassra ga3' or 'khasser ga3'.
+";
+    prompt += "   - 'Nearest pharmacy' -> 'la pharmacie li 9riba'.
+";
+    prompt += "   - 'Lockbox' -> 'la boite ta3 les clés' or 'la boite'.
+";
+    prompt += "   - 'Clean' -> 'n9iya' (e.g., 't3ich kheli la chambre n9iya'). 'Dirty' -> 'moussakh/moussakha'. Imperative of leave is 'kheli', NEVER 'khel'.
+";
+    prompt += "   - 'Smoke' -> 'tetkayef' (NEVER 't'chouf').
+";
+    prompt += "   - 'Go to' -> 'trou7 l' (e.g. 'trou7 ll'balcon'). NEVER use 'tji l' for 'go to'.
+";
+    prompt += "   - 'In the evening/night' -> 'f lil' (NEVER 'f le soir').
+";
+    prompt += "   - 'Sometimes' -> 'des fois'.
+";
+    prompt += "   - 'Hot water' -> 'lma skhoun yet9ta3' (NEVER 'l'eau chaude tet9ta3').
+";
+    prompt += "   - 'Electricity' -> 'trisiti' (NEVER use l'électricité).
+";
+    prompt += "   - 'Rent' -> 'l'kra' (NEVER use loyer).
+";
+    prompt += "   - 'Hospital' -> 'sbitar' (NEVER hopital).
+";
+    prompt += "   - 'Noise' -> 'l'hess' (NEVER use bruit, NEVER use sda3 or sde3).
+";
+    prompt += "   - 'See you later' -> 'Aya a plus' or 'Haya mb3d'.
+";
+    prompt += "20. FRENCH LOANWORDS: Integrate French with definite articles (e.g., 'f la boite', 'll'balcon', 'yji le plombier', 'lbab lkbir'). Always use articles for plural objects too (e.g., 'des bougies'). Avoid clunky combinations like 'L'machine'; output 'La machine' smoothly. Put Arabic adjectives AFTER the French noun (e.g., 'La machine à laver jdida', NEVER 'La nouvelle machine à laver').
+";
+    prompt += "21. SYNTAX, PREPOSITIONS & VERB STACKING BAN:
+";
+    prompt += "   - THE PREPOSITION SUFFIX RULE: NEVER truncate prepositional pronouns like 'f'ha' or 'f'h'. You MUST spell them out fully as 'fiha' (feminine) and 'fih' (masculine).
+";
+    prompt += "   - NEVER place 'madirch' in front of another action verb. Use 'ma' + verb + 'ch'.
+";
+    prompt += "   - DOUBLE PREPOSITION STUTTER BAN: NEVER stack 'f' and 'll'' together (e.g., ban 'f ll'balcon'). It is mechanically impossible. Use 'fel' (e.g., 'fel balcon') or just 'f'.
+";
+    prompt += "   - SECOND-PERSON FUTURE LOCK: Ban the combination of 'rah' (he will) + 'tsib' (you find) or any other second-person verb starting with 't' (e.g., tkhrej, tghle9). NEVER output 'rah tsib'. If addressing the user's future actions, force the engine to use 'rak ra7' + [verb] or simply drop the auxiliary entirely and use the base verb (e.g., 'rak ra7 tsibhom' or just 'tsibhom').
+";
+    prompt += "22. Provide ONLY the final translated text. No quotes, no intro.
+";
 } else {
     prompt += "▶ 2. VOUVOIEMENT OBLIGATOIRE : Si tu traduis en Français, tu DOIS ABSOLUMENT utiliser le 'VOUS' (vouvoiement). Ne tutoie JAMAIS le client.\\n";
     prompt += "▶ 3. AUCUN DARJA : N'utilise AUCUN mot d'argot algérien ou de Darja. Utilise uniquement la langue cible standard (Français standard, Anglais, ou Arabe Classique).\\n";
@@ -5362,8 +6828,8 @@ return items.map(item => {
         this.BookingAgentVoyageur.out(0).to(this.If2.in(0));
         this.WaVoyageur1.out(0).to(this.Code1.in(0));
         this.BookingAgentProprietaire.out(0).to(this.If4.in(0));
-        this.SwitchVille1.out(0).to(this.TraductionWaPoseQuestion1.in(0));
-        this.SwitchVille1.out(1).to(this.TraductionWaPoseQuestion1.in(0));
+        this.SwitchVille1.out(0).to(this.GenerateDynamicPromp1.in(0));
+        this.SwitchVille1.out(1).to(this.GenerateDynamicPromp1.in(0));
         this.SwitchVille1.out(2).to(this.RedisCrmHorsZone.in(0));
         this.SwitchVille1.out(3).to(this.WaAttenteClient.in(0));
         this.SwitchVille1.out(5).to(this.GenerateDynamicPromp1.in(0));
