@@ -1,0 +1,1379 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Bot, 
+  CheckCircle2, 
+  Clock, 
+  Search, 
+  BarChart2, 
+  TrendingUp, 
+  ShoppingBag, 
+  Truck,
+  Settings,
+  Key,
+  Globe,
+  MessageSquare,
+  ShieldCheck,
+  Zap,
+  Check,
+  Copy,
+  ExternalLink,
+  Code,
+  Activity,
+  RefreshCw,
+  Sliders,
+  BellRing,
+  UserPlus,
+  Plus,
+  X,
+  User,
+  Unlink
+} from 'lucide-react';
+import { MOCK_CONTACTS_BY_APP, ContactProfile, APP_GRADIENT_THEMES, getContactsForApp } from '@/lib/mock_chats';
+
+interface RightHubColumnProps {
+  selectedAppId: string;
+  selectedContactId?: string;
+  onSelectChat: (chatId: string) => void;
+  isAiActive?: boolean;
+  onToggleAi?: () => void;
+  isConnected?: boolean;
+  activeTabOverride?: 'contacts' | 'analytics' | 'settings';
+  liveContacts?: ContactProfile[];
+  currentUser?: any;
+  onContactAdded?: (contact: ContactProfile) => void;
+  onDisconnectChannel?: (channelId: string) => void;
+  dragHandleProps?: any;
+}
+
+export const RightHubColumn: React.FC<RightHubColumnProps> = ({
+  selectedAppId,
+  selectedContactId,
+  onSelectChat,
+  isAiActive = true,
+  onToggleAi,
+  isConnected = false,
+  activeTabOverride,
+  liveContacts,
+  currentUser,
+  onContactAdded,
+  onDisconnectChannel,
+  dragHandleProps,
+}) => {
+  const [activeTab, setActiveTab] = useState<'contacts' | 'analytics' | 'settings'>(activeTabOverride || 'contacts');
+  const [isSimulatingLoad, setIsSimulatingLoad] = useState(false);
+
+  useEffect(() => {
+    setIsSimulatingLoad(true);
+    const timer = setTimeout(() => setIsSimulatingLoad(false), 1500);
+    return () => clearTimeout(timer);
+  }, [selectedAppId]);
+  useEffect(() => {
+    if (activeTabOverride) {
+      setActiveTab(activeTabOverride);
+    }
+  }, [activeTabOverride]);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [copiedWebhook, setCopiedWebhook] = useState(false);
+
+  // Real Add Client Modal States
+  const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false);
+  const [newClientHandle, setNewClientHandle] = useState('');
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientMsg, setNewClientMsg] = useState('');
+  const [isAddingClient, setIsAddingClient] = useState(false);
+  const [localAddedContacts, setLocalAddedContacts] = useState<ContactProfile[]>([]);
+
+  // Inbox sync state
+  const [isSyncingInbox, setIsSyncingInbox] = useState(false);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
+
+  const handleSyncInbox = async () => {
+    setIsSyncingInbox(true);
+    setSyncNotice(null);
+    try {
+      const syncEndpoint = selectedAppId === 'instagram' 
+        ? '/api/channels/instagram/sync' 
+        : `/api/channels/${selectedAppId}/sync`;
+
+      let sessionId = '';
+      let username = '';
+      try {
+        const ig = localStorage.getItem('cf_ig_account');
+        if (ig) {
+          const p = JSON.parse(ig);
+          sessionId = p.sessionId || '';
+          username = p.username || '';
+        }
+      } catch {}
+
+      const res = await fetch(syncEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          method: 'auto_import',
+          userId: currentUser?.id,
+          username,
+          sessionId,
+        })
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.threads)) {
+        data.threads.forEach((t: any) => {
+          if (t.contact) {
+            onContactAdded?.(t.contact);
+          }
+        });
+        setSyncNotice(data.message || `Imported ${data.threads.length} conversations`);
+        setTimeout(() => setSyncNotice(null), 3500);
+      } else if (data.message) {
+        setSyncNotice(data.message);
+        setTimeout(() => setSyncNotice(null), 3500);
+      }
+    } catch (e: any) {
+      setSyncNotice(e.message || 'Sync failed');
+      setTimeout(() => setSyncNotice(null), 3500);
+    } finally {
+      setIsSyncingInbox(false);
+    }
+  };
+
+  const handleAddClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanHandle = newClientHandle.trim().replace(/^@/, '');
+    if (!cleanHandle) return;
+    setIsAddingClient(true);
+    try {
+      const addEndpoint = selectedAppId === 'instagram' 
+        ? '/api/channels/instagram/sync' 
+        : `/api/channels/${selectedAppId}/sync`;
+
+      let sessionId = '';
+      try {
+        const ig = localStorage.getItem('cf_ig_account');
+        if (ig) sessionId = JSON.parse(ig).sessionId || '';
+      } catch {}
+
+      const res = await fetch(addEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          method: 'add_contact',
+          userId: currentUser?.id,
+          sessionId,
+          contactData: {
+            handle: cleanHandle,
+            name: newClientName.trim() || cleanHandle,
+            initialMessage: newClientMsg.trim() || 'Bonjour !',
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.contact) {
+        const contactWithApp = { ...data.contact, appId: selectedAppId };
+        setLocalAddedContacts((prev) => [contactWithApp, ...prev]);
+        onContactAdded?.(contactWithApp);
+        onSelectChat(contactWithApp.id);
+        setIsAddClientModalOpen(false);
+        setNewClientHandle('');
+        setNewClientName('');
+        setNewClientMsg('');
+      }
+    } catch (err) {
+      console.warn('Failed to add client:', err);
+    } finally {
+      setIsAddingClient(false);
+    }
+  };
+  
+  // Real dynamic channel credentials
+  const [metaToken, setMetaToken] = useState('');
+  const [metaHandle, setMetaHandle] = useState('');
+  const [tgToken, setTgToken] = useState('');
+  const [tgHandle, setTgHandle] = useState('');
+  const [messengerPageId, setMessengerPageId] = useState('');
+  const [messengerToken, setMessengerToken] = useState('');
+  const [gmailAddr, setGmailAddr] = useState('');
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const ig = localStorage.getItem('cf_ig_account');
+      if (ig) {
+        const p = JSON.parse(ig);
+        setMetaHandle(p.username ? `@${p.username}` : (p.name || ''));
+        setMetaToken(p.pageAccessToken || p.accessToken || '');
+      } else {
+        const auth = localStorage.getItem('cf_meta_auth');
+        if (auth) {
+          const p = JSON.parse(auth);
+          setMetaToken(p.userToken || '');
+          if (p.instagramAccounts?.[0]?.username) {
+            setMetaHandle(`@${p.instagramAccounts[0].username}`);
+          }
+        }
+      }
+
+      const tg = localStorage.getItem('cf_telegram_bot');
+      if (tg) {
+        const p = JSON.parse(tg);
+        setTgHandle(p.username ? `@${p.username}` : '');
+      }
+      setTgToken(localStorage.getItem('cf_telegram_token') || '');
+
+      const fb = localStorage.getItem('cf_messenger_page');
+      if (fb) {
+        const p = JSON.parse(fb);
+        setMessengerPageId(p.id || '');
+        setMessengerToken(p.accessToken || '');
+      }
+
+      const gm = localStorage.getItem('cf_gmail_account');
+      if (gm) {
+        const p = JSON.parse(gm);
+        setGmailAddr(p.email || '');
+      }
+    } catch {}
+  }, [selectedAppId]);
+
+  const handleSaveChannelSettings = (channelId: string) => {
+    try {
+      if (channelId === 'instagram') {
+        const cleanHandle = metaHandle.trim().replace(/^@/, '');
+        const cleanToken = metaToken.trim();
+        const accountData = {
+          username: cleanHandle || 'instagram_user',
+          igId: cleanHandle || 'instagram_user',
+          pageAccessToken: cleanToken,
+          name: cleanHandle || 'Instagram User'
+        };
+        localStorage.setItem('cf_ig_account', JSON.stringify(accountData));
+        if (cleanToken) {
+          localStorage.setItem('cf_meta_token', cleanToken);
+        }
+        const savedApps = new Set(JSON.parse(localStorage.getItem('cf_connected_apps') || '["web_widget"]'));
+        savedApps.add('instagram');
+        localStorage.setItem('cf_connected_apps', JSON.stringify(Array.from(savedApps)));
+        window.dispatchEvent(new Event('storage'));
+        setSaveStatus('Instagram Gateway Synced & Live!');
+        setTimeout(() => setSaveStatus(null), 3500);
+      } else if (channelId === 'telegram') {
+        const cleanToken = tgToken.trim();
+        const cleanHandle = tgHandle.trim().replace(/^@/, '');
+        if (cleanToken) {
+          localStorage.setItem('cf_telegram_token', cleanToken);
+          localStorage.setItem('cf_telegram_bot', JSON.stringify({ username: cleanHandle }));
+          const savedApps = new Set(JSON.parse(localStorage.getItem('cf_connected_apps') || '["web_widget"]'));
+          savedApps.add('telegram');
+          localStorage.setItem('cf_connected_apps', JSON.stringify(Array.from(savedApps)));
+          window.dispatchEvent(new Event('storage'));
+          setSaveStatus('Telegram Gateway Synced & Live!');
+          setTimeout(() => setSaveStatus(null), 3500);
+        }
+      } else if (channelId === 'messenger') {
+        const pageData = { id: messengerPageId.trim(), accessToken: messengerToken.trim(), name: 'Facebook Page' };
+        localStorage.setItem('cf_messenger_page', JSON.stringify(pageData));
+        const savedApps = new Set(JSON.parse(localStorage.getItem('cf_connected_apps') || '["web_widget"]'));
+        savedApps.add('messenger');
+        localStorage.setItem('cf_connected_apps', JSON.stringify(Array.from(savedApps)));
+        window.dispatchEvent(new Event('storage'));
+        setSaveStatus('Messenger Gateway Synced & Live!');
+        setTimeout(() => setSaveStatus(null), 3500);
+      } else if (channelId === 'gmail') {
+        const cleanEmail = gmailAddr.trim();
+        localStorage.setItem('cf_gmail_account', JSON.stringify({ email: cleanEmail }));
+        const savedApps = new Set(JSON.parse(localStorage.getItem('cf_connected_apps') || '["web_widget"]'));
+        savedApps.add('gmail');
+        localStorage.setItem('cf_connected_apps', JSON.stringify(Array.from(savedApps)));
+        window.dispatchEvent(new Event('storage'));
+        setSaveStatus('Support Email Synced & Live!');
+        setTimeout(() => setSaveStatus(null), 3500);
+      }
+    } catch (e) {
+      console.error('Failed to save settings:', e);
+    }
+  };
+  
+  // Interactive test ping state
+  const [pingStatus, setPingStatus] = useState<'idle' | 'testing' | 'success'>('idle');
+  const [pingLatency, setPingLatency] = useState(28);
+
+  // Toggleable gateway settings
+  const [settingsToggles, setSettingsToggles] = useState({
+    darijaMode: true,
+    yalidineAutoSync: true,
+    humanEscalation: true,
+    sendSeenReceipts: true,
+  });
+
+  const toggleSetting = (key: keyof typeof settingsToggles) => {
+    setSettingsToggles((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleTestPing = () => {
+    setPingStatus('testing');
+    setTimeout(() => {
+      setPingLatency(Math.floor(Math.random() * 25) + 18);
+      setPingStatus('success');
+      setTimeout(() => setPingStatus('idle'), 4000);
+    }, 900);
+  };
+
+  const copyToClipboard = (text: string, type: 'key' | 'webhook') => {
+    navigator.clipboard.writeText(text);
+    if (type === 'key') {
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 2000);
+    } else {
+      setCopiedWebhook(true);
+      setTimeout(() => setCopiedWebhook(false), 2000);
+    }
+  };
+
+  // Resolve contacts list based on whether channel is connected and live contacts are provided
+  const fallbackContacts = getContactsForApp(selectedAppId, isConnected);
+  const rawContacts: ContactProfile[] = (isConnected && liveContacts && liveContacts.length > 0)
+    ? liveContacts
+    : (isConnected ? fallbackContacts : []);
+  const extraForApp = localAddedContacts.filter((c) => c.appId === selectedAppId || !c.appId);
+  const contactsList: ContactProfile[] = [
+    ...extraForApp,
+    ...rawContacts.filter((c) => !extraForApp.some((e) => e.id === c.id || e.handleOrPhone.toLowerCase() === c.handleOrPhone.toLowerCase()))
+  ];
+  // Chronological sort: newest activity always at the top (like native WhatsApp & Instagram)
+  const sortedContacts = [...contactsList].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  const filteredContacts = sortedContacts.filter((c) =>
+    c.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
+    c.handleOrPhone.toLowerCase().includes(searchFilter.toLowerCase()) ||
+    c.lastMessage.toLowerCase().includes(searchFilter.toLowerCase())
+  );
+
+  const activeContactId = selectedContactId || sortedContacts[0]?.id;
+  const currentAppTheme = APP_GRADIENT_THEMES[selectedAppId] || APP_GRADIENT_THEMES.whatsapp;
+
+  return (
+    <div className="h-full w-full max-w-full min-w-0 min-h-0 flex flex-col bg-white dark:bg-[#1A1D23] rounded-3xl border border-[#DFDFD4] dark:border-[#2E333D] text-[#1B1B1B] dark:text-gray-100 overflow-hidden shadow-sm">
+      {/* Top Header with App Solid Brand Color - Matches Middle Chat Column */}
+      <div {...dragHandleProps} className={`h-14 px-4 shrink-0 rounded-t-3xl border-b border-black/10 select-none shadow-xs flex items-center ${dragHandleProps?.className || "cursor-grab active:cursor-grabbing"}`}
+        style={{ backgroundColor: currentAppTheme.solidColor }}
+      >
+        {/* Sliding Navigation Tabs: perfectly centered grid layout with equal widths and matching height */}
+        <nav className="relative h-9 w-full grid grid-cols-3 gap-1 p-0.5 bg-black/25 backdrop-blur-md rounded-xl border border-white/20 items-center">
+          {/* CSS-based sliding indicator */}
+          <div 
+            className="absolute top-[2px] bottom-[2px] bg-white rounded-lg shadow-sm z-0"
+            style={{
+              width: 'calc((100% - 12px) / 3)',
+              transform: `translateX(${
+                activeTab === 'contacts' ? '2px' : 
+                activeTab === 'analytics' ? 'calc(100% + 6px)' : 
+                'calc(200% + 10px)'
+              })`,
+              transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            }}
+          />
+          {([
+            { id: 'contacts', label: 'Contacts', count: contactsList.length, icon: <MessageSquare className="w-3.5 h-3.5 shrink-0" /> },
+            { id: 'analytics', label: 'Analytics', icon: <BarChart2 className="w-3.5 h-3.5 shrink-0" /> },
+            { id: 'settings', label: 'Settings', icon: <Settings className="w-3.5 h-3.5 shrink-0" /> },
+          ] as const).map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                id={`tab-btn-${tab.id}`}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative h-full py-1.5 px-3 rounded-lg text-[11px] font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer z-10 whitespace-nowrap overflow-hidden leading-none ${
+                  isActive
+                    ? 'text-gray-950 font-extrabold'
+                    : 'text-white/80 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+                {'count' in tab && tab.count !== undefined && (
+                  <span className="text-[9px] opacity-90 hidden sm:flex items-center justify-center bg-black/10 dark:bg-white/10 rounded-full px-1.5 py-0.5 min-w-[18px] ml-0.5">
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* TABS CONTENT WITH FLUID ANIMATION */}
+      {/* ========================================================================= */}
+      <AnimatePresence mode="wait">
+        {activeTab === 'contacts' && (
+          <motion.div
+            key="contacts-tab"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.16 }}
+            className="flex-1 min-h-0 flex flex-col overflow-hidden"
+          >
+            {/* Search bar & + Add Client Button */}
+            <div className="px-4 py-3 border-b border-[#DFDFD4] dark:border-[#2E333D] shrink-0 flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  placeholder={`Search ${selectedAppId === 'instagram' ? 'friends & clients' : selectedAppId + ' contacts'}...`}
+                  className="w-full bg-[#ECECE2]/40 dark:bg-black/40 border border-[#DFDFD4] dark:border-neutral-700 rounded-xl pl-8 pr-3 py-2 text-xs text-[#1B1B1B] dark:text-white placeholder-gray-500 focus:outline-none focus:border-[#C13584]"
+                />
+              </div>
+              {isConnected && (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    id="sync-inbox-btn"
+                    type="button"
+                    onClick={handleSyncInbox}
+                    disabled={isSyncingInbox}
+                    title={`Auto-import all real discussions from ${currentAppTheme.name}`}
+                    className="px-2.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-gray-700 dark:text-gray-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncingInbox ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">Sync</span>
+                  </button>
+                  <button
+                    id="add-client-btn"
+                    type="button"
+                    onClick={() => setIsAddClientModalOpen(true)}
+                    title={`Add ${currentAppTheme.name} Client / Discussion`}
+                    className="px-2.5 py-2 rounded-xl text-white text-xs font-bold shadow-xs hover:opacity-95 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                    style={{ backgroundColor: currentAppTheme.solidColor }}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Add Client</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Sync Notice Alert */}
+            {syncNotice && (
+              <div className="mx-4 mt-2 px-3 py-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/40 text-purple-800 dark:text-purple-200 text-xs font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                <Check className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                <span>{syncNotice}</span>
+              </div>
+            )}
+
+            {/* Contacts Feed */}
+            <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-[#DFDFD4]/50 dark:divide-neutral-800/80 custom-scrollbar">
+              {isSimulatingLoad ? (
+                <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
+                  <div className="w-8 h-8 border-4 border-[#DFDFD4] dark:border-neutral-700 border-t-[#C13584] rounded-full animate-spin" style={{ borderTopColor: currentAppTheme.solidColor }}></div>
+                  <span className="text-xs font-bold text-gray-500 dark:text-gray-400 animate-pulse">Syncing {currentAppTheme.name} feed...</span>
+                </div>
+              ) : filteredContacts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs" style={{ backgroundColor: currentAppTheme.solidColor + '15' }}>
+                    <MessageSquare className="w-6 h-6" style={{ color: currentAppTheme.solidColor }} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800 dark:text-gray-200">
+                      {isConnected ? 'Listening for incoming messages' : 'No conversations yet'}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 max-w-[220px] leading-relaxed mt-1">
+                      {isConnected
+                        ? `Connected to ${currentAppTheme.name}. Inquiries and discussions will appear here in real-time.`
+                        : 'Connect this channel to see real customer discussions and contacts here.'}
+                    </p>
+                  </div>
+                  {isConnected && (
+                    <button
+                      id="empty-add-client-btn"
+                      type="button"
+                      onClick={() => setIsAddClientModalOpen(true)}
+                      className="px-3.5 py-2 rounded-xl text-white text-xs font-bold shadow-sm hover:opacity-95 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                      style={{ backgroundColor: currentAppTheme.solidColor }}
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>+ Add {currentAppTheme.name} Client</span>
+                    </button>
+                  )}
+                  {isConnected && selectedAppId !== 'instagram' && (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-200 dark:border-emerald-800/40">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>Live Gateway Listening</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                filteredContacts.map((contact) => {
+                  const isSelected = contact.id === activeContactId;
+                  const isIg = selectedAppId === 'instagram';
+                  return (
+                    <button
+                      key={contact.id}
+                      id={`contact-item-${contact.id}`}
+                      onClick={() => onSelectChat(contact.id)}
+                      className={`w-full p-3 text-left transition-all flex items-start gap-3 relative cursor-pointer ${
+                        isSelected
+                          ? isIg
+                            ? 'bg-pink-50/70 dark:bg-pink-950/30 border-l-4 border-l-[#C13584] shadow-xs'
+                            : 'bg-[#ECECE2]/90 dark:bg-neutral-800/90 border-l-4 border-l-[#1B6648] shadow-xs'
+                          : 'hover:bg-[#ECECE2]/40 dark:hover:bg-neutral-800/40 border-l-4 border-l-transparent'
+                      }`}
+                    >
+                      {/* Avatar or Status Circle */}
+                      <div className="relative shrink-0 mt-0.5">
+                        {contact.profilePicUrl ? (
+                          <img
+                            src={contact.profilePicUrl}
+                            alt={contact.name}
+                            className={`w-9 h-9 rounded-full object-cover shadow-xs ${
+                              isIg ? 'ring-2 ring-[#C13584] p-0.5' : 'border border-black/10 dark:border-white/10'
+                            }`}
+                          />
+                        ) : (
+                          <div
+                            className={`w-9 h-9 rounded-full ${
+                              isIg
+                                ? 'bg-gradient-to-tr from-[#833AB4] via-[#FD1D1D] to-[#F77737]'
+                                : contact.avatarColor || 'bg-[#1B6648]'
+                            } text-white flex items-center justify-center font-bold text-xs shadow-xs`}
+                          >
+                            {contact.avatarText || contact.name.slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        {contact.status === 'ongoing' && (
+                          <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
+                            <span
+                              className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
+                                isIg ? 'bg-[#C13584]' : 'bg-[#1B6648]'
+                              } opacity-75`}
+                            />
+                            <span
+                              className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                                isIg ? 'bg-[#C13584]' : 'bg-[#1B6648]'
+                              }`}
+                            />
+                          </span>
+                        )}
+                        {contact.status === 'finished' && (
+                          <CheckCircle2 className="absolute -bottom-0.5 -right-0.5 w-3 h-3 text-emerald-500 bg-white dark:bg-neutral-900 rounded-full" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <h5
+                            className={`font-bold text-xs truncate flex items-center gap-1 ${
+                              isSelected
+                                ? isIg
+                                  ? 'text-[#C13584] dark:text-pink-400'
+                                  : 'text-[#1B6648] dark:text-emerald-400'
+                                : 'text-[#1B1B1B] dark:text-white'
+                            }`}
+                          >
+                            <span>{contact.name}</span>
+                            {isIg && <span className="text-[10px] text-pink-500 font-bold">✓</span>}
+                          </h5>
+                          <span className="text-[10px] text-gray-400 font-mono">
+                            {contact.lastMessageTime || contact.time || 'Just now'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{contact.lastMessage}</p>
+                        <div className="flex items-center justify-between mt-1.5 text-[10px]">
+                          <span
+                            className={`truncate ${
+                              isIg
+                                ? 'font-mono text-purple-600 dark:text-purple-400 font-bold'
+                                : 'font-semibold text-gray-500 dark:text-gray-400'
+                            }`}
+                          >
+                            {contact.handleOrPhone}
+                          </span>
+                          <span
+                            className={`font-bold shrink-0 ${
+                              isIg ? 'text-[#C13584]' : 'text-[#1B6648] dark:text-emerald-400'
+                            }`}
+                          >
+                            {contact.spend || (isIg ? 'Instagram' : '')}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+
+          </motion.div>
+        )}
+
+      {/* ========================================================================= */}
+      {/* TAB 2: ANALYTICS (Contextual to Selected App + Synced Master AI Switch) */}
+      {/* ========================================================================= */}
+      {activeTab === 'analytics' && (
+        <motion.div
+          key="analytics-tab"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.16 }}
+          className="flex-1 min-h-0 overflow-y-auto p-5 sm:px-6 space-y-4 custom-scrollbar text-xs"
+        >
+          {/* Synchronized AI Switch */}
+          <div className="p-3.5 rounded-2xl bg-[#ECECE2]/50 dark:bg-black/30 border border-[#DFDFD4] dark:border-neutral-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bot className="w-4 h-4 text-[#1B6648] dark:text-emerald-400" />
+                <span className="font-bold text-xs text-[#1B6648] dark:text-emerald-400">
+                  AI Sales Agent ({selectedAppId.toUpperCase()})
+                </span>
+              </div>
+            </div>
+            <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">
+              {isAiActive
+                ? 'Auto-replying in authentic Algiers Darija with Yalidine delivery calculation.'
+                : 'AI auto-responder paused. Operators reply manually.'}
+            </p>
+          </div>
+
+          {/* App Specific Metrics */}
+          {selectedAppId === 'whatsapp' && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
+                  <span className="text-[10px] text-gray-500 flex items-center gap-1"><ShoppingBag className="w-3 h-3 text-[#EB6708]" /> Orders Closed</span>
+                  <p className="text-base font-black mt-1">14 orders</p>
+                </div>
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
+                  <span className="text-[10px] text-gray-500 flex items-center gap-1"><TrendingUp className="w-3 h-3 text-[#1B6648]" /> WhatsApp GMV</span>
+                  <p className="text-base font-black text-[#1B6648] dark:text-emerald-400 mt-1">49,000 DA</p>
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800 space-y-2">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold flex items-center gap-1"><Truck className="w-3.5 h-3.5 text-[#1B6648]" /> Yalidine Express Sync</span>
+                  <span className="font-bold text-[#EB6708]">12 Shipped • 2 Pending</span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden flex">
+                  <div className="bg-[#1B6648] h-full w-[70%]" />
+                  <div className="bg-[#FB9B3C] h-full w-[20%]" />
+                  <div className="bg-red-400 h-full w-[10%]" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedAppId === 'instagram' && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
+                  <span className="text-[10px] text-gray-500">IG Inbound DMs</span>
+                  <p className="text-base font-black text-[#8338EC] mt-1">42 DMs</p>
+                </div>
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
+                  <span className="text-[10px] text-gray-500">Story Conversions</span>
+                  <p className="text-base font-black text-[#EB6708] mt-1">18 sales</p>
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800 space-y-1">
+                <span className="text-[10px] text-gray-500">Top Inquired Product</span>
+                <p className="text-xs font-bold">Montre Homme Noire (4,800 DA)</p>
+              </div>
+            </div>
+          )}
+
+          {selectedAppId === 'telegram' && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
+                  <span className="text-[10px] text-gray-500">Bot Commands</span>
+                  <p className="text-base font-black text-blue-500 mt-1">128 hits</p>
+                </div>
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
+                  <span className="text-[10px] text-gray-500">Active Telegram Users</span>
+                  <p className="text-base font-black text-[#1B6648] mt-1">64</p>
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800 space-y-1">
+                <span className="text-[10px] text-gray-500">Popular Command</span>
+                <p className="text-xs font-mono font-bold text-blue-500">/catalogue (45 times)</p>
+              </div>
+            </div>
+          )}
+
+          {selectedAppId === 'messenger' && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
+                  <span className="text-[10px] text-gray-500">Facebook Ad Leads</span>
+                  <p className="text-base font-black text-[#0084FF] mt-1">34 leads</p>
+                </div>
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
+                  <span className="text-[10px] text-gray-500">Avg Response Time</span>
+                  <p className="text-base font-black text-emerald-600 mt-1">&lt; 45s</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedAppId === 'web_widget' && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
+                  <span className="text-[10px] text-gray-500">Live Active Visitors</span>
+                  <p className="text-base font-black text-teal-600 mt-1">8 online</p>
+                </div>
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
+                  <span className="text-[10px] text-gray-500">Cart Recovery Rate</span>
+                  <p className="text-base font-black text-[#EB6708] mt-1">32.4%</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedAppId === 'gmail' && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
+                  <span className="text-[10px] text-gray-500">Emails Resolved</span>
+                  <p className="text-base font-black text-red-500 mt-1">24 threads</p>
+                </div>
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
+                  <span className="text-[10px] text-gray-500">Invoices Sent</span>
+                  <p className="text-base font-black text-emerald-600 mt-1">18 PDFs</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: APP SPECIFIC SETTINGS (Fully Functional & Interactive) */}
+      {/* ========================================================================= */}
+      {activeTab === 'settings' && (
+        <motion.div
+          key="settings-tab"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.16 }}
+          className="flex-1 min-h-0 overflow-y-auto p-5 sm:px-6 space-y-4 custom-scrollbar text-xs"
+        >
+          {/* Gateway Credentials Box */}
+          <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <h5 className="font-bold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#1B6648] dark:text-emerald-400" />
+                <span>{selectedAppId.toUpperCase()} Gateway</span>
+              </h5>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live API
+              </span>
+            </div>
+
+            {selectedAppId === 'whatsapp' && (
+              <div className="space-y-2 text-xs">
+                <div>
+                  <label className="text-[11px] text-gray-500 font-medium">Evolution Baileys Instance</label>
+                  <input type="text" readOnly value="alger_instance_01" className="w-full bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-lg p-2 font-mono text-xs mt-0.5" />
+                </div>
+                <div>
+                  <label className="text-[11px] text-gray-500 font-medium">n8n Webhook Router</label>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <input type="text" readOnly value="http://localhost:5678/webhook/farm-router" className="flex-1 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-lg p-2 font-mono text-xs" />
+                    <button 
+                      onClick={() => copyToClipboard('http://localhost:5678/webhook/farm-router', 'webhook')}
+                      className="p-2 bg-gray-200/80 dark:bg-neutral-800 hover:bg-gray-300 rounded-lg text-gray-600 dark:text-gray-300 cursor-pointer"
+                      title="Copy webhook"
+                    >
+                      {copiedWebhook ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedAppId === 'instagram' && (
+              <div className="space-y-2.5 text-xs">
+                <div>
+                  <label className="text-[11px] text-gray-600 dark:text-gray-400 font-bold">Your Instagram @Username</label>
+                  <input
+                    type="text"
+                    value={metaHandle}
+                    onChange={(e) => setMetaHandle(e.target.value)}
+                    placeholder="@your_instagram_handle"
+                    className="w-full bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 rounded-xl p-2.5 font-medium text-xs mt-0.5 focus:outline-none focus:border-[#C13584]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-gray-600 dark:text-gray-400 font-bold">Meta Page / User Access Token</label>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <input
+                      type="password"
+                      value={metaToken}
+                      onChange={(e) => setMetaToken(e.target.value)}
+                      placeholder="EAA... (Paste your Meta Access Token)"
+                      className="flex-1 bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 rounded-xl p-2.5 font-mono text-xs focus:outline-none focus:border-[#C13584]"
+                    />
+                    <button 
+                      onClick={() => copyToClipboard(metaToken, 'key')}
+                      className="p-2.5 bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 rounded-xl text-gray-600 dark:text-gray-300 cursor-pointer shrink-0"
+                      title="Copy token"
+                    >
+                      {copiedKey ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Webhook Configuration for Live Customer Messages */}
+                <div className="p-2.5 rounded-xl bg-purple-500/5 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                      Live Webhook URL (Meta Developer Portal)
+                    </span>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-500 font-medium">Callback URL</label>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <input
+                        type="text"
+                        readOnly
+                        value={typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/instagram` : 'https://.../api/webhooks/instagram'}
+                        className="flex-1 bg-white dark:bg-neutral-900 border border-purple-200 dark:border-purple-800/40 rounded-lg p-1.5 font-mono text-[10px]"
+                      />
+                      <button
+                        onClick={() => copyToClipboard(typeof window !== 'undefined' ? `${window.location.origin}/api/webhooks/instagram` : '', 'webhook')}
+                        className="p-1.5 bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 rounded-lg text-purple-700 dark:text-purple-300 cursor-pointer shrink-0"
+                        title="Copy Webhook URL"
+                      >
+                        {copiedWebhook ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-500 font-medium">Verify Token</label>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <input
+                        type="text"
+                        readOnly
+                        value="algeria_chatbot_farm_2026"
+                        className="flex-1 bg-white dark:bg-neutral-900 border border-purple-200 dark:border-purple-800/40 rounded-lg p-1.5 font-mono text-[10px]"
+                      />
+                      <button
+                        onClick={() => copyToClipboard('algeria_chatbot_farm_2026', 'key')}
+                        className="p-1.5 bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 rounded-lg text-purple-700 dark:text-purple-300 cursor-pointer shrink-0"
+                        title="Copy Verify Token"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSaveChannelSettings('instagram')}
+                    className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs hover:opacity-95 cursor-pointer active:scale-98 transition-all"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Save & Connect Instagram</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTestPing}
+                    className="py-2 px-3 rounded-xl border border-gray-300 dark:border-neutral-700 font-bold text-xs hover:bg-gray-100 dark:hover:bg-neutral-800 cursor-pointer transition-all"
+                  >
+                    Test Ping
+                  </button>
+                </div>
+                {saveStatus && (
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold text-center mt-1 animate-pulse">
+                    ✓ {saveStatus}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {selectedAppId === 'telegram' && (
+              <div className="space-y-2.5 text-xs">
+                <div>
+                  <label className="text-[11px] text-gray-600 dark:text-gray-400 font-bold">Active Bot Handle</label>
+                  <input
+                    type="text"
+                    value={tgHandle}
+                    onChange={(e) => setTgHandle(e.target.value)}
+                    placeholder="@YourBotHandle"
+                    className="w-full bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 rounded-xl p-2.5 font-medium text-xs mt-0.5 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-gray-600 dark:text-gray-400 font-bold">Telegram Bot Token (@BotFather)</label>
+                  <input
+                    type="password"
+                    value={tgToken}
+                    onChange={(e) => setTgToken(e.target.value)}
+                    placeholder="123456789:AAHk..."
+                    className="w-full bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 rounded-xl p-2.5 font-mono text-xs mt-0.5 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div className="pt-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSaveChannelSettings('telegram')}
+                    className="flex-1 py-2 px-3 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs hover:bg-blue-700 cursor-pointer active:scale-98 transition-all"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Save & Connect Telegram</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTestPing}
+                    className="py-2 px-3 rounded-xl border border-gray-300 dark:border-neutral-700 font-bold text-xs hover:bg-gray-100 dark:hover:bg-neutral-800 cursor-pointer transition-all"
+                  >
+                    Test Ping
+                  </button>
+                </div>
+                {saveStatus && (
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold text-center mt-1 animate-pulse">
+                    ✓ {saveStatus}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {selectedAppId === 'messenger' && (
+              <div className="space-y-2.5 text-xs">
+                <div>
+                  <label className="text-[11px] text-gray-600 dark:text-gray-400 font-bold">Facebook Page ID</label>
+                  <input
+                    type="text"
+                    value={messengerPageId}
+                    onChange={(e) => setMessengerPageId(e.target.value)}
+                    placeholder="Your Page ID (e.g. 1092837461928)"
+                    className="w-full bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 rounded-xl p-2.5 font-mono text-xs mt-0.5 focus:outline-none focus:border-[#1877F2]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-gray-600 dark:text-gray-400 font-bold">Page Access Token</label>
+                  <input
+                    type="password"
+                    value={messengerToken}
+                    onChange={(e) => setMessengerToken(e.target.value)}
+                    placeholder="EAA..."
+                    className="w-full bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 rounded-xl p-2.5 font-mono text-xs mt-0.5 focus:outline-none focus:border-[#1877F2]"
+                  />
+                </div>
+                <div className="pt-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSaveChannelSettings('messenger')}
+                    className="flex-1 py-2 px-3 rounded-xl bg-[#1877F2] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs hover:bg-blue-600 cursor-pointer active:scale-98 transition-all"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Save & Connect Messenger</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTestPing}
+                    className="py-2 px-3 rounded-xl border border-gray-300 dark:border-neutral-700 font-bold text-xs hover:bg-gray-100 dark:hover:bg-neutral-800 cursor-pointer transition-all"
+                  >
+                    Test Ping
+                  </button>
+                </div>
+                {saveStatus && (
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold text-center mt-1 animate-pulse">
+                    ✓ {saveStatus}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {selectedAppId === 'web_widget' && (
+              <div className="space-y-2 text-xs">
+                <div>
+                  <label className="text-[11px] text-gray-500 font-medium">Storefront HTML Embed Script</label>
+                  <div className="relative mt-0.5">
+                    <textarea
+                      readOnly
+                      rows={3}
+                      value={'<script src="https://cdn.chatbotfarm.dz/widget.js" data-store="storefront-active"></script>'}
+                      className="w-full bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-lg p-2 font-mono text-[10px] resize-none"
+                    />
+                    <button
+                      onClick={() => copyToClipboard('<script src="https://cdn.chatbotfarm.dz/widget.js" data-store="storefront-active"></script>', 'webhook')}
+                      className="absolute top-2 right-2 px-2 py-1 rounded bg-[#1B6648] text-white text-[10px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                    >
+                      {copiedWebhook ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedWebhook ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedAppId === 'gmail' && (
+              <div className="space-y-2.5 text-xs">
+                <div>
+                  <label className="text-[11px] text-gray-600 dark:text-gray-400 font-bold">Connected Support Email</label>
+                  <input
+                    type="email"
+                    value={gmailAddr}
+                    onChange={(e) => setGmailAddr(e.target.value)}
+                    placeholder="support@yourstore.com"
+                    className="w-full bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 rounded-xl p-2.5 font-medium text-xs mt-0.5 focus:outline-none focus:border-red-500"
+                  />
+                </div>
+                <div className="pt-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSaveChannelSettings('gmail')}
+                    className="flex-1 py-2 px-3 rounded-xl bg-red-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs hover:bg-red-700 cursor-pointer active:scale-98 transition-all"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Save & Connect Email</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTestPing}
+                    className="py-2 px-3 rounded-xl border border-gray-300 dark:border-neutral-700 font-bold text-xs hover:bg-gray-100 dark:hover:bg-neutral-800 cursor-pointer transition-all"
+                  >
+                    Test Ping
+                  </button>
+                </div>
+                {saveStatus && (
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold text-center mt-1 animate-pulse">
+                    ✓ {saveStatus}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {!['whatsapp', 'instagram', 'telegram', 'messenger', 'web_widget', 'gmail'].includes(selectedAppId) && (
+              <div className="space-y-2.5 text-xs">
+                <div>
+                  <label className="text-[11px] text-gray-600 dark:text-gray-400 font-bold">
+                    {(APP_GRADIENT_THEMES[selectedAppId] || APP_GRADIENT_THEMES.whatsapp).name} Connection Status
+                  </label>
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-neutral-800/80 border border-gray-200 dark:border-neutral-700 mt-1">
+                    <span className="text-gray-700 dark:text-gray-300 font-medium">Gateway Protocol:</span>
+                    <span className="text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      {isConnected ? 'Active & Synchronized' : 'Ready to Connect'}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] text-gray-600 dark:text-gray-400 font-bold">Live Inbound Endpoint / Webhook</label>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <input
+                      type="text"
+                      readOnly
+                      value={typeof window !== 'undefined' ? `${window.location.origin}/api/channels/${selectedAppId}/send` : `http://localhost:3000/api/channels/${selectedAppId}/send`}
+                      className="flex-1 bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 rounded-lg p-2 font-mono text-[10px]"
+                    />
+                    <button
+                      onClick={() => copyToClipboard(typeof window !== 'undefined' ? `${window.location.origin}/api/channels/${selectedAppId}/send` : '', 'webhook')}
+                      className="p-2 bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 rounded-lg text-gray-600 dark:text-gray-300 cursor-pointer shrink-0"
+                    >
+                      {copiedWebhook ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Test Connection Button */}
+            <div className="pt-2">
+              <button
+                onClick={handleTestPing}
+                disabled={pingStatus === 'testing'}
+                className="w-full py-2 px-3 rounded-xl bg-white dark:bg-neutral-800 hover:bg-gray-100 dark:hover:bg-neutral-700 border border-gray-200 dark:border-neutral-700 text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center justify-center gap-2 transition-all shadow-xs active:scale-98 cursor-pointer"
+              >
+                {pingStatus === 'testing' ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 text-[#1B6648] animate-spin" />
+                    <span>Testing Gateway Route...</span>
+                  </>
+                ) : pingStatus === 'success' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    <span className="text-emerald-600 dark:text-emerald-400">200 OK — {pingLatency}ms Response</span>
+                  </>
+                ) : (
+                  <>
+                    <Activity className="w-3.5 h-3.5 text-[#1B6648] dark:text-emerald-400" />
+                    <span>Ping & Verify Gateway Health</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Channel Automation Rules */}
+          <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800 space-y-3">
+            <h5 className="font-bold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+              <Sliders className="w-3.5 h-3.5 text-[#EB6708]" />
+              <span>Channel Automation Rules</span>
+            </h5>
+
+            <div className="space-y-2.5 divide-y divide-gray-200/60 dark:divide-neutral-800">
+              {/* Toggle 1: Darija Dialect */}
+              <div className="flex items-center justify-between pt-1">
+                <div>
+                  <p className="font-bold text-xs text-gray-800 dark:text-gray-200">Algerian Darija Mode</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">Marhba bik, chhal, kayen, bsahtek</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleSetting('darijaMode')}
+                  className={`relative inline-flex h-4 w-8 items-center rounded-full transition-all duration-200 cursor-pointer hover:scale-110 ${
+                    settingsToggles.darijaMode ? 'bg-[#1B6648]' : 'bg-gray-300 dark:bg-gray-700'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      settingsToggles.darijaMode ? 'translate-x-4' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Toggle 2: Yalidine Auto-Sync */}
+              <div className="flex items-center justify-between pt-2">
+                <div>
+                  <p className="font-bold text-xs text-gray-800 dark:text-gray-200">Yalidine Auto Tracking</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">Generate tracking codes instantly</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleSetting('yalidineAutoSync')}
+                  className={`relative inline-flex h-4 w-8 items-center rounded-full transition-all duration-200 cursor-pointer hover:scale-110 ${
+                    settingsToggles.yalidineAutoSync ? 'bg-[#1B6648]' : 'bg-gray-300 dark:bg-gray-700'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      settingsToggles.yalidineAutoSync ? 'translate-x-4' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Toggle 3: Human Agent Escalation */}
+              <div className="flex items-center justify-between pt-2">
+                <div>
+                  <p className="font-bold text-xs text-gray-800 dark:text-gray-200">Operator Escalation</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">Alert on angry/urgent keywords</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleSetting('humanEscalation')}
+                  className={`relative inline-flex h-4 w-8 items-center rounded-full transition-all duration-200 cursor-pointer hover:scale-110 ${
+                    settingsToggles.humanEscalation ? 'bg-[#1B6648]' : 'bg-gray-300 dark:bg-gray-700'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      settingsToggles.humanEscalation ? 'translate-x-4' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Toggle 4: Seen Receipt */}
+              <div className="flex items-center justify-between pt-2">
+                <div>
+                  <p className="font-bold text-xs text-gray-800 dark:text-gray-200">Send 'Seen' Receipts (Vu)</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">Trigger blue checks on incoming message</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleSetting('sendSeenReceipts')}
+                  className={`relative inline-flex h-4 w-8 items-center rounded-full transition-all duration-200 cursor-pointer hover:scale-110 ${
+                    settingsToggles.sendSeenReceipts ? 'bg-[#1B6648]' : 'bg-gray-300 dark:bg-gray-700'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      settingsToggles.sendSeenReceipts ? 'translate-x-4' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Dedicated Channel Disconnect / Reset Section */}
+          <div className="p-3.5 rounded-2xl bg-red-50/70 dark:bg-red-950/20 border border-red-200/80 dark:border-red-800/40 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <h5 className="font-bold text-xs text-red-700 dark:text-red-400 flex items-center gap-1.5">
+                  <Unlink className="w-3.5 h-3.5" />
+                  <span>Disconnect {currentAppTheme.name}</span>
+                </h5>
+                <p className="text-[10px] text-red-600/80 dark:text-red-400/70">
+                  Reset gateway session or switch account credentials
+                </p>
+              </div>
+              <button
+                id="settings-disconnect-channel-btn"
+                type="button"
+                onClick={() => onDisconnectChannel?.(selectedAppId)}
+                className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs transition-transform active:scale-95 cursor-pointer"
+              >
+                Disconnect
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+      </AnimatePresence>
+
+      {/* ========================================================================= */}
+      {/* ADD REAL CLIENT MODAL (For Instagram Friends & Client Discussions)       */}
+      {/* ========================================================================= */}
+      <AnimatePresence>
+        {isAddClientModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+            onClick={() => setIsAddClientModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-white dark:bg-[#1E222A] rounded-3xl p-5 shadow-2xl border border-gray-200 dark:border-neutral-700 space-y-4"
+            >
+              <div className="flex items-center justify-between pb-1 border-b border-gray-100 dark:border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-8 h-8 rounded-xl text-white flex items-center justify-center shadow-xs"
+                    style={{ backgroundColor: currentAppTheme.solidColor }}
+                  >
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-gray-900 dark:text-white leading-tight">
+                      Add {currentAppTheme.name} Client
+                    </h4>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                      Start an authentic discussion on {currentAppTheme.name}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAddClientModalOpen(false)}
+                  className="p-1 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-800 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddClient} className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center justify-between">
+                    <span>
+                      {['whatsapp', 'whatsapp_2', 'signal', 'google_messages', 'google_voice'].includes(selectedAppId)
+                        ? 'Mobile Phone Number *'
+                        : selectedAppId === 'discord'
+                        ? 'Discord Channel or User *'
+                        : selectedAppId === 'slack'
+                        ? 'Slack Channel or Member *'
+                        : selectedAppId === 'irc'
+                        ? 'IRC Channel or Nick *'
+                        : selectedAppId === 'matrix'
+                        ? 'Matrix User ID *'
+                        : selectedAppId === 'gmail'
+                        ? 'Email Address *'
+                        : `${currentAppTheme.name} Handle or ID *`}
+                    </span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Required</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="modal-client-handle-input"
+                      type="text"
+                      required
+                      value={newClientHandle}
+                      onChange={(e) => setNewClientHandle(e.target.value)}
+                      placeholder={
+                        ['whatsapp', 'whatsapp_2', 'signal', 'google_messages', 'google_voice'].includes(selectedAppId)
+                          ? "+213 550 12 34 56"
+                          : selectedAppId === 'discord'
+                          ? "#commandes-oran or Amine#1234"
+                          : selectedAppId === 'slack'
+                          ? "#general or @mehdi"
+                          : selectedAppId === 'irc'
+                          ? "#algeria or redha_dz"
+                          : selectedAppId === 'matrix'
+                          ? "@client:matrix.org"
+                          : selectedAppId === 'gmail'
+                          ? "client@gmail.com"
+                          : "@username"
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs font-mono text-gray-800 dark:text-gray-100 focus:outline-none focus:border-[#1B6648]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                    Contact / Display Name (Optional)
+                  </label>
+                  <input
+                    id="modal-client-name-input"
+                    type="text"
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                    placeholder="e.g. Amine / Boutique Mode"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:border-[#C13584]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                    First Message / Greeting
+                  </label>
+                  <textarea
+                    id="modal-client-msg-input"
+                    rows={2}
+                    value={newClientMsg}
+                    onChange={(e) => setNewClientMsg(e.target.value)}
+                    placeholder="Bonjour, merci pour votre commande..."
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:border-[#C13584]"
+                  />
+                </div>
+
+                <button
+                  id="modal-submit-add-client-btn"
+                  type="submit"
+                  disabled={isAddingClient || !newClientHandle.trim()}
+                  className="w-full py-2.5 px-4 rounded-xl text-white font-bold text-xs shadow-md transition-all hover:opacity-95 active:scale-98 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{
+                    background: "linear-gradient(135deg, #833AB4 0%, #FD1D1D 50%, #F77737 100%)"
+                  }}
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>{isAddingClient ? 'Adding Client...' : 'Add Client & Open Chat'}</span>
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
