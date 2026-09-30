@@ -94,11 +94,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 w-full max-w-full min-w-0 bg-white dark:bg-[#1A1D23] border-b border-[#DFDFD4] dark:border-[#2E333D] px-2.5 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between shadow-xs transition-colors shrink-0">
+    <header className="sticky top-0 z-40 w-full max-w-full min-w-0 bg-white dark:bg-[#1A1D23] border-b border-[#DFDFD4] dark:border-[#2E333D] px-2.5 sm:px-6 py-2 sm:py-2.5 grid grid-cols-3 items-center shadow-xs transition-colors shrink-0">
       {/* Brand Emblem */}
       <div 
         onClick={() => onSelectTab('workspace')}
-        className="flex items-center gap-2 sm:gap-2.5 select-none cursor-pointer group min-w-0 shrink"
+        className="flex items-center gap-2 sm:gap-2.5 select-none cursor-pointer group min-w-0 shrink justify-self-start"
       >
         <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-[#EB6708] to-[#FB9B3C] flex items-center justify-center font-black text-white text-xs sm:text-sm shadow-md group-hover:scale-105 transition-transform shrink-0">
           CF
@@ -112,7 +112,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Center Nav Tabs with Framer Motion Sliding Pill */}
-      <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 p-1 bg-[#ECECE2]/70 dark:bg-black/40 rounded-2xl border border-[#DFDFD4] dark:border-[#2E333D] relative shrink-0">
+      <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 p-1 bg-[#ECECE2]/70 dark:bg-black/40 rounded-2xl border border-[#DFDFD4] dark:border-[#2E333D] relative shrink-0 justify-self-center">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
@@ -141,7 +141,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       </nav>
 
       {/* Right User & Dark Mode Actions */}
-      <div className="flex items-center gap-1.5 sm:gap-3 relative shrink-0" ref={dropdownRef}>
+      <div className="flex items-center gap-1.5 sm:gap-4 relative shrink-0 justify-self-end" ref={dropdownRef}>
         
         {/* Global AI Toggle & Notification Badge */}
         <div className="flex items-center gap-3 mr-2 bg-gray-50 dark:bg-neutral-800/50 px-3 py-1.5 rounded-2xl border border-[#DFDFD4] dark:border-neutral-700 shadow-sm">
@@ -172,17 +172,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
 
-        {/* Team Management (Owner Only) */}
-        {currentUser && !currentUser.workspace_owner_id && (
-          <button
-            onClick={onOpenTeamModal}
-            className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer mr-0.5 sm:mr-1"
-            title="Manage Team"
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span className="hidden lg:inline">Team</span>
-          </button>
-        )}
+        
 
         {/* Dark Mode Toggle */}
         <button
@@ -240,6 +230,55 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <span>{currentUser.plan || 'Enterprise DZ Pro'}</span>
                     </div>
                   </div>
+
+
+                  <div className="border-t border-gray-100 dark:border-neutral-800 my-1" />
+                  
+                  {/* Workspace Switcher */}
+                  <div className="px-2 pt-1 pb-1">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 px-1">Workspaces</p>
+                    <div className="max-h-32 overflow-y-auto custom-scrollbar pr-1 space-y-0.5">
+                      {projects && projects.map((p: any) => (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            onSelectProject?.(p.id);
+                            setIsProfileMenuOpen(false);
+                          }}
+                          className={`w-full text-left px-2 py-1.5 text-xs font-bold rounded-lg flex items-center justify-between transition-colors ${activeProjectId === p.id ? 'bg-[#EB6708]/10 text-[#EB6708]' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800'}`}
+                        >
+                          <span className="truncate pr-2">{p.name}</span>
+                          {activeProjectId === p.id && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => {
+                        onCreateProject?.();
+                        setIsProfileMenuOpen(false);
+                      }}
+                      className="w-full text-left px-2 py-1.5 mt-1 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-[#EB6708] hover:bg-orange-50 dark:hover:bg-orange-950/20 rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                      <span className="w-4 h-4 rounded bg-gray-100 dark:bg-neutral-800 flex items-center justify-center text-sm leading-none shrink-0 pb-0.5">+</span>
+                      Create Burner Project
+                    </button>
+                  </div>
+
+                  <div className="border-t border-gray-100 dark:border-neutral-800 my-1" />
+
+                  {/* Team Button */}
+                  {(!isEmployee || currentUser?.permissions?.modify_settings) && (
+                    <button
+                      onClick={() => {
+                        onOpenTeamModal?.();
+                        setIsProfileMenuOpen(false);
+                      }}
+                      className="w-full p-2.5 rounded-xl hover:bg-[#ECECE2]/60 dark:hover:bg-neutral-800 text-left font-bold flex items-center gap-2 transition-colors cursor-pointer text-gray-800 dark:text-gray-200"
+                    >
+                      <Users className="w-3.5 h-3.5 text-blue-500" />
+                      <span>Manage Team & Permissions</span>
+                    </button>
+                  )}
 
                   {/* Navigation Shortcuts */}
                   <button
