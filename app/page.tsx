@@ -1271,7 +1271,7 @@ function HomeContent() {
         />
 
         {/* 2. MAIN WORKSPACE / PAGE VIEWS WITH FLUID TRANSITIONS */}
-        <div className="flex-1 min-h-0 w-full max-w-full min-w-0 p-2 sm:p-2.5 md:p-5 overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 w-full max-w-full min-w-0 p-1 md:p-2 overflow-hidden flex flex-col">
           <AnimatePresence mode="wait">
             {activeTab === 'workspace' && (
               <motion.div
@@ -1299,8 +1299,8 @@ function HomeContent() {
                     .custom-resize-handle::after {
                       content: "";
                       position: absolute;
-                      width: 4px;
-                      height: 24px;
+                      width: 6px;
+                      height: 32px;
                       background-color: ${activeThemeColor};
                       border-radius: 4px;
                       opacity: 1;
@@ -1335,7 +1335,7 @@ function HomeContent() {
                   ` }} />
                   <DndContext sensors={colSensors} collisionDetection={closestCorners} onDragStart={handleColDragStart} onDragEnd={handleColDragEnd} modifiers={[restrictToHorizontalAxis]}>
                     <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
-                      <Group key={columnOrder.join("-")} groupRef={groupRef} orientation="horizontal" id={`desktop-workspace-${columnOrder.join("-")}`} className="w-full h-full overflow-hidden flex gap-3" onLayoutChanged={(layout) => {
+                      <Group key={columnOrder.join("-")} groupRef={groupRef} orientation="horizontal" id={`desktop-workspace-${columnOrder.join("-")}`} className="w-full h-full overflow-hidden flex gap-1.5" onLayoutChanged={(layout) => {
                         localStorage.setItem('cf_panel_sizes', JSON.stringify(layout));
                         debouncedSyncPreferences({ panelSizes: layout });
                       }}>
@@ -1358,7 +1358,7 @@ function HomeContent() {
                                 <Panel 
                                   id={colId}
                                   defaultSize={savedSize !== undefined ? savedSize : (colId === 'switcher' ? 25 : colId === 'chat' ? (isRightHubCollapsed ? 75 : 45) : 30)} 
-                                  minSize={5}
+                                  minSize={colId === 'switcher' ? 18 : colId === 'chat' ? 30 : 22}
                                   style={{ overflow: activeDragColId ? 'visible' : 'hidden', zIndex: activeDragColId === colId ? 9999 : 1 }}
                                 >
                                 <SortableColumn id={colId} activeThemeColor={colThemeColor}>
@@ -1434,7 +1434,7 @@ function HomeContent() {
                 {/* 2. MOBILE RESPONSIVE WORKSPACE (Visible on screen width < md / 768px) */}
                 <div className="flex md:hidden flex-row h-full w-full max-w-full min-w-0 gap-1.5 overflow-hidden">
                   {/* Left Side Dock (Icons Only: Chat, Contacts, Stats, Settings) */}
-                  <div className="w-11 sm:w-12 py-3 px-1.5 flex flex-col items-center gap-3.5 bg-white dark:bg-[#1A1D23] rounded-2xl sm:rounded-3xl border border-[#DFDFD4] dark:border-[#2E333D] shadow-xs shrink-0 self-stretch justify-start">
+                  <div className="w-11 sm:w-12 py-3 px-1.5 flex flex-col items-center gap-1.5.5 bg-white dark:bg-[#1A1D23] rounded-2xl sm:rounded-3xl border border-[#DFDFD4] dark:border-[#2E333D] shadow-xs shrink-0 self-stretch justify-start">
                     {([
                       { id: 'chat', label: 'Chat', icon: <MessageSquare className="w-4 h-4" /> },
                       { id: 'contacts', label: 'Contacts', icon: <Users className="w-4 h-4" /> },
