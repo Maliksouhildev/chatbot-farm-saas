@@ -702,7 +702,7 @@ export const AppSwitcherColumn: React.FC<AppSwitcherColumnProps> = ({
               </button>
             </div>
             
-            <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))' }}>
+            <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))' }}>
               {rawChannels.filter(ch => !pinnedApps.includes(ch.id)).map(ch => (
                 <div 
                   key={ch.id}
@@ -711,7 +711,7 @@ export const AppSwitcherColumn: React.FC<AppSwitcherColumnProps> = ({
                   }}
                   className="relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-neutral-800 border border-transparent hover:border-gray-200 dark:hover:border-neutral-700 group"
                 >
-                  <div className="relative w-14 h-14 flex items-center justify-center scale-110 group-hover:scale-125 transition-transform duration-300">
+                  <div className="relative w-10 h-10 flex items-center justify-center scale-[0.65] group-hover:scale-75 transition-transform duration-300">
                     {ch.iconComponent}
                     {ch.status === 'connected' && (
                       <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center">
@@ -720,7 +720,7 @@ export const AppSwitcherColumn: React.FC<AppSwitcherColumnProps> = ({
                       </span>
                     )}
                   </div>
-                  <span className="mt-2 text-[10px] font-bold text-gray-600 dark:text-gray-400 text-center line-clamp-1">{ch.name}</span>
+                  <span className="mt-0.5 text-[8.5px] font-bold text-gray-600 dark:text-gray-400 text-center line-clamp-2 leading-tight px-0.5">{ch.name.replace(' (Line #2)', '')}</span>
                 </div>
               ))}
               {rawChannels.filter(ch => !pinnedApps.includes(ch.id)).length === 0 && (
