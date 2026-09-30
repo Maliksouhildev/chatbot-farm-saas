@@ -37,6 +37,10 @@ interface NavbarProps {
   onToggleDarkMode: () => void;
   onToggleAi?: (channelId: string) => void;
   onOpenTeamModal?: () => void;
+  projects?: any[];
+  activeProjectId?: string;
+  onSelectProject?: (projectId: string) => void;
+  onCreateProject?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -49,7 +53,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleDarkMode,
   onToggleAi,
   onOpenTeamModal,
+  projects = [],
+  activeProjectId = 'default',
+  onSelectProject,
+  onCreateProject,
 }) => {
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

@@ -144,10 +144,10 @@ function HomeContent() {
     }
     if (prefs.pinnedApps && Array.isArray(prefs.pinnedApps)) {
       setPinnedApps(prefs.pinnedApps);
-      localStorage.setItem('cf_pinned_apps', JSON.stringify(prefs.pinnedApps));
+      localStorage.setItem(getStorageKey('cf_pinned_apps'), JSON.stringify(prefs.pinnedApps));
     }
     if (prefs.panelSizes) {
-      localStorage.setItem('cf_panel_sizes', JSON.stringify(prefs.panelSizes));
+      localStorage.setItem(getStorageKey('cf_panel_sizes'), JSON.stringify(prefs.panelSizes));
       Object.entries(prefs.panelSizes).forEach(([k, v]) => {
         localStorage.setItem(k, v as string);
       });
@@ -165,12 +165,12 @@ function HomeContent() {
     setItem: (name: string, value: string) => {
       localStorage.setItem(name, value);
       
-      const existingSizesStr = localStorage.getItem('cf_panel_sizes') || '{}';
+      const existingSizesStr = localStorage.getItem(getStorageKey('cf_panel_sizes')) || '{}';
       let existingSizes = {};
       try { existingSizes = JSON.parse(existingSizesStr); } catch {}
       
       const newSizes = { ...existingSizes, [name]: value };
-      localStorage.setItem('cf_panel_sizes', JSON.stringify(newSizes));
+      localStorage.setItem(getStorageKey('cf_panel_sizes'), JSON.stringify(newSizes));
       
       debouncedSyncPreferences({ panelSizes: newSizes });
     }
@@ -234,7 +234,89 @@ function HomeContent() {
   // Track which apps the user has connected (persisted in localStorage per user)
   const [connectedApps, setConnectedApps] = useState<Set<string>>(new Set<string>());
   const [pinnedApps, setPinnedApps] = useState<string[]>(['whatsapp', 'telegram', 'gmail']);
-  const [isClientMounted, setIsClientMounted] = useState(false);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<string>('default');
+  const activeProjectIdRef = useRef(activeProjectId);
+
+  const getStorageKey = (key: string) => {
+    if (key === 'cf_user_session' || key === 'cf_theme_mode' || key === 'cf_projects') return key;
+    return activeProjectIdRef.current === 'default' ? key : key + '_' + activeProjectIdRef.current;
+  };
+
+  useEffect(() => {
+    activeProjectIdRef.current = activeProjectId;
+  }, [activeProjectId]);
+
+  useEffect(() => {
+    try {
+      const storedProjects = localStorage.getItem('cf_projects');
+      if (storedProjects) {
+        setProjects(JSON.parse(storedProjects));
+      } else {
+        const defaultProjects = [{ id: 'default', name: 'Main Workspace', role: 'owner' }];
+        setProjects(defaultProjects);
+        localStorage.setItem('cf_projects', JSON.stringify(defaultProjects));
+      }
+    } catch {}
+  }, []);
+
+  const handleCreateProject = () => {
+    const id = 'proj_' + Date.now();
+    const newProj = { id, name: 'Burner Project ' + (projects.length), role: 'admin' };
+    const nextProjects = [...projects, newProj];
+    setProjects(nextProjects);
+    localStorage.setItem('cf_projects', JSON.stringify(nextProjects));
+    
+    // Inherit main account emails
+    const inheritEmail = (key: string) => {
+      const val = localStorage.getItem(key);
+      if (val) localStorage.setItem(key + '_' + id, val);
+    };
+    inheritEmail('cf_gmail_account');
+    inheritEmail('cf_google_chat_account');
+    
+    // Also copy connected apps so it shows up as connected
+    const mainApps = localStorage.getItem('cf_connected_apps');
+    if (mainApps) {
+      try {
+        const parsed = JSON.parse(mainApps);
+        const inheritedApps = parsed.filter((app: string) => ['gmail', 'google_chat'].includes(app));
+        localStorage.setItem('cf_connected_apps_' + id, JSON.stringify(inheritedApps));
+      } catch {}
+    }
+    
+    handleSelectProject(id);
+  };
+
+  const handleSelectProject = (projectId: string) => {
+    setActiveProjectId(projectId);
+    activeProjectIdRef.current = projectId;
+    
+    const loadState = (key: string, setter: any, defaultVal: any) => {
+      const stored = localStorage.getItem(getStorageKey(key));
+      if (stored) {
+        try { setter(JSON.parse(stored)); } catch { setter(defaultVal); }
+      } else {
+        setter(defaultVal);
+      }
+    };
+    
+    loadState('cf_pinned_apps', setPinnedApps, ['whatsapp', 'telegram', 'gmail']);
+    
+    const storedApps = localStorage.getItem(getStorageKey('cf_connected_apps'));
+    if (storedApps) {
+      try { setConnectedApps(new Set(JSON.parse(storedApps))); } catch { setConnectedApps(new Set()); }
+    } else {
+      setConnectedApps(new Set());
+    }
+    
+    const storedLayout = localStorage.getItem(getStorageKey('cf_panel_sizes'));
+    if (storedLayout && groupRef.current) {
+      try { groupRef.current.setLayout(JSON.parse(storedLayout)); } catch {}
+    }
+  };
+
+    const [isClientMounted, setIsClientMounted] = useState(false);
   const [liveWhatsAppChats, setLiveWhatsAppChats] = useState<any[]>([]);
 
   // Connect channel modal
@@ -352,7 +434,7 @@ function HomeContent() {
 
   useEffect(() => {
     SoundManager.initialize();
-    const stored = localStorage.getItem('cf_pinned_apps');
+    const stored = localStorage.getItem(getStorageKey('cf_pinned_apps'));
     if (stored) {
       try {
         setPinnedApps(JSON.parse(stored));
@@ -364,7 +446,7 @@ function HomeContent() {
     setPinnedApps(prev => {
       if (prev.includes(appId)) return prev;
       const next = [...prev, appId];
-      localStorage.setItem('cf_pinned_apps', JSON.stringify(next));
+      localStorage.setItem(getStorageKey('cf_pinned_apps'), JSON.stringify(next));
       debouncedSyncPreferences({ pinnedApps: next });
       return next;
     });
@@ -373,7 +455,7 @@ function HomeContent() {
   const handleUnpinApp = (appId: string) => {
     setPinnedApps(prev => {
       const next = prev.filter(id => id !== appId);
-      localStorage.setItem('cf_pinned_apps', JSON.stringify(next));
+      localStorage.setItem(getStorageKey('cf_pinned_apps'), JSON.stringify(next));
       debouncedSyncPreferences({ pinnedApps: next });
       return next;
     });
@@ -381,7 +463,7 @@ function HomeContent() {
 
   const handleSetPinnedApps = (newOrder: string[]) => {
     setPinnedApps(newOrder);
-    localStorage.setItem('cf_pinned_apps', JSON.stringify(newOrder));
+    localStorage.setItem(getStorageKey('cf_pinned_apps'), JSON.stringify(newOrder));
     debouncedSyncPreferences({ pinnedApps: newOrder });
   };
 
@@ -395,7 +477,7 @@ function HomeContent() {
       next.splice(sourceIndex, 1);
       next.splice(targetIndex, 0, sourceId);
       
-      localStorage.setItem('cf_pinned_apps', JSON.stringify(next));
+      localStorage.setItem(getStorageKey('cf_pinned_apps'), JSON.stringify(next));
       debouncedSyncPreferences({ pinnedApps: next });
       return next;
     });
@@ -466,7 +548,7 @@ function HomeContent() {
     setIsClientMounted(true);
     try {
       // 1. Theme persistence: always preserved across refreshes, logouts and logins
-      const savedTheme = localStorage.getItem('cf_theme_mode');
+      const savedTheme = localStorage.getItem(getStorageKey('cf_theme_mode'));
       if (savedTheme === 'dark') {
         setDarkMode(true);
       } else if (savedTheme === 'light') {
@@ -478,7 +560,7 @@ function HomeContent() {
       // 2. User session & Channel isolation
       let u: any = null;
       try {
-        const savedUser = localStorage.getItem('cf_user_session');
+        const savedUser = localStorage.getItem(getStorageKey('cf_user_session'));
         if (savedUser) u = JSON.parse(savedUser);
       } catch {}
 
@@ -492,7 +574,7 @@ function HomeContent() {
           verified: true,
           avatar: 'S',
         };
-        localStorage.setItem('cf_user_session', JSON.stringify(u));
+        localStorage.setItem(getStorageKey('cf_user_session'), JSON.stringify(u));
       }
 
       if (u) {
@@ -507,8 +589,8 @@ function HomeContent() {
         const isGoogleUser = u.provider === 'google' || u.provider === 'oauth' || (u.email && u.email.endsWith('@gmail.com'));
         if (isGoogleUser) {
           let updated = false;
-          if (!localStorage.getItem('cf_gmail_account')) {
-            localStorage.setItem('cf_gmail_account', JSON.stringify({
+          if (!localStorage.getItem(getStorageKey('cf_gmail_account'))) {
+            localStorage.setItem(getStorageKey('cf_gmail_account'), JSON.stringify({
               email: u.email,
               name: u.name,
               provider: 'Google Workspace / Gmail Support',
@@ -517,8 +599,8 @@ function HomeContent() {
             }));
             updated = true;
           }
-          if (!localStorage.getItem('cf_google_chat_account')) {
-            localStorage.setItem('cf_google_chat_account', JSON.stringify({
+          if (!localStorage.getItem(getStorageKey('cf_google_chat_account'))) {
+            localStorage.setItem(getStorageKey('cf_google_chat_account'), JSON.stringify({
               email: u.email,
               name: u.name,
               space: 'Workspace Team Chat',
@@ -536,10 +618,10 @@ function HomeContent() {
           }
           if (updated) {
             localStorage.setItem(userAppsKey, JSON.stringify(savedApps));
-            const globalApps = new Set(JSON.parse(localStorage.getItem('cf_connected_apps') || '[]'));
+            const globalApps = new Set(JSON.parse(localStorage.getItem(getStorageKey('cf_connected_apps')) || '[]'));
             globalApps.add('gmail');
             globalApps.add('google_chat');
-            localStorage.setItem('cf_connected_apps', JSON.stringify(Array.from(globalApps)));
+            localStorage.setItem(getStorageKey('cf_connected_apps'), JSON.stringify(Array.from(globalApps)));
           }
         }
 
@@ -569,9 +651,9 @@ function HomeContent() {
                 if (data.instance) {
                   try {
                     if (data.instance.phone) {
-                      localStorage.setItem('cf_whatsapp_number', data.instance.phone);
+                      localStorage.setItem(getStorageKey('cf_whatsapp_number'), data.instance.phone);
                     }
-                    localStorage.setItem('cf_whatsapp_name', data.instance.profileName || 'WhatsApp Business');
+                    localStorage.setItem(getStorageKey('cf_whatsapp_name'), data.instance.profileName || 'WhatsApp Business');
                     window.dispatchEvent(new Event('storage'));
                   } catch {}
                 }
@@ -599,9 +681,9 @@ function HomeContent() {
           } else if (appId === 'discord') {
             let token = '';
             try {
-              token = localStorage.getItem('cf_discord_token') || '';
+              token = localStorage.getItem(getStorageKey('cf_discord_token')) || '';
               if (!token) {
-                const acc = localStorage.getItem('cf_discord_account');
+                const acc = localStorage.getItem(getStorageKey('cf_discord_account'));
                 if (acc) token = JSON.parse(acc).token || '';
               }
             } catch {}
@@ -633,7 +715,7 @@ function HomeContent() {
             // @ts-ignore
             let accessToken = session?.accessToken || '';
             try {
-              const gm = localStorage.getItem('cf_google_chat_account');
+              const gm = localStorage.getItem(getStorageKey('cf_google_chat_account'));
               if (gm) {
                 const parsed = JSON.parse(gm);
                 gmEmail = parsed.email || gmEmail;
@@ -667,7 +749,7 @@ function HomeContent() {
             // @ts-ignore
             let accessToken = session?.accessToken || '';
             try {
-              const gc = localStorage.getItem('cf_google_chat_account');
+              const gc = localStorage.getItem(getStorageKey('cf_google_chat_account'));
               if (gc) {
                 const parsed = JSON.parse(gc);
                 gcEmail = parsed.email || gcEmail;
@@ -750,7 +832,7 @@ function HomeContent() {
               workspace_owner_id: data.session.user.user_metadata?.workspace_owner_id,
               permissions: data.session.user.user_metadata?.permissions,
             };
-            localStorage.setItem('cf_user_session', JSON.stringify(u));
+            localStorage.setItem(getStorageKey('cf_user_session'), JSON.stringify(u));
             setCurrentUser(u);
             window.history.replaceState({}, document.title, window.location.pathname);
           }
@@ -775,7 +857,7 @@ function HomeContent() {
           workspace_owner_id: session.user.user_metadata?.workspace_owner_id,
           permissions: session.user.user_metadata?.permissions,
         };
-        localStorage.setItem('cf_user_session', JSON.stringify(u));
+        localStorage.setItem(getStorageKey('cf_user_session'), JSON.stringify(u));
         setCurrentUser(u);
         if (window.location.hash || window.location.search.includes('code=')) {
           window.history.replaceState({}, document.title, window.location.pathname);
@@ -786,7 +868,7 @@ function HomeContent() {
     // Check NextAuth session
     // @ts-ignore
     if (session?.user && session?.accessToken) {
-      const savedUser = localStorage.getItem('cf_user_session');
+      const savedUser = localStorage.getItem(getStorageKey('cf_user_session'));
       const currentUserEmail = savedUser ? JSON.parse(savedUser).email : null;
       
       if (!savedUser || currentUserEmail !== session.user.email) {
@@ -799,7 +881,7 @@ function HomeContent() {
           verified: true,
           avatar: (session.user.name || session.user.email || 'M')[0].toUpperCase(),
         };
-        localStorage.setItem('cf_user_session', JSON.stringify(u));
+        localStorage.setItem(getStorageKey('cf_user_session'), JSON.stringify(u));
         setCurrentUser(u);
       }
     }
@@ -819,7 +901,7 @@ function HomeContent() {
           workspace_owner_id: session.user.user_metadata?.workspace_owner_id,
           permissions: session.user.user_metadata?.permissions,
         };
-        localStorage.setItem('cf_user_session', JSON.stringify(u));
+        localStorage.setItem(getStorageKey('cf_user_session'), JSON.stringify(u));
         setCurrentUser(u);
         if (typeof window !== 'undefined' && (window.location.hash || window.location.search.includes('code='))) {
           window.history.replaceState({}, document.title, window.location.pathname);
@@ -870,7 +952,7 @@ function HomeContent() {
           let accessToken = '';
           let sessionId = '';
           try {
-            const igAccount = localStorage.getItem('cf_ig_account');
+            const igAccount = localStorage.getItem(getStorageKey('cf_ig_account'));
             if (igAccount) {
               const parsed = JSON.parse(igAccount);
               igId = parsed.igId || parsed.id || '';
@@ -879,7 +961,7 @@ function HomeContent() {
               sessionId = parsed.sessionId || '';
             }
             if (!accessToken) {
-              const metaAuth = localStorage.getItem('cf_meta_auth');
+              const metaAuth = localStorage.getItem(getStorageKey('cf_meta_auth'));
               if (metaAuth) {
                 const parsed = JSON.parse(metaAuth);
                 accessToken = parsed.userToken || '';
@@ -895,7 +977,7 @@ function HomeContent() {
           let pageId = '';
           let token = '';
           try {
-            const page = localStorage.getItem('cf_messenger_page');
+            const page = localStorage.getItem(getStorageKey('cf_messenger_page'));
             if (page) {
               const parsed = JSON.parse(page);
               pageId = parsed.id || '';
@@ -907,8 +989,8 @@ function HomeContent() {
           let token = '';
           let session = '';
           try {
-            session = localStorage.getItem('cf_telegram_session') || '';
-            token = localStorage.getItem('cf_telegram_token') || '';
+            session = localStorage.getItem(getStorageKey('cf_telegram_session')) || '';
+            token = localStorage.getItem(getStorageKey('cf_telegram_token')) || '';
           } catch {}
           endpoint = `/api/channels/telegram/chats?session=${encodeURIComponent(session)}&token=${encodeURIComponent(token)}`;
         } else if (selectedAppId === 'gmail') {
@@ -916,7 +998,7 @@ function HomeContent() {
           // @ts-ignore
           let accessToken = session?.accessToken || '';
           try {
-            const acc = localStorage.getItem('cf_google_chat_account');
+            const acc = localStorage.getItem(getStorageKey('cf_google_chat_account'));
             if (acc) {
               const parsed = JSON.parse(acc);
               email = parsed.email || email;
@@ -927,7 +1009,7 @@ function HomeContent() {
         } else if (selectedAppId === 'x_twitter') {
           let session = '';
           try {
-            session = localStorage.getItem('cf_x_twitter_session') || '';
+            session = localStorage.getItem(getStorageKey('cf_x_twitter_session')) || '';
           } catch {}
           endpoint = `/api/channels/x_twitter/chats?userId=${encodeURIComponent(currentUser?.id || '')}&session=${encodeURIComponent(session)}`;
         } else if (selectedAppId === 'google_chat') {
@@ -935,7 +1017,7 @@ function HomeContent() {
           // @ts-ignore
           let accessToken = session?.accessToken || '';
           try {
-            const acc = localStorage.getItem('cf_google_chat_account');
+            const acc = localStorage.getItem(getStorageKey('cf_google_chat_account'));
             if (acc) {
               const parsed = JSON.parse(acc);
               email = parsed.email || email;
@@ -947,22 +1029,22 @@ function HomeContent() {
           let channel = '#chatbot-farm';
           let host = 'irc.libera.chat';
           try {
-            channel = localStorage.getItem('cf_irc_channel') || '#chatbot-farm';
-            host = localStorage.getItem('cf_irc_host') || 'irc.libera.chat';
+            channel = localStorage.getItem(getStorageKey('cf_irc_channel')) || '#chatbot-farm';
+            host = localStorage.getItem(getStorageKey('cf_irc_host')) || 'irc.libera.chat';
           } catch {}
           endpoint = `/api/channels/irc/chats?userId=${encodeURIComponent(currentUser?.id || '')}&channel=${encodeURIComponent(channel)}&host=${encodeURIComponent(host)}`;
         } else if (selectedAppId === 'linkedin') {
           let token = '';
           try {
-            token = localStorage.getItem('cf_linkedin_token') || localStorage.getItem('cf_linkedin_cookie') || '';
+            token = localStorage.getItem(getStorageKey('cf_linkedin_token')) || localStorage.getItem(getStorageKey('cf_linkedin_cookie')) || '';
           } catch {}
           endpoint = `/api/channels/linkedin/chats?userId=${encodeURIComponent(currentUser?.id || '')}&token=${encodeURIComponent(token)}`;
         } else if (selectedAppId === 'discord') {
           let token = '';
           try {
-            token = localStorage.getItem('cf_discord_token') || '';
+            token = localStorage.getItem(getStorageKey('cf_discord_token')) || '';
             if (!token) {
-              const acc = localStorage.getItem('cf_discord_account');
+              const acc = localStorage.getItem(getStorageKey('cf_discord_account'));
               if (acc) token = JSON.parse(acc).token || '';
             }
           } catch {}
@@ -1100,7 +1182,7 @@ function HomeContent() {
       next.delete(appId);
       try {
         if (currentUser?.id) {
-          localStorage.setItem(`cf_connected_apps_${currentUser.id}`, JSON.stringify(Array.from(next)));
+          localStorage.setItem(getStorageKey(`cf_connected_apps_${currentUser.id}`), JSON.stringify(Array.from(next)));
         }
       } catch {}
       return next;
@@ -1129,7 +1211,7 @@ function HomeContent() {
     setDarkMode((prev) => {
       const next = !prev;
       try {
-        localStorage.setItem('cf_theme_mode', next ? 'dark' : 'light');
+        localStorage.setItem(getStorageKey('cf_theme_mode'), next ? 'dark' : 'light');
       } catch {}
       return next;
     });
@@ -1170,7 +1252,7 @@ function HomeContent() {
       }));
     } else {
       // Turning ON: check for subscription access OR stored BYOK API key
-      const byokKey = typeof window !== 'undefined' ? localStorage.getItem('cf_byok_key') : null;
+      const byokKey = typeof window !== 'undefined' ? localStorage.getItem(getStorageKey('cf_byok_key')) : null;
       if (!hasAiAccess && !byokKey) {
         setTargetAiChannel(channelId);
         setIsAiModalOpen(true);
@@ -1216,9 +1298,9 @@ function HomeContent() {
       const next = new Set(Array.from(prev).concat(appId));
       try {
         if (currentUser?.id) {
-          localStorage.setItem(`cf_connected_apps_${currentUser.id}`, JSON.stringify(Array.from(next)));
+          localStorage.setItem(getStorageKey(`cf_connected_apps_${currentUser.id}`), JSON.stringify(Array.from(next)));
         }
-        localStorage.setItem('cf_connected_apps', JSON.stringify(Array.from(next)));
+        localStorage.setItem(getStorageKey('cf_connected_apps'), JSON.stringify(Array.from(next)));
       } catch {}
       return next;
     });
@@ -1268,6 +1350,10 @@ function HomeContent() {
           onToggleDarkMode={toggleDarkMode}
           onToggleAi={handleToggleAi}
           onOpenTeamModal={() => setIsTeamModalOpen(true)}
+          projects={projects}
+          activeProjectId={activeProjectId}
+          onSelectProject={handleSelectProject}
+          onCreateProject={handleCreateProject}
         />
 
         {/* 2. MAIN WORKSPACE / PAGE VIEWS WITH FLUID TRANSITIONS */}
@@ -1336,7 +1422,7 @@ function HomeContent() {
                   <DndContext sensors={colSensors} collisionDetection={closestCorners} onDragStart={handleColDragStart} onDragEnd={handleColDragEnd} modifiers={[restrictToHorizontalAxis]}>
                     <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
                       <Group key={columnOrder.join("-")} groupRef={groupRef} orientation="horizontal" id={`desktop-workspace-${columnOrder.join("-")}`} className="w-full h-full overflow-hidden flex gap-1.5" onLayoutChanged={(layout) => {
-                        localStorage.setItem('cf_panel_sizes', JSON.stringify(layout));
+                        localStorage.setItem(getStorageKey('cf_panel_sizes'), JSON.stringify(layout));
                         debouncedSyncPreferences({ panelSizes: layout });
                       }}>
                         {(() => {
@@ -1346,7 +1432,7 @@ function HomeContent() {
                             
                             let savedSize = undefined;
                             try {
-                              const stored = localStorage.getItem('cf_panel_sizes');
+                              const stored = localStorage.getItem(getStorageKey('cf_panel_sizes'));
                               if (stored) {
                                 const parsed = JSON.parse(stored);
                                 if (parsed[colId] !== undefined) savedSize = parsed[colId];
