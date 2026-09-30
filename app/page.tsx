@@ -114,27 +114,23 @@ function HomeContent() {
 
     const handleDetachTab = (tabId: string) => {
     setDetachedTabs(prev => {
-      const next = [...prev, tabId];
-      debouncedSyncPreferences({ detachedTabs: next });
-      return next;
+      // No longer persist detachedTabs — session-only to prevent refresh crash
+      return [...prev, tabId];
     });
     setColumnOrder(prev => {
       if (prev.includes(tabId)) return prev;
-      const next = [...prev, tabId];
-      debouncedSyncPreferences({ columnOrder: next });
-      return next;
+      return [...prev, tabId];
+      // Don't sync the detached columnOrder to Supabase — it causes refresh crashes
     });
   };
 
   const handleReattachTab = (tabId: string) => {
-    setDetachedTabs(prev => {
-      const next = prev.filter(t => t !== tabId);
-      debouncedSyncPreferences({ detachedTabs: next });
-      return next;
-    });
+    setDetachedTabs(prev => prev.filter(t => t !== tabId));
     setColumnOrder(prev => {
       const next = prev.filter(c => c !== tabId);
-      debouncedSyncPreferences({ columnOrder: next });
+      // Only sync core columns back to Supabase
+      const CORE_COLS = new Set(['switcher', 'chat', 'hub']);
+      debouncedSyncPreferences({ columnOrder: next.filter(c => CORE_COLS.has(c)) });
       return next;
     });
   };
@@ -168,15 +164,16 @@ function HomeContent() {
     const prefs = user?.user_metadata?.preferences;
     if (!prefs) return;
     if (prefs.columnOrder && Array.isArray(prefs.columnOrder)) {
-      setColumnOrder(prefs.columnOrder);
+      // Strip detached tab IDs (analytics/settings) - detached state is transient per-session
+      const CORE_COLS = new Set(['switcher', 'chat', 'hub']);
+      const coreOrder = prefs.columnOrder.filter((c: string) => CORE_COLS.has(c));
+      if (coreOrder.length > 0) setColumnOrder(coreOrder);
     }
     if (prefs.pinnedApps && Array.isArray(prefs.pinnedApps)) {
       setPinnedApps(prefs.pinnedApps);
       localStorage.setItem(getStorageKey('cf_pinned_apps'), JSON.stringify(prefs.pinnedApps));
     }
-    if (prefs.detachedTabs && Array.isArray(prefs.detachedTabs)) {
-      setDetachedTabs(prefs.detachedTabs);
-    }
+    // detachedTabs intentionally NOT restored — always start fresh each session
     if (prefs.panelSizes) {
       localStorage.setItem(getStorageKey('cf_panel_sizes'), JSON.stringify(prefs.panelSizes));
       Object.entries(prefs.panelSizes).forEach(([k, v]) => {
