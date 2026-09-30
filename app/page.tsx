@@ -152,7 +152,17 @@ function HomeContent() {
         localStorage.setItem(k, v as string);
       });
       if (groupRef.current) {
-        groupRef.current.setLayout(prefs.panelSizes);
+        try {
+          if (Array.isArray(prefs.panelSizes)) {
+            groupRef.current.setLayout(prefs.panelSizes);
+          } else {
+            const cols = (prefs.columnOrder || columnOrder).filter((c: string) => !(c === 'hub' && isRightHubCollapsed));
+            const arr = cols.map((c: string) => prefs.panelSizes[c] !== undefined ? prefs.panelSizes[c] : (c === 'switcher' ? 25 : c === 'chat' ? 45 : 30));
+            const total = arr.reduce((a: number, b: number) => a + b, 0);
+            const normalized = arr.map((s: number) => (s / total) * 100);
+            groupRef.current.setLayout(normalized);
+          }
+        } catch {}
       }
     }
   };
@@ -186,11 +196,32 @@ function HomeContent() {
     const { active, over } = event;
     setActiveDragColId(null);
     if (over && active.id !== over.id) {
-      setColumnOrder((prev) => {
+            setColumnOrder((prev) => {
         const oldIndex = prev.indexOf(active.id);
         const newIndex = prev.indexOf(over.id);
         const next = arrayMove(prev, oldIndex, newIndex);
         debouncedSyncPreferences({ columnOrder: next });
+        
+        // Restore correct sizes for the new layout array to prevent them from inheriting the wrong positional size
+        setTimeout(() => {
+          if (groupRef.current) {
+            try {
+              const stored = localStorage.getItem(getStorageKey('cf_panel_sizes'));
+              if (stored) {
+                const parsed = JSON.parse(stored);
+                const visibleCols = next.filter(c => !(c === 'hub' && isRightHubCollapsed));
+                const newSizes = visibleCols.map(colId => parsed[colId] !== undefined ? parsed[colId] : (colId === 'switcher' ? 25 : colId === 'chat' ? 45 : 30));
+                
+                // Normalise to 100% just in case
+                const total = newSizes.reduce((a,b) => a+b, 0);
+                const normalized = newSizes.map(s => (s/total)*100);
+                
+                groupRef.current.setLayout(normalized);
+              }
+            } catch {}
+          }
+        }, 10);
+        
         return next;
       });
     }
@@ -1421,9 +1452,23 @@ function HomeContent() {
                   ` }} />
                   <DndContext sensors={colSensors} collisionDetection={closestCorners} onDragStart={handleColDragStart} onDragEnd={handleColDragEnd} modifiers={[restrictToHorizontalAxis]}>
                     <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
-                      <Group key={columnOrder.join("-")} groupRef={groupRef} orientation="horizontal" id={`desktop-workspace-${columnOrder.join("-")}`} className="w-full h-full overflow-hidden flex gap-1.5" onLayoutChanged={(layout) => {
-                        localStorage.setItem(getStorageKey('cf_panel_sizes'), JSON.stringify(layout));
-                        debouncedSyncPreferences({ panelSizes: layout });
+                      <Group groupRef={groupRef} orientation="horizontal" id="desktop-workspace-main" className="w-full h-full overflow-hidden flex gap-1.5" onLayoutChanged={(layout) => {
+                        const visibleCols = columnOrder.filter(c => !(c === 'hub' && isRightHubCollapsed));
+                        const sizeDict: Record<string, number> = {};
+                        
+                        // Grab existing sizes to not overwrite hidden panels
+                        let existingSizes: Record<string, number> = {};
+                        try {
+                          const stored = localStorage.getItem(getStorageKey('cf_panel_sizes'));
+                          if (stored) {
+                            const parsed = JSON.parse(stored);
+                            if (!Array.isArray(parsed)) existingSizes = parsed;
+                          }
+                        } catch {}
+                        
+                        visibleCols.forEach((col, i) => { existingSizes[col] = layout[i]; });
+                        localStorage.setItem(getStorageKey('cf_panel_sizes'), JSON.stringify(existingSizes));
+                        debouncedSyncPreferences({ panelSizes: existingSizes });
                       }}>
                         {(() => {
                           const visibleColumns = columnOrder.filter(c => !(c === 'hub' && isRightHubCollapsed));
@@ -1435,7 +1480,7 @@ function HomeContent() {
                               const stored = localStorage.getItem(getStorageKey('cf_panel_sizes'));
                               if (stored) {
                                 const parsed = JSON.parse(stored);
-                                if (parsed[colId] !== undefined) savedSize = parsed[colId];
+                                if (!Array.isArray(parsed) && parsed[colId] !== undefined) savedSize = parsed[colId];
                               }
                             } catch {}
 
