@@ -1483,7 +1483,7 @@ function HomeContent() {
                   ` }} />
                   <DndContext sensors={colSensors} collisionDetection={closestCorners} onDragStart={handleColDragStart} onDragEnd={handleColDragEnd} modifiers={[restrictToHorizontalAxis]}>
                     <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
-                      <Group groupRef={groupRef} orientation="horizontal" id="desktop-workspace-main" className="w-full h-full overflow-hidden flex gap-1.5" onLayoutChanged={(layout) => {
+                      <Group key={columnOrder.filter(c => !(c === 'hub' && isRightHubCollapsed)).length} groupRef={groupRef} orientation="horizontal" id="desktop-workspace-main" className="w-full h-full overflow-hidden flex gap-1.5" onLayoutChanged={(layout) => {
                         const visibleCols = columnOrder.filter(c => !(c === 'hub' && isRightHubCollapsed));
                         const sizeDict: Record<string, number> = {};
                         
@@ -1576,6 +1576,23 @@ function HomeContent() {
                                         currentUser={currentUser}
                                         onContactAdded={(contact) => handleContactAdded(selectedAppId, contact)}
                                         onDisconnectChannel={handleDisconnectChannel}
+                                        detachedTabs={detachedTabs}
+                                        onDetach={handleDetachTab}
+                                      />
+                                    ) : (colId === 'analytics' || colId === 'settings') ? (
+                                      <RightHubColumn
+                                        dragHandleProps={dragHandleProps}
+                                        selectedAppId={selectedAppId}
+                                        selectedContactId={selectedContactPath[0] || ''}
+                                        onSelectChat={(chatId) => setSelectedContactPath([chatId])}
+                                        isAiActive={aiEnabledByChannel[selectedAppId] ?? false}
+                                        onToggleAi={() => handleToggleAi(selectedAppId)}
+                                        isConnected={connectedApps.has(selectedAppId)}
+                                        liveContacts={liveChatsByApp[selectedAppId] ?? []}
+                                        currentUser={currentUser}
+                                        isStandalone={true}
+                                        activeTabOverride={colId as 'analytics' | 'settings'}
+                                        onReattach={() => handleReattachTab(colId)}
                                       />
                                     ) : null
                                   )}
