@@ -105,11 +105,39 @@ import {
 
 function HomeContent() {
   const [columnOrder, setColumnOrder] = useState(['switcher', 'chat', 'hub']);
+  const [detachedTabs, setDetachedTabs] = useState<string[]>([]);
   const [activeDragColId, setActiveDragColId] = useState<string | null>(null);
 
   const pendingPrefs = useRef<any>({});
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const groupRef = useRef<any>(null);
+
+    const handleDetachTab = (tabId: string) => {
+    setDetachedTabs(prev => {
+      const next = [...prev, tabId];
+      debouncedSyncPreferences({ detachedTabs: next });
+      return next;
+    });
+    setColumnOrder(prev => {
+      if (prev.includes(tabId)) return prev;
+      const next = [...prev, tabId];
+      debouncedSyncPreferences({ columnOrder: next });
+      return next;
+    });
+  };
+
+  const handleReattachTab = (tabId: string) => {
+    setDetachedTabs(prev => {
+      const next = prev.filter(t => t !== tabId);
+      debouncedSyncPreferences({ detachedTabs: next });
+      return next;
+    });
+    setColumnOrder(prev => {
+      const next = prev.filter(c => c !== tabId);
+      debouncedSyncPreferences({ columnOrder: next });
+      return next;
+    });
+  };
 
   const syncPreferences = async () => {
     const currentPending = { ...pendingPrefs.current };
@@ -145,6 +173,9 @@ function HomeContent() {
     if (prefs.pinnedApps && Array.isArray(prefs.pinnedApps)) {
       setPinnedApps(prefs.pinnedApps);
       localStorage.setItem(getStorageKey('cf_pinned_apps'), JSON.stringify(prefs.pinnedApps));
+    }
+    if (prefs.detachedTabs && Array.isArray(prefs.detachedTabs)) {
+      setDetachedTabs(prefs.detachedTabs);
     }
     if (prefs.panelSizes) {
       localStorage.setItem(getStorageKey('cf_panel_sizes'), JSON.stringify(prefs.panelSizes));
