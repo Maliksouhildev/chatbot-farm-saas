@@ -202,7 +202,7 @@ function HomeContent() {
   const [activeTab, setActiveTab] = useState<MainNavTab>('workspace');
   const [selectedAppId, setSelectedAppId] = useState('whatsapp');
   const activeThemeColor = APP_GRADIENT_THEMES[selectedAppId]?.solidColor || '#1B6648';
-  const [selectedContactId, setSelectedContactId] = useState<string>('');
+  const [selectedContactPath, setSelectedContactPath] = useState<string[]>([]);
   const [isLinked, setIsLinked] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [mobileHubTab, setMobileHubTab] = useState<'chat' | 'contacts' | 'analytics' | 'settings'>('chat');
@@ -993,7 +993,7 @@ function HomeContent() {
                 [selectedAppId]: sorted,
               };
             });
-            setSelectedContactId((prev) => {
+            setSelectedContactPath((prev: string[]) => {
               if (prev && rawChats.some((c: any) => c.id === prev)) return prev;
               return rawChats.length > 0 ? rawChats[0].id : '';
             });
@@ -1072,7 +1072,7 @@ function HomeContent() {
             }
           ]
         };
-        setSelectedContactId(contactId);
+        setSelectedContactPath([contactId]);
         setMobileHubTab('chat');
         return {
           ...prev,
@@ -1091,7 +1091,7 @@ function HomeContent() {
         [appId]: [contact, ...filtered]
       };
     });
-    setSelectedContactId(contact.id);
+    setSelectedContactPath([contact.id]);
   };
 
   const handleDisconnectChannel = (appId: string) => {
@@ -1148,9 +1148,9 @@ function HomeContent() {
       }
     }
     if (contacts && contacts.length > 0) {
-      setSelectedContactId(contacts[0].id);
+      setSelectedContactPath([contacts[0].id]);
     } else {
-      setSelectedContactId('');
+      setSelectedContactPath([]);
     }
   };
 
@@ -1228,7 +1228,7 @@ function HomeContent() {
         ...prev,
         [appId]: contacts,
       }));
-      setSelectedContactId(contacts[0].id);
+      setSelectedContactPath([contacts[0].id]);
     }
     setIsConnectModalOpen(false);
   };
@@ -1384,7 +1384,8 @@ function HomeContent() {
                                       <MiddleChatColumn
                                         dragHandleProps={dragHandleProps}
                                         appId={selectedAppId}
-                                        selectedContactId={selectedContactId}
+                                        selectedContactPath={selectedContactPath}
+                                        onNavigatePath={setSelectedContactPath}
                                         isLinked={isLinked}
                                         onLinkSuccess={() => setIsLinked(true)}
                                         onOpenAuth={() => setIsAuthModalOpen(true)}
@@ -1403,8 +1404,9 @@ function HomeContent() {
                                       <RightHubColumn
                                         dragHandleProps={dragHandleProps}
                                         selectedAppId={selectedAppId}
-                                        selectedContactId={selectedContactId}
-                                        onSelectChat={(chatId) => setSelectedContactId(chatId)}
+                                        selectedContactId={selectedContactPath[0] || ''}
+                            
+                                        onSelectChat={(chatId) => setSelectedContactPath([chatId])}
                                         isAiActive={aiEnabledByChannel[selectedAppId] ?? false}
                                         onToggleAi={() => handleToggleAi(selectedAppId)}
                                         isConnected={connectedApps.has(selectedAppId)}
@@ -1581,7 +1583,8 @@ function HomeContent() {
                         {mobileHubTab === 'chat' ? (
                           <MiddleChatColumn
                             appId={selectedAppId}
-                            selectedContactId={selectedContactId}
+                            selectedContactPath={selectedContactPath}
+                            onNavigatePath={setSelectedContactPath}
                             isLinked={isLinked}
                             onLinkSuccess={() => setIsLinked(true)}
                             onOpenAuth={() => setIsAuthModalOpen(true)}
@@ -1601,9 +1604,10 @@ function HomeContent() {
                         ) : (
                           <RightHubColumn
                             selectedAppId={selectedAppId}
-                            selectedContactId={selectedContactId}
+                            selectedContactId={selectedContactPath[0] || ''}
+                            
                             onSelectChat={(chatId) => {
-                              setSelectedContactId(chatId);
+                              setSelectedContactPath([chatId]);
                               setMobileHubTab('chat');
                             }}
                             isAiActive={aiEnabledByChannel[selectedAppId] ?? false}
