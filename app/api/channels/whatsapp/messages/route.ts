@@ -5,15 +5,10 @@ function extractMessageText(msgObj: any): string {
   if (typeof msgObj.conversation === 'string') return msgObj.conversation;
   if (msgObj.extendedTextMessage?.text) return msgObj.extendedTextMessage.text;
   if (msgObj.imageMessage?.caption) return msgObj.imageMessage.caption;
-  if (msgObj.imageMessage) return '📷 Photo';
   if (msgObj.videoMessage?.caption) return msgObj.videoMessage.caption;
-  if (msgObj.videoMessage) return '🎥 Video';
-  if (msgObj.audioMessage) return '🎤 Voice note';
   if (msgObj.documentMessage?.fileName) return '📄 ' + msgObj.documentMessage.fileName;
-  if (msgObj.documentMessage) return '📄 Document';
-  if (msgObj.stickerMessage) return '🎨 Sticker';
   if (msgObj.contactMessage?.displayName) return '👤 ' + msgObj.contactMessage.displayName;
-  return 'Message';
+  return '';
 }
 
 export async function GET(req: Request) {
@@ -47,20 +42,63 @@ export async function GET(req: Request) {
     }
 
     const data = await res.json();
-    const records = data.messages?.records || [];
+    let records = data.messages?.records || [];
+    
+    // Fetch @lid alias if it's a standard whatsapp net number
+    if (remoteJid.includes('@s.whatsapp.net')) {
+       const lid = remoteJid.replace('@s.whatsapp.net', '@lid');
+       const resLid = await fetch(`${evolutionUrl}/chat/findMessages/${instance}`, {
+         method: 'POST',
+         headers: { apikey: apiKey, 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           where: { key: { remoteJid: lid } },
+           limit: 50
+         })
+       });
+       if (resLid.ok) {
+         const dataLid = await resLid.json();
+         const recordsLid = dataLid.messages?.records || [];
+         records = [...records, ...recordsLid];
+       }
+    } else if (remoteJid.includes('@lid')) {
+       const snet = remoteJid.replace('@lid', '@s.whatsapp.net');
+       const resSnet = await fetch(`${evolutionUrl}/chat/findMessages/${instance}`, {
+         method: 'POST',
+         headers: { apikey: apiKey, 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           where: { key: { remoteJid: snet } },
+           limit: 50
+         })
+       });
+       if (resSnet.ok) {
+         const dataSnet = await resSnet.json();
+         const recordsSnet = dataSnet.messages?.records || [];
+         records = [...records, ...recordsSnet];
+       }
+    }
 
     // Sort chronologically (oldest first, newest last)
     records.sort((a: any, b: any) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0));
 
     const formatted = records.map((r: any) => {
-      const isMe = !!r.key?.fromMe;
+      const isMe = r.fromMe === true || r.keyFromMe === true || r.key?.fromMe === true;
       const date = new Date((r.messageTimestamp || 0) * 1000);
       const timeStr = isNaN(date.getTime())
         ? 'Recent'
         : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       const text = extractMessageText(r.message);
-      const isAudio = r.messageType === 'audioMessage';
+      
+      const isAudio = r.messageType === 'audioMessage' || !!r.message?.audioMessage;
+      const isVideo = r.messageType === 'videoMessage' || !!r.message?.videoMessage;
+      const isImage = r.messageType === 'imageMessage' || !!r.message?.imageMessage;
+      const isSticker = r.messageType === 'stickerMessage' || !!r.message?.stickerMessage;
+      
+      let mediaType = null;
+      if (isAudio) mediaType = 'audio';
+      else if (isVideo) mediaType = 'video';
+      else if (isImage) mediaType = 'image';
+      else if (isSticker) mediaType = 'sticker';
 
       return {
         id: r.id || r.key?.id || String(Math.random()),
@@ -69,7 +107,9 @@ export async function GET(req: Request) {
         time: timeStr,
         seen: true,
         isAudio: isAudio,
-        audioDuration: isAudio ? '0:15' : undefined
+        audioDuration: isAudio ? '0:15' : undefined,
+        mediaType,
+        rawMessage: r
       };
     });
 
