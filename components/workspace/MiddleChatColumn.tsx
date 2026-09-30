@@ -396,7 +396,7 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
     const target = e.target;
     setTimeout(() => {
       target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      // Removed aggressive snap to bottom here
     }, 250);
   };
 
@@ -601,7 +601,16 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
   }, [appId, isConnected, activeContact?.id]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    if (!messagesEndRef.current) return;
+    const container = messagesEndRef.current.parentElement;
+    if (container) {
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 350;
+      if (isNearBottom) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+      }
+    } else {
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+    }
   }, [activeMessages]);
 
   useEffect(() => {
