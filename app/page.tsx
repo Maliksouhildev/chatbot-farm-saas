@@ -41,9 +41,9 @@ function SortableColumn({ id, children, activeThemeColor }: { id: string, childr
       style={{ ...style, '--theme-color': activeThemeColor } as React.CSSProperties} 
       className={`h-full w-full relative sortable-column-container overflow-hidden rounded-3xl group ${isDragging ? 'shadow-2xl' : ''}`}
     >
-      <div className="absolute inset-0 opacity-0 pointer-events-none column-collapsed-bg transition-opacity duration-200" style={{ backgroundColor: 'var(--theme-color)', zIndex: 50 }}></div>
+      <div className="absolute inset-0 opacity-0 pointer-events-none column-collapsed-bg cursor-grab active:cursor-grabbing" style={{ backgroundColor: 'var(--theme-color)', zIndex: 50, borderRadius: 'inherit', transition: 'opacity 0.42s cubic-bezier(0.4,0,0.2,1)' }} {...attributes} {...listeners}></div>
       {/* Hide scrollbars globally on the column content during drag to prevent jitter */}
-      <div className={`h-full w-full column-main-content transition-opacity duration-200 ${isDragging ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'}`}>
+      <div className={`h-full w-full column-main-content ${isDragging ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'}`} style={{ transition: 'opacity 0.42s cubic-bezier(0.4,0,0.2,1)' }}>
         {/* Pass grab/grabbing cursors via dragHandleProps. Note: buttons inside should override cursor to default/pointer */}
         {children({ 
           ...attributes, 
@@ -1327,7 +1327,7 @@ function HomeContent() {
                       .app-item-container { justify-content: center !important; padding: 0.5rem !important; }
                       .app-item-ai-toggle { display: none !important; }
                     }
-                    @container (max-width: 60px) {
+                    @container (max-width: 80px) {
                       .column-main-content { opacity: 0 !important; pointer-events: none !important; display: none !important; }
                       .column-collapsed-bg { opacity: 1 !important; pointer-events: auto !important; }
                       .column-icon-only { display: none !important; }
@@ -1335,7 +1335,7 @@ function HomeContent() {
                   ` }} />
                   <DndContext sensors={colSensors} collisionDetection={closestCorners} onDragStart={handleColDragStart} onDragEnd={handleColDragEnd} modifiers={[restrictToHorizontalAxis]}>
                     <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
-                      <Group key={columnOrder.join("-")} groupRef={groupRef} orientation="horizontal" id={`desktop-workspace-${columnOrder.join("-")}`} className="w-full h-full overflow-hidden" onLayoutChanged={(layout) => {
+                      <Group key={columnOrder.join("-")} groupRef={groupRef} orientation="horizontal" id={`desktop-workspace-${columnOrder.join("-")}`} className="w-full h-full overflow-hidden flex gap-3" onLayoutChanged={(layout) => {
                         localStorage.setItem('cf_panel_sizes', JSON.stringify(layout));
                         debouncedSyncPreferences({ panelSizes: layout });
                       }}>
@@ -1358,7 +1358,7 @@ function HomeContent() {
                                 <Panel 
                                   id={colId}
                                   defaultSize={savedSize !== undefined ? savedSize : (colId === 'switcher' ? 25 : colId === 'chat' ? (isRightHubCollapsed ? 75 : 45) : 30)} 
-                                  minSize={4}
+                                  minSize={5}
                                   style={{ overflow: activeDragColId ? 'visible' : 'hidden', zIndex: activeDragColId === colId ? 9999 : 1 }}
                                 >
                                 <SortableColumn id={colId} activeThemeColor={colThemeColor}>

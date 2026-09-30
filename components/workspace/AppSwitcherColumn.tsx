@@ -86,6 +86,7 @@ interface SortableChannelProps {
 
 function SortableChannelItem({ ch, isSelected, appTheme, isChannelConnected, onSelectApp, onOpenConnectModal, onUnpinApp, isAiActive, onToggleAi, unreadCount }: SortableChannelProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ch.id });
+  const [isHovered, setIsHovered] = useState(false);
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -102,7 +103,9 @@ function SortableChannelItem({ ch, isSelected, appTheme, isChannelConnected, onS
       {...attributes}
       {...listeners}
       id={`channel-switcher-${ch.id}`}
-      className={`app-item-container w-full p-2.5 sm:px-3 rounded-2xl flex items-center gap-2.5 transition-all text-left relative group shadow-xs cursor-grab active:cursor-grabbing ${
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`app-item-container w-full p-2.5 sm:px-3 rounded-2xl flex items-center gap-2.5 transition-all text-left relative shadow-xs cursor-grab active:cursor-grabbing ${
         isSelected
           ? 'font-bold border-transparent scale-[1.01]'
           : 'bg-white dark:bg-[#1E222A] text-gray-800 dark:text-gray-200 border border-[#DFDFD4] dark:border-neutral-800 hover:border-gray-300 dark:hover:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-800/80'
@@ -110,7 +113,7 @@ function SortableChannelItem({ ch, isSelected, appTheme, isChannelConnected, onS
     >
       <button 
         onClick={(e) => { e.stopPropagation(); e.preventDefault(); onUnpinApp && onUnpinApp(ch.id); }}
-        className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white dark:bg-red-500 dark:hover:bg-red-600 rounded-full flex items-center justify-center shadow-sm z-20 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all cursor-pointer border border-white dark:border-neutral-800 hover:scale-110"
+        className={`absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white dark:bg-red-500 dark:hover:bg-red-600 rounded-full flex items-center justify-center shadow-sm z-20 transition-all cursor-pointer border border-white dark:border-neutral-800 hover:scale-110 ${isHovered ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         title="Remove from Panel"
         onPointerDown={(e) => e.stopPropagation()} 
       >
