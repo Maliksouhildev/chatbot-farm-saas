@@ -611,7 +611,7 @@ export const AppSwitcherColumn: React.FC<AppSwitcherColumnProps> = ({
             
             return (
               <div
-                className={`w-full p-2.5 sm:px-3 rounded-2xl flex items-center gap-2.5 transition-all text-left relative group shadow-2xl cursor-grabbing scale-[1.03] rotate-1 ${
+                className={`app-item-container w-full p-2.5 sm:px-3 rounded-2xl flex items-center gap-2.5 transition-all text-left relative group shadow-2xl cursor-grabbing scale-[1.03] rotate-1 ${
                   isSelected
                     ? 'font-bold border-transparent'
                     : 'bg-white dark:bg-[#1E222A] text-gray-800 dark:text-gray-200 border border-[#DFDFD4] dark:border-neutral-800'
@@ -622,7 +622,7 @@ export const AppSwitcherColumn: React.FC<AppSwitcherColumnProps> = ({
                   <button
                     onClick={(e) => { e.stopPropagation(); onToggleAi(ch.id); }}
                     onPointerDown={(e) => e.stopPropagation()}
-                    className={`absolute top-1/2 -translate-y-1/2 right-2 inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-all duration-200 cursor-pointer shadow-inner focus:outline-none hover:scale-105 z-20 border border-transparent ${(aiEnabledByChannel[ch.id] ?? false) ? "opacity-100" : "bg-gray-200 dark:bg-gray-700/80 opacity-60 hover:opacity-100 dark:border-neutral-700"}`}
+                    className={`app-item-ai-toggle absolute top-1/2 -translate-y-1/2 right-2 inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-all duration-200 cursor-pointer shadow-inner focus:outline-none hover:scale-105 z-20 border border-transparent ${(aiEnabledByChannel[ch.id] ?? false) ? "opacity-100" : "bg-gray-200 dark:bg-gray-700/80 opacity-60 hover:opacity-100 dark:border-neutral-700"}`}
                     style={(aiEnabledByChannel[ch.id] ?? false) ? { backgroundColor: appTheme.solidColor, boxShadow: `0 0 8px ${appTheme.solidColor}60` } : undefined}
                     title={(aiEnabledByChannel[ch.id] ?? false) ? "Disable AI for this channel" : "Enable AI for this channel"}
                   >
@@ -637,7 +637,7 @@ export const AppSwitcherColumn: React.FC<AppSwitcherColumnProps> = ({
                 <div className="relative shrink-0 flex items-center justify-center z-0">
                   {ch.iconComponent}
                 </div>
-                <div className="flex-1 min-w-0 flex flex-col justify-center z-0 pointer-events-none">
+                <div className="app-item-text flex-1 min-w-0 flex flex-col justify-center z-0 pointer-events-none">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[11px] font-extrabold truncate" style={!isSelected ? { color: appTheme?.accentColor || appTheme?.solidColor } : undefined}>
                       {ch.name}
@@ -662,10 +662,10 @@ export const AppSwitcherColumn: React.FC<AppSwitcherColumnProps> = ({
       <div className="p-4 border-t border-[#DFDFD4] dark:border-[#2E333D] shrink-0 mt-auto bg-gray-50/40 dark:bg-neutral-900/40">
         <button
           onClick={() => setIsAddDrawerOpen(true)}
-          className="w-full py-2.5 px-3 rounded-xl border border-dashed border-[#1B6648]/40 dark:border-emerald-500/40 hover:border-[#1B6648] bg-[#1B6648]/5 dark:bg-emerald-950/20 hover:bg-[#1B6648]/10 text-[#1B6648] dark:text-emerald-400 font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-98"
+          className="bottom-action-btn w-full py-2.5 px-3 rounded-xl border border-dashed border-[#1B6648]/40 dark:border-emerald-500/40 hover:border-[#1B6648] bg-[#1B6648]/5 dark:bg-emerald-950/20 hover:bg-[#1B6648]/10 text-[#1B6648] dark:text-emerald-400 font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-98"
         >
           <Plus className="w-4 h-4" />
-          <span>Add Channel / Phone</span>
+          <span className="add-channel-text">Add Channel / Phone</span>
         </button>
 
 
