@@ -21,28 +21,29 @@ export async function GET(req: Request) {
       return NextResponse.json({ messages: [] });
     }
 
+    
     const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
     const apiKey = process.env.EVOLUTION_API_KEY || 'farm_evolution_master_secret_2026';
 
-    const res = await fetch(`${evolutionUrl}/chat/findMessages/${instance}`, {
-      method: 'POST',
-      headers: { apikey: apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        where: {
-          key: {
-            remoteJid: remoteJid
-          }
-        },
-        limit: 100
-      })
-    });
+    const jids = remoteJid.split(',');
+    
+    const fetchMessagesForJid = async (jid: string) => {
+      const res = await fetch(`${evolutionUrl}/chat/findMessages/${instance}`, {
+        method: 'POST',
+        headers: { apikey: apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          where: { key: { remoteJid: jid } },
+          limit: 100
+        })
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.messages?.records || [];
+    };
 
-    if (!res.ok) {
-      return NextResponse.json({ messages: [] });
-    }
+    const results = await Promise.all(jids.map(fetchMessagesForJid));
+    let records = results.flat();
 
-    const data = await res.json();
-    let records = data.messages?.records || [];
     
     // Fetch @lid alias if it's a standard whatsapp net number
     if (remoteJid.includes('@s.whatsapp.net')) {
