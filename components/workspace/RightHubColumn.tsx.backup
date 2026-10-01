@@ -26,7 +26,6 @@ import {
   Sliders,
   BellRing,
   UserPlus,
-  Hash,
   Plus,
   X,
   User,
@@ -365,14 +364,11 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
   );
 
   const activeContactId = selectedContactId || sortedContacts[0]?.id;
-  const activeContact = sortedContacts.find((c: any) => c.id === activeContactId);
+  const activeContact = sortedContacts.find(c => c.id === activeContactId);
   const currentAppTheme = APP_GRADIENT_THEMES[selectedAppId] || APP_GRADIENT_THEMES.whatsapp;
 
   return (
-    <div 
-    className="h-full w-full max-w-full min-w-0 min-h-0 flex flex-col bg-white dark:bg-[#1A1D23] rounded-3xl border border-[#DFDFD4] dark:border-[#2E333D] text-[#1B1B1B] dark:text-gray-100 overflow-hidden shadow-sm"
-    style={{ containerType: 'inline-size', containerName: 'righthub' }}
-  >
+    <div className="h-full w-full max-w-full min-w-0 min-h-0 flex flex-col bg-white dark:bg-[#1A1D23] rounded-3xl border border-[#DFDFD4] dark:border-[#2E333D] text-[#1B1B1B] dark:text-gray-100 overflow-hidden shadow-sm" style={{ containerType: 'inline-size', containerName: 'righthub' }}>
     <style dangerouslySetInnerHTML={{ __html: `
       @container righthub (max-width: 250px) {
         .hub-tab-text { display: none !important; }
@@ -677,40 +673,6 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
                     </button>
                   );
                 })
-                )}
-              </div>
-
-              {/* Topics Split Pane */}
-              {activeContact?.isGroup && activeContact?.topics && activeContact.topics.length > 0 && (
-                <div className="flex-1 min-h-0 overflow-y-auto bg-gray-50/50 dark:bg-[#111317]/50 custom-scrollbar flex flex-col">
-                  <div className="px-3 py-2 border-b border-[#DFDFD4] dark:border-neutral-800 bg-[#ECECE2]/40 dark:bg-black/40 text-xs font-bold text-gray-500 flex items-center gap-2 sticky top-0 z-10">
-                    <Hash className="w-3.5 h-3.5" />
-                    <span>Topics</span>
-                  </div>
-                  <div className="flex-1 divide-y divide-[#DFDFD4]/30 dark:divide-neutral-800/50">
-                    {activeContact.topics.map((topic: any) => (
-                      <button
-                        key={topic.id} onClick={() => onSelectTopic?.(topic.id)}
-                        className={`w-full p-3 text-left transition-all flex items-center justify-between gap-3 relative cursor-pointer hover:bg-[#ECECE2]/60 dark:hover:bg-neutral-800/60 ${selectedTopicId === topic.id ? 'bg-white dark:bg-neutral-800 shadow-sm border-l-2 border-blue-500' : ''}`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-xs">
-                            <span className="font-bold text-lg leading-none">#</span>
-                          </div>
-                          <span className="font-bold text-xs truncate text-gray-800 dark:text-gray-200">
-                            {topic.name}
-                          </span>
-                          {topic.pinned && <span className="text-[10px]" title="Pinned Topic">📌</span>}
-                        </div>
-                        {topic.unreadCount && topic.unreadCount > 0 ? (
-                          <span className="shrink-0 bg-purple-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                            {topic.unreadCount}
-                          </span>
-                        ) : null}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               )}
             </div>
 
@@ -1463,6 +1425,39 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:border-[#C13584]"
                   />
                 </div>
+              {/* Topics Split Pane */}
+              {activeContact?.isGroup && activeContact?.topics && activeContact.topics.length > 0 && (
+                <div className="flex-1 min-h-0 overflow-y-auto bg-gray-50/50 dark:bg-[#111317]/50 custom-scrollbar flex flex-col">
+                  <div className="px-3 py-2 border-b border-[#DFDFD4] dark:border-neutral-800 bg-[#ECECE2]/40 dark:bg-black/40 text-xs font-bold text-gray-500 flex items-center gap-2 sticky top-0 z-10">
+                    <Hash className="w-3.5 h-3.5" />
+                    <span>Topics</span>
+                  </div>
+                  <div className="flex-1 divide-y divide-[#DFDFD4]/30 dark:divide-neutral-800/50">
+                    {activeContact.topics.map((topic, idx) => (
+                      <button
+                        key={topic.id} onClick={() => onSelectTopic?.(topic.id)}
+                        className={`w-full p-3 text-left transition-all flex items-center justify-between gap-3 relative cursor-pointer hover:bg-[#ECECE2]/60 dark:hover:bg-neutral-800/60 ${selectedTopicId === topic.id ? 'bg-white dark:bg-neutral-800 shadow-sm border-l-2 border-blue-500' : ''}`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-xs">
+                            <span className="font-bold text-lg leading-none">#</span>
+                          </div>
+                          <span className="font-bold text-xs truncate text-gray-800 dark:text-gray-200">
+                            {topic.name}
+                          </span>
+                          {topic.pinned && <span className="text-[10px]" title="Pinned Topic">📌</span>}
+                        </div>
+                        {topic.unreadCount && topic.unreadCount > 0 ? (
+                          <span className="shrink-0 bg-purple-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                            {topic.unreadCount}
+                          </span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
                 <button
                   id="modal-submit-add-client-btn"

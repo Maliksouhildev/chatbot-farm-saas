@@ -1588,6 +1588,8 @@ function HomeContent() {
                                         dragHandleProps={dragHandleProps}
                                         selectedAppId={selectedAppId}
                                         selectedContactId={selectedContactPath[0] || ''}
+                              selectedTopicId={selectedContactPath[1] || ''}
+                              onSelectTopic={(topicId) => setSelectedContactPath([selectedContactPath[0], topicId])}
                             
                                         onSelectChat={(chatId) => setSelectedContactPath([chatId])}
                                         isAiActive={aiEnabledByChannel[selectedAppId] ?? false}
@@ -1605,6 +1607,8 @@ function HomeContent() {
                                         dragHandleProps={dragHandleProps}
                                         selectedAppId={selectedAppId}
                                         selectedContactId={selectedContactPath[0] || ''}
+                              selectedTopicId={selectedContactPath[1] || ''}
+                              onSelectTopic={(topicId) => setSelectedContactPath([selectedContactPath[0], topicId])}
                                         onSelectChat={(chatId) => setSelectedContactPath([chatId])}
                                         isAiActive={aiEnabledByChannel[selectedAppId] ?? false}
                                         onToggleAi={() => handleToggleAi(selectedAppId)}
@@ -1809,6 +1813,8 @@ function HomeContent() {
                           <RightHubColumn
                             selectedAppId={selectedAppId}
                             selectedContactId={selectedContactPath[0] || ''}
+                              selectedTopicId={selectedContactPath[1] || ''}
+                              onSelectTopic={(topicId) => setSelectedContactPath([selectedContactPath[0], topicId])}
                             
                             onSelectChat={(chatId) => {
                               setSelectedContactPath([chatId]);

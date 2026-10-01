@@ -503,7 +503,10 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
   }
   
   const activeContact = resolvedContact || currentAppContacts[0];
-  const activeMessages = activeContact ? (conversations[activeContact.id] || activeContact.messages || []) : [];
+  let activeMessages = activeContact ? (conversations[activeContact.id] || activeContact.messages || []) : [];
+  if (selectedContactPath[1]) {
+    activeMessages = activeMessages.filter(m => m.topicId === selectedContactPath[1]);
+  }
 
   const handleNavigateDown = (childId: string) => {
     if (onNavigatePath) {
@@ -1640,7 +1643,7 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
 
         {/* Header with Solid Brand Color */}
-        <div {...dragHandleProps} className={`h-14 px-4 sm:px-5 text-white flex items-center justify-between z-30 shadow-xs border-b border-black/10 shrink-0 select-none relative ${isMobileEmbedded ? 'rounded-tr-2xl' : 'rounded-t-3xl'} ${dragHandleProps?.className || "cursor-grab active:cursor-grabbing"}`}>
+        <div className={`h-14 px-4 sm:px-5 text-white flex items-center justify-between z-30 shadow-xs border-b border-black/10 shrink-0 select-none relative ${isMobileEmbedded ? 'rounded-tr-2xl' : 'rounded-t-3xl'}`}>
           {renderSolidHeader(APP_GRADIENT_THEMES.telegram.solidColor)}
           <div className="relative z-10 flex items-center gap-2 min-w-0">
             {onMobileBack && (
@@ -1653,7 +1656,13 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
                 <ChevronLeft className="w-5 h-5" />
               </button>
             )}
-            <TelegramIcon className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow-xs shrink-0" />
+            {activeContact?.profilePicUrl ? (
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full shrink-0 relative overflow-hidden">
+                <img src={activeContact.profilePicUrl} alt="" className="object-cover w-full h-full rounded-full" />
+              </div>
+            ) : (
+              <TelegramIcon className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow-xs shrink-0" />
+            )}
             <div className="min-w-0">
               <h4 className="font-bold text-xs sm:text-sm text-white truncate leading-tight flex items-center gap-1">
                 {activeContact.name}
@@ -1676,56 +1685,95 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-[#F3F4F6] dark:bg-[#0E1621]">
           {activeMessages.map((m) => {
             const isMe = m.sender === 'operator';
+            
+            const stringToColor = (str: string) => {
+              let hash = 0;
+              for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+              }
+              const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+              return '#' + '00000'.substring(0, 6 - c.length) + c;
+            };
+
+            const renderMentions = (text: string) => {
+              if (!text) return text;
+              return text.split(/(@[\w.-]+)/g).map((part, i) =>
+                part.startsWith('@') ? <span key={i} className="text-blue-500 hover:underline cursor-pointer">{part}</span> : part
+              );
+            };
+
             return (
               <div
                 key={m.id}
                 onMouseEnter={() => setHoveredMessageId(m.id)}
                 onMouseLeave={() => setHoveredMessageId(null)}
-                className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${isMe ? 'justify-end' : 'justify-start'} w-full`}
               >
-                {/* Message Bubble Container with relative positioning for reactions */}
-                <div className={`relative group/bubble max-w-[78%] ${m.reactions && m.reactions.length > 0 ? "mb-3.5" : ""}`}>
-                  {hoveredMessageId === m.id && renderReactionPicker(m.id, isMe)}
-                  <div
-                    className={`px-4 py-2.5 rounded-2xl text-xs leading-relaxed ${
-                      isMe
-                        ? 'bg-[#2AABEE] text-white rounded-br-sm shadow-sm'
-                        : 'bg-white dark:bg-[#182533] text-[#111827] dark:text-white rounded-bl-sm shadow-xs'
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap font-normal">{renderMessageText(m.text || '', searchQuery)}</p>
-                    {renderMessageAttachment(m, isMe)}
-                    {m.hasImages && (
-                      <div className="grid grid-cols-3 gap-1.5 my-2 pt-1">
-                        <div className="aspect-square rounded-xl bg-gray-200 overflow-hidden shadow-xs">
-                          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop" alt="p1" className="w-full h-full object-cover" />
+                <div className={`flex items-end gap-2 max-w-[78%] ${m.reactions && m.reactions.length > 0 ? "mb-3.5" : ""}`}>
+                  {!isMe && (
+                    <div className="w-8 h-8 rounded-full flex-shrink-0 bg-gray-300 overflow-hidden shadow-xs mb-1">
+                      {m.senderAvatar || activeContact?.profilePicUrl ? (
+                        <img src={m.senderAvatar || activeContact?.profilePicUrl || undefined} alt={m.senderName || ''} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-white font-bold text-xs" style={{ backgroundColor: stringToColor(m.senderName || m.sender) }}>
+                          {(m.senderName || activeContact?.name || m.sender).charAt(0).toUpperCase()}
                         </div>
-                        <div className="aspect-square rounded-xl bg-gray-200 overflow-hidden shadow-xs">
-                          <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&h=150&fit=crop" alt="p2" className="w-full h-full object-cover" />
-                        </div>
-                        <div className="aspect-square rounded-xl bg-gray-900 relative overflow-hidden shadow-xs flex items-center justify-center text-white font-bold text-xs">
-                          <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&h=150&fit=crop" alt="p3" className="w-full h-full object-cover opacity-60" />
-                          <span className="absolute font-bold text-sm">+3</span>
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex justify-end items-center gap-1 text-[10px] opacity-75 mt-1">
-                      <span>{m.time}</span>
-                      {isMe && <CheckCheck className="w-3.5 h-3.5" />}
-                      {m.seen && <span className="text-[9px] ml-0.5">Seen</span>}
-                    </div>
-                  </div>
-
-                  {/* Reaction badge directly docked under the message bubble */}
-                  {m.reactions && m.reactions.length > 0 && (
-                    <div className={`absolute -bottom-2.5 ${isMe ? 'right-2' : 'left-2'} z-10 flex items-center gap-1`}>
-                      {m.reactions.map((r, i) => (
-                        <span key={i} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-white dark:bg-[#1E222A] shadow-md border border-gray-200 dark:border-neutral-700 text-[11px] font-bold">
-                          {r.emoji} {r.count}
-                        </span>
-                      ))}
+                      )}
                     </div>
                   )}
+
+                  {/* Message Bubble Container with relative positioning for reactions */}
+                  <div className="relative group/bubble">
+                    {hoveredMessageId === m.id && (
+                      <div className={`absolute top-0 z-30 flex items-center gap-1 animate-in fade-in zoom-in-95 duration-150 ${isMe ? 'right-full mr-2' : 'left-full ml-2'}`}>
+                        {renderReactionPicker(m.id, isMe)}
+                      </div>
+                    )}
+                    {m.pinned && (
+                      <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold mb-0.5 ml-2">
+                        <span className="opacity-75">📌 Pinned Message</span>
+                      </div>
+                    )}
+                    <div
+                      className={`px-4 py-2.5 rounded-2xl text-xs leading-relaxed ${
+                        isMe
+                          ? 'bg-[#2AABEE] text-white rounded-br-sm shadow-sm'
+                          : 'bg-white dark:bg-[#182533] text-[#111827] dark:text-white rounded-bl-sm shadow-xs'
+                      }`}
+                    >
+                      {!isMe && activeContact?.isGroup && m.senderName && (
+                        <div className="font-bold text-[11px] mb-0.5" style={{ color: stringToColor(m.senderName) }}>
+                          {m.senderName}
+                        </div>
+                      )}
+                      <p className="whitespace-pre-wrap font-normal">{renderMentions(m.text)}</p>
+                      
+                      {m.imageUrl ? (
+                         <div className="my-2 rounded-2xl overflow-hidden shadow-md max-w-[280px] border border-black/10 dark:border-white/10">
+                           <img src={m.imageUrl} alt="attachment" className="w-full h-auto object-cover max-h-60" />
+                         </div>
+                      ) : (
+                         renderMessageAttachment(m, isMe)
+                      )}
+
+                      <div className="flex justify-end items-center gap-1 text-[10px] opacity-75 mt-1">
+                        <span>{m.time}</span>
+                        {isMe && <CheckCheck className="w-3.5 h-3.5" />}
+                        {m.seen && <span className="text-[9px] ml-0.5">Seen</span>}
+                      </div>
+                    </div>
+
+                    {/* Reaction badge directly docked under the message bubble */}
+                    {m.reactions && m.reactions.length > 0 && (
+                      <div className={`absolute -bottom-2.5 ${isMe ? 'right-2' : 'left-2'} z-10 flex items-center gap-1`}>
+                        {m.reactions.map((r, i) => (
+                          <span key={i} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-white dark:bg-[#1E222A] shadow-md border border-gray-200 dark:border-neutral-700 text-[11px] font-bold">
+                            {r.emoji} {r.count}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -1808,7 +1856,7 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
     if (!activeContact) {
       return (
         <div className={`h-full w-full max-w-full min-w-0 min-h-0 flex flex-col bg-[#E6D3E7] dark:bg-[#201625] ${isMobileEmbedded ? 'rounded-b-3xl border-t-0 shadow-none' : 'rounded-3xl border shadow-sm'} border-[#D5BCD7] dark:border-[#38263F] overflow-hidden relative text-[#1B1B1B]`}>
-          <div {...dragHandleProps} className={`h-14 px-4 sm:px-5 text-white flex items-center justify-between z-30 shadow-xs border-b border-black/10 shrink-0 select-none relative ${isMobileEmbedded ? 'rounded-tr-2xl' : 'rounded-t-3xl'} ${dragHandleProps?.className || "cursor-grab active:cursor-grabbing"}`}>
+          <div className={`h-14 px-4 sm:px-5 text-white flex items-center justify-between z-30 shadow-xs border-b border-black/10 shrink-0 select-none relative ${isMobileEmbedded ? 'rounded-tr-2xl' : 'rounded-t-3xl'}`}>
             {renderSolidHeader(APP_GRADIENT_THEMES.instagram.solidColor)}
             <div className="relative z-10 flex items-center gap-2 min-w-0">
               {onMobileBack && (
@@ -1887,7 +1935,7 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
 
         {/* Header with Solid Brand Color */}
-        <div {...dragHandleProps} className={`h-14 px-4 sm:px-5 text-white flex items-center justify-between z-30 shadow-xs border-b border-black/10 shrink-0 select-none relative ${isMobileEmbedded ? 'rounded-tr-2xl' : 'rounded-t-3xl'} ${dragHandleProps?.className || "cursor-grab active:cursor-grabbing"}`}>
+        <div className={`h-14 px-4 sm:px-5 text-white flex items-center justify-between z-30 shadow-xs border-b border-black/10 shrink-0 select-none relative ${isMobileEmbedded ? 'rounded-tr-2xl' : 'rounded-t-3xl'}`}>
           {renderSolidHeader(APP_GRADIENT_THEMES.instagram.solidColor)}
           <div className="relative z-10 flex items-center gap-2 min-w-0">
             {onMobileBack && (
@@ -1900,7 +1948,13 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
                 <ChevronLeft className="w-5 h-5" />
               </button>
             )}
-            <InstagramIcon className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow-xs shrink-0" />
+            {activeContact?.profilePicUrl ? (
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full shrink-0 relative overflow-hidden">
+                <img src={activeContact.profilePicUrl} alt="" className="object-cover w-full h-full rounded-full" />
+              </div>
+            ) : (
+              <InstagramIcon className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow-xs shrink-0" />
+            )}
             <div className="min-w-0">
               <h4 className="font-bold text-xs sm:text-sm text-white truncate leading-tight flex items-center gap-1">
                 {activeContact.name} <span className="text-[10px] text-white/90">✓</span>
@@ -2019,11 +2073,19 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
               >
                 {!isMe && (
                   <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#8338EC] to-[#B5179E] text-white flex items-center justify-center text-[10px] font-bold shrink-0 mb-1">
-                    {activeContact.avatarText}
+                    {activeContact?.profilePicUrl ? (
+                      <img src={activeContact.profilePicUrl} alt="" className="object-cover w-full h-full rounded-full" />
+                    ) : (
+                      activeContact.avatarText
+                    )}
                   </div>
                 )}
                 <div className={`relative group/bubble max-w-[72%] ${m.reactions && m.reactions.length > 0 ? "mb-3.5" : ""}`}>
-                  {hoveredMessageId === m.id && renderReactionPicker(m.id, isMe)}
+                  {hoveredMessageId === m.id && (
+                    <div className={`absolute top-0 z-30 flex items-center gap-1 animate-in fade-in zoom-in-95 duration-150 ${isMe ? 'right-full mr-2' : 'left-full ml-2'}`}>
+                      {renderReactionPicker(m.id, isMe)}
+                    </div>
+                  )}
                   <div
                     className={`px-4 py-2 rounded-3xl text-xs leading-relaxed ${
                       isMe
@@ -2031,7 +2093,7 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
                         : 'bg-white dark:bg-[#2E1F35] text-black dark:text-white rounded-bl-md shadow-xs'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words">{renderMessageText(m.text || '', searchQuery)}</p>
+                    <p className="whitespace-pre-wrap break-words">{m.text}</p>
                     {renderMessageAttachment(m, isMe)}
                     {isMe && m.seen && (
                       <p className="text-[9px] text-white/70 text-right mt-0.5">Seen {m.seenTime || 'Just now'}</p>
@@ -2132,7 +2194,7 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
 
         {/* Messenger Header with Solid Brand Color */}
-        <div {...dragHandleProps} className={`h-14 px-4 sm:px-5 text-white flex items-center justify-between z-30 shadow-xs border-b border-black/10 shrink-0 select-none relative ${isMobileEmbedded ? 'rounded-tr-2xl' : 'rounded-t-3xl'} ${dragHandleProps?.className || "cursor-grab active:cursor-grabbing"}`}>
+        <div className={`h-14 px-4 sm:px-5 text-white flex items-center justify-between z-30 shadow-xs border-b border-black/10 shrink-0 select-none relative ${isMobileEmbedded ? 'rounded-tr-2xl' : 'rounded-t-3xl'}`}>
           {renderSolidHeader(APP_GRADIENT_THEMES.messenger.solidColor)}
           <div className="relative z-10 flex items-center gap-2 min-w-0">
             {onMobileBack && (
@@ -2145,7 +2207,13 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
                 <ChevronLeft className="w-5 h-5" />
               </button>
             )}
-            <MessengerIcon className="w-7 h-7 sm:w-8 sm:h-8 shrink-0" />
+            {activeContact?.profilePicUrl ? (
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full shrink-0 relative overflow-hidden">
+                <img src={activeContact.profilePicUrl} alt="" className="object-cover w-full h-full rounded-full" />
+              </div>
+            ) : (
+              <MessengerIcon className="w-7 h-7 sm:w-8 sm:h-8 shrink-0" />
+            )}
             <div className="min-w-0">
               <h4 className="font-bold text-xs sm:text-sm text-white truncate leading-tight flex items-center gap-1">
                 {activeContact.name}
@@ -2176,7 +2244,11 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
                 className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
               >
                 <div className={`relative group/bubble max-w-[75%] ${m.reactions && m.reactions.length > 0 ? "mb-3.5" : ""}`}>
-                  {hoveredMessageId === m.id && renderReactionPicker(m.id, isMe)}
+                  {hoveredMessageId === m.id && (
+                    <div className={`absolute top-0 z-30 flex items-center gap-1 animate-in fade-in zoom-in-95 duration-150 ${isMe ? 'right-full mr-2' : 'left-full ml-2'}`}>
+                      {renderReactionPicker(m.id, isMe)}
+                    </div>
+                  )}
                   <div
                     className={`px-4 py-2.5 rounded-2xl text-xs leading-relaxed ${
                       isMe
@@ -2184,7 +2256,7 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
                         : 'bg-gray-200 dark:bg-[#3A3B3C] text-gray-900 dark:text-white rounded-bl-sm'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words">{renderMessageText(m.text || '', searchQuery)}</p>
+                    <p className="whitespace-pre-wrap break-words">{m.text}</p>
                     {renderMessageAttachment(m, isMe)}
                     {isMe && m.seen && (
                       <p className="text-[9px] text-white/80 text-right mt-0.5">Seen {m.seenTime || 'Just now'}</p>
@@ -2291,7 +2363,7 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
 
         {/* Storefront Header with Solid Brand Color */}
-        <div {...dragHandleProps} className={`h-14 px-4 sm:px-5 text-white flex items-center justify-between z-30 shadow-xs border-b border-black/10 shrink-0 select-none relative ${isMobileEmbedded ? 'rounded-tr-2xl' : 'rounded-t-3xl'} ${dragHandleProps?.className || "cursor-grab active:cursor-grabbing"}`}>
+        <div className={`h-14 px-4 sm:px-5 text-white flex items-center justify-between z-30 shadow-xs border-b border-black/10 shrink-0 select-none relative ${isMobileEmbedded ? 'rounded-tr-2xl' : 'rounded-t-3xl'}`}>
           {renderSolidHeader(APP_GRADIENT_THEMES.web_widget.solidColor)}
           <div className="relative z-10 flex items-center gap-2 min-w-0">
             {onMobileBack && (
@@ -2304,7 +2376,13 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
                 <ChevronLeft className="w-5 h-5" />
               </button>
             )}
-            <StorefrontIcon className="w-7 h-7 sm:w-8 sm:h-8 bg-white/20 drop-shadow-xs shrink-0 rounded-xl p-1" />
+            {activeContact?.profilePicUrl ? (
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full shrink-0 relative overflow-hidden">
+                <img src={activeContact.profilePicUrl} alt="" className="object-cover w-full h-full rounded-full" />
+              </div>
+            ) : (
+              <StorefrontIcon className="w-7 h-7 sm:w-8 sm:h-8 bg-white/20 drop-shadow-xs shrink-0 rounded-xl p-1" />
+            )}
             <div className="min-w-0">
               <h4 className="font-bold text-xs sm:text-sm text-white truncate leading-tight flex items-center gap-1">
                 {activeContact.name}
@@ -2343,7 +2421,11 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
                 className={`flex ${isCustomer ? 'justify-start' : 'justify-end'}`}
               >
                 <div className={`relative group/bubble max-w-[75%] ${m.reactions && m.reactions.length > 0 ? "mb-3.5" : ""}`}>
-                  {hoveredMessageId === m.id && renderReactionPicker(m.id, !isCustomer)}
+                  {hoveredMessageId === m.id && (
+                    <div className={`absolute top-0 z-30 flex items-center gap-1 animate-in fade-in zoom-in-95 duration-150 ${!isCustomer ? 'right-full mr-2' : 'left-full ml-2'}`}>
+                      {renderReactionPicker(m.id, !isCustomer)}
+                    </div>
+                  )}
                   <div
                     className={`px-4 py-2.5 rounded-2xl text-xs leading-relaxed ${
                       isCustomer
@@ -2351,7 +2433,7 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
                         : 'bg-[#1B6648] text-white rounded-tr-sm shadow-xs'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words">{renderMessageText(m.text || '', searchQuery)}</p>
+                    <p className="whitespace-pre-wrap break-words">{m.text}</p>
                     {renderMessageAttachment(m, !isCustomer)}
                     <p className="text-[9px] opacity-75 text-right mt-0.5">{m.time}</p>
                   </div>
@@ -2445,7 +2527,7 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
     return (
       <div className={`h-full w-full max-w-full min-w-0 min-h-0 flex flex-col bg-white dark:bg-[#1A1D23] ${isMobileEmbedded ? 'rounded-b-3xl border-t-0 shadow-none' : 'rounded-3xl border shadow-sm'} border-[#DFDFD4] dark:border-[#2E333D] overflow-hidden relative text-[#1B1B1B] dark:text-white`}>
         {/* Header with Solid Brand Color */}
-        <div {...dragHandleProps} className={`h-14 px-4 sm:px-5 text-white flex items-center justify-between shrink-0 shadow-xs border-b border-black/10 select-none ${isMobileEmbedded ? 'rounded-tr-2xl' : 'rounded-t-3xl'} ${dragHandleProps?.className || "cursor-grab active:cursor-grabbing"}`} style={{ backgroundColor: APP_GRADIENT_THEMES.gmail.solidColor }}>
+        <div className={`h-14 px-4 sm:px-5 text-white flex items-center justify-between shrink-0 shadow-xs border-b border-black/10 select-none ${isMobileEmbedded ? 'rounded-tr-2xl' : 'rounded-t-3xl'}`} style={{ backgroundColor: APP_GRADIENT_THEMES.gmail.solidColor }}>
           <div className="flex items-center gap-2 min-w-0">
             {onMobileBack && (
               <button
@@ -2477,7 +2559,11 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-xs">
-                {activeContact.avatarText}
+                {activeContact?.profilePicUrl ? (
+                  <img src={activeContact.profilePicUrl} alt="" className="object-cover w-full h-full rounded-full" />
+                ) : (
+                  activeContact.avatarText
+                )}
               </div>
               <div>
                 <h5 className="font-bold text-xs text-gray-900 dark:text-white">
@@ -2491,7 +2577,7 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
 
           <div className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed pl-12 space-y-2">
             {activeMessages.map((m) => (
-              <p key={m.id}>{renderMessageText(m.text || '', searchQuery)}</p>
+              <p key={m.id}>{m.text}</p>
             ))}
           </div>
 

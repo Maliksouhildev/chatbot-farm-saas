@@ -9,7 +9,9 @@ export interface ChatMessage {
   isDeleted?: boolean;
   reactions?: { emoji: string; count: number; userReacted?: boolean }[];
   hasImages?: boolean;
+  topicId?: string;
   imageUrl?: string;
+  videoUrl?: string;
   fileName?: string;
   fileSize?: string;
   isAudio?: boolean;
@@ -17,6 +19,12 @@ export interface ChatMessage {
   authorName?: string;
   authorAvatar?: string | null;
   timestamp?: number;
+  mediaType?: "image" | "video" | "audio";
+  message?: any;
+  fromMe?: boolean;
+  pinned?: boolean;
+  senderName?: string;
+  senderAvatar?: string;
 }
 
 export interface ContactProfile {
@@ -35,10 +43,11 @@ export interface ContactProfile {
   unreadCount?: number;
   status?: "ongoing" | "finished" | "new" | "read";
   profilePicUrl?: string | null;
-  isGroup?: boolean;
   children?: ContactProfile[];
   avatarBg?: string;
   messages: ChatMessage[];
+  topics?: { id: string; name: string; unreadCount?: number; pinned?: boolean }[];
+  isGroup?: boolean;
 }
 
 export const REAL_INSTAGRAM_CHATS: ContactProfile[] = [];
@@ -46,127 +55,377 @@ export const REAL_INSTAGRAM_CHATS: ContactProfile[] = [];
 export const REAL_WHATSAPP_CHATS: ContactProfile[] = [];
 
 export const PAIRED_CHATS_BY_APP: Record<string, ContactProfile[]> = {
-  whatsapp: [],
-  whatsapp_2: [],
-  instagram: [],
-  telegram: [
+  whatsapp: [
     {
-      id: "tg_group_1",
-      appId: "telegram",
-      name: "Bot Farm Admins",
-      handleOrPhone: "@botfarm_admins",
-      avatarText: "BF",
-      avatarColor: "bg-blue-500",
-      profilePicUrl: "https://i.pravatar.cc/150?u=${Math.random().toString(36).substring(7)}",
-      statusText: "Admin Group",
-      lastMessage: "System update tonight.",
-      time: "10:00 AM",
-      isGroup: true,
-      messages: [],
-      children: [
+      id: "wa_1",
+      appId: "whatsapp",
+      name: "Ahmed Y.",
+      handleOrPhone: "+213 555 1234",
+      statusText: "Online",
+      lastMessage: "Is this still available?",
+      time: "10:30 AM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=ahmed",
+      messages: [
         {
-          id: "tg_topic_1",
-          appId: "telegram",
-          name: "General",
-          handleOrPhone: "#general",
-          profilePicUrl: "https://i.pravatar.cc/150?u=${Math.random().toString(36).substring(7)}",
-      statusText: "Topic",
-          lastMessage: "System update tonight.",
-          time: "10:00 AM",
-          isGroup: false,
-          messages: [{ id: "m1", sender: "ai", text: "System update tonight.", time: "10:00 AM", seen: true }]
-        },
-        {
-          id: "tg_topic_2",
-          appId: "telegram",
-          name: "Alerts",
-          handleOrPhone: "#alerts",
-          profilePicUrl: "https://i.pravatar.cc/150?u=${Math.random().toString(36).substring(7)}",
-      statusText: "Topic",
-          lastMessage: "Node is down.",
-          time: "09:00 AM",
-          isGroup: false,
-          messages: [{ id: "m2", sender: "ai", text: "Node is down.", time: "09:00 AM", seen: true }]
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "Is this still available?",
+          time: "10:30 AM"
         }
       ]
     },
     {
-      id: "tg_user_1",
-      appId: "telegram",
-      name: "John Doe",
-      handleOrPhone: "@johndoe",
-      avatarText: "JD",
-      avatarColor: "bg-green-500",
-      profilePicUrl: "https://i.pravatar.cc/150?u=${Math.random().toString(36).substring(7)}",
-      statusText: "Online",
-      lastMessage: "Hey, is the bot working?",
-      time: "11:00 AM",
-      isGroup: false,
-      messages: [{ id: "m3", sender: "customer", text: "Hey, is the bot working?", time: "11:00 AM", seen: true }]
-    }
-  ],
-  signal: [],
-  x_twitter: [],
-  google_messages: [],
-  google_chat: [],
-  google_voice: [],
-  discord: [
-    {
-      id: "dc_server_1",
-      appId: "discord",
-      name: "Support Server",
-      handleOrPhone: "Server",
-      avatarText: "SS",
-      avatarColor: "bg-indigo-500",
-      profilePicUrl: "https://i.pravatar.cc/150?u=${Math.random().toString(36).substring(7)}",
-      statusText: "Support Hub",
-      lastMessage: "Check the tickets",
-      time: "12:00 PM",
-      isGroup: true,
-      messages: [],
-      children: [
+      id: "wa_2",
+      appId: "whatsapp",
+      name: "Sarah Jones",
+      handleOrPhone: "+1 555 9876",
+      statusText: "Last seen today",
+      lastMessage: "See you later!",
+      time: "09:45 AM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=sarahj",
+      messages: [
         {
-          id: "dc_cat_1",
-          appId: "discord",
-          name: "Tickets",
-          handleOrPhone: "Category",
-          profilePicUrl: "https://i.pravatar.cc/150?u=${Math.random().toString(36).substring(7)}",
-      statusText: "Category",
-          lastMessage: "",
-          isGroup: true,
-          messages: [],
-          children: [
-            {
-              id: "dc_chan_1",
-              appId: "discord",
-              name: "ticket-001",
-              handleOrPhone: "#ticket-001",
-              profilePicUrl: "https://i.pravatar.cc/150?u=${Math.random().toString(36).substring(7)}",
-      statusText: "Text Channel",
-              lastMessage: "I need help with my account.",
-              time: "12:00 PM",
-              isGroup: false,
-              messages: [{ id: "m4", sender: "customer", text: "I need help with my account.", time: "12:00 PM", seen: true }]
-            }
-          ]
-        },
-        {
-          id: "dc_chan_2",
-          appId: "discord",
-          name: "general",
-          handleOrPhone: "#general",
-          profilePicUrl: "https://i.pravatar.cc/150?u=${Math.random().toString(36).substring(7)}",
-      statusText: "Text Channel",
-          lastMessage: "Hello everyone!",
-          time: "11:00 AM",
-          isGroup: false,
-          messages: [{ id: "m5", sender: "customer", text: "Hello everyone!", time: "11:00 AM", seen: true }]
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "See you later!",
+          time: "09:45 AM"
         }
       ]
     }
   ],
-  slack: [],
-  linkedin: [],
+  whatsapp_2: [
+    {
+      id: "wa2_1",
+      appId: "whatsapp_2",
+      name: "Business Support",
+      handleOrPhone: "+44 20 7946 0958",
+      statusText: "Online",
+      lastMessage: "We have received your request.",
+      time: "11:15 AM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=bizsupport",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "We have received your request.",
+          time: "11:15 AM"
+        }
+      ]
+    }
+  ],
+  instagram: [
+    {
+      id: "ig_1",
+      appId: "instagram",
+      name: "Sara M.",
+      handleOrPhone: "@sara_m",
+      statusText: "Active 2h ago",
+      lastMessage: "Thanks!",
+      time: "11:00 AM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=sara",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "Thanks!",
+          time: "11:00 AM"
+        }
+      ]
+    },
+    {
+      id: "ig_2",
+      appId: "instagram",
+      name: "Mike T.",
+      handleOrPhone: "@mike_t",
+      statusText: "Active now",
+      lastMessage: "Check this out \ud83d\udd25",
+      time: "12:30 PM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=miket",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "Check this out \ud83d\udd25",
+          time: "12:30 PM"
+        }
+      ]
+    }
+  ],
+  telegram: [
+    {
+      id: "tg_1",
+      appId: "telegram",
+      name: "Automatique L3",
+      handleOrPhone: "Group • 120 members",
+      statusText: "Active",
+      lastMessage: "Can someone share the notes?",
+      time: "09:15 AM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=autol3",
+      isGroup: true,
+      topics: [
+        { id: "t_1", name: "General", unreadCount: 5, pinned: true },
+        { id: "t_2", name: "Cours", unreadCount: 0 },
+        { id: "t_3", name: "TD/TP", unreadCount: 12 },
+        { id: "t_4", name: "Exams", unreadCount: 2 }
+      ],
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          senderName: "Alice",
+          text: "Can someone share the notes from @prof?",
+          time: "09:15 AM",
+          pinned: true
+        },
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          senderName: "Bob",
+          text: "Here is the photo of the board",
+          time: "09:16 AM",
+          hasImages: true,
+          imageUrl: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80"
+        }
+      ]
+    },
+    {
+      id: "tg_2",
+      appId: "telegram",
+      name: "Alex",
+      handleOrPhone: "@alex99",
+      statusText: "last seen recently",
+      lastMessage: "Sure, let's do it.",
+      time: "02:10 PM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=alex",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "Sure, let's do it.",
+          time: "02:10 PM"
+        }
+      ]
+    }
+  ],
+  messenger: [
+    {
+      id: "ms_1",
+      appId: "messenger",
+      name: "John Doe",
+      handleOrPhone: "John Doe",
+      statusText: "Active 5m ago",
+      lastMessage: "Are you coming?",
+      time: "05:00 PM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=johnd",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "Are you coming?",
+          time: "05:00 PM"
+        }
+      ]
+    }
+  ],
+  web_widget: [
+    {
+      id: "ww_1",
+      appId: "web_widget",
+      name: "Guest 942",
+      handleOrPhone: "Website Visitor",
+      statusText: "Browsing pricing",
+      lastMessage: "How much is the pro plan?",
+      time: "03:20 PM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=guest942",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "How much is the pro plan?",
+          time: "03:20 PM"
+        }
+      ]
+    }
+  ],
+  gmail: [
+    {
+      id: "gm_1",
+      appId: "gmail",
+      name: "Alice Smith",
+      handleOrPhone: "alice@example.com",
+      statusText: "Offline",
+      lastMessage: "Weekly Report Attached",
+      time: "Yesterday",
+      profilePicUrl: "https://i.pravatar.cc/150?u=alice",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "Weekly Report Attached",
+          time: "Yesterday"
+        }
+      ]
+    }
+  ],
+  signal: [
+    {
+      id: "sg_1",
+      appId: "signal",
+      name: "Bob",
+      handleOrPhone: "+1 555 1111",
+      statusText: "Secure",
+      lastMessage: "Key verified",
+      time: "Mon",
+      profilePicUrl: "https://i.pravatar.cc/150?u=bob",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "Key verified",
+          time: "Mon"
+        }
+      ]
+    }
+  ],
+  x_twitter: [
+    {
+      id: "tw_1",
+      appId: "x_twitter",
+      name: "Tech News",
+      handleOrPhone: "@technews",
+      statusText: "Follows you",
+      lastMessage: "Latest update is out",
+      time: "2 days ago",
+      profilePicUrl: "https://i.pravatar.cc/150?u=technews",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "Latest update is out",
+          time: "2 days ago"
+        }
+      ]
+    }
+  ],
+  google_messages: [
+    {
+      id: "gm_2",
+      appId: "google_messages",
+      name: "Mom",
+      handleOrPhone: "Mom",
+      statusText: "Mobile",
+      lastMessage: "Call me when you can",
+      time: "10:00 AM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=mom",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "Call me when you can",
+          time: "10:00 AM"
+        }
+      ]
+    }
+  ],
+  google_chat: [
+    {
+      id: "gc_1",
+      appId: "google_chat",
+      name: "Project Team",
+      handleOrPhone: "Space",
+      statusText: "Active",
+      lastMessage: "Deployment successful",
+      time: "11:45 AM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=project",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "Deployment successful",
+          time: "11:45 AM"
+        }
+      ]
+    }
+  ],
+  google_voice: [],
+  discord: [
+    {
+      id: "dc_1",
+      appId: "discord",
+      name: "GamerPro",
+      handleOrPhone: "GamerPro#1234",
+      statusText: "Playing Valorant",
+      lastMessage: "Let's duo",
+      time: "08:00 PM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=gamerpro",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "Let's duo",
+          time: "08:00 PM"
+        }
+      ]
+    },
+    {
+      id: "dc_2",
+      appId: "discord",
+      name: "DevServer",
+      handleOrPhone: "DevServer",
+      statusText: "14 online",
+      lastMessage: "PR merged",
+      time: "09:00 PM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=devserver",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "PR merged",
+          time: "09:00 PM"
+        }
+      ]
+    }
+  ],
+  slack: [
+    {
+      id: "sl_1",
+      appId: "slack",
+      name: "Marketing",
+      handleOrPhone: "#marketing",
+      statusText: "Channel",
+      lastMessage: "Campaign is live",
+      time: "10:15 AM",
+      profilePicUrl: "https://i.pravatar.cc/150?u=marketing",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "Campaign is live",
+          time: "10:15 AM"
+        }
+      ]
+    }
+  ],
+  linkedin: [
+    {
+      id: "li_1",
+      appId: "linkedin",
+      name: "Recruiter",
+      handleOrPhone: "Tech Recruiter",
+      statusText: "Active now",
+      lastMessage: "Are you open to new roles?",
+      time: "Yesterday",
+      profilePicUrl: "https://i.pravatar.cc/150?u=recruiter",
+      messages: [
+        {
+          id: "m_" + Math.random().toString(36).substr(2, 9),
+          sender: "customer",
+          text: "Are you open to new roles?",
+          time: "Yesterday"
+        }
+      ]
+    }
+  ],
   irc: [],
   matrix: [],
 };
