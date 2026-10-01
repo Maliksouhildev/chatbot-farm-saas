@@ -166,8 +166,13 @@ function HomeContent() {
     if (prefs.columnOrder && Array.isArray(prefs.columnOrder)) {
       // Strip detached tab IDs (analytics/settings) - detached state is transient per-session
       const CORE_COLS = new Set(['switcher', 'chat', 'hub']);
-      const coreOrder = prefs.columnOrder.filter((c: string) => CORE_COLS.has(c));
-      if (coreOrder.length > 0) setColumnOrder(coreOrder);
+      const coreOrder = Array.from(new Set<string>(prefs.columnOrder.filter((c: string) => CORE_COLS.has(c))));
+      // Ensure all 3 core columns exist exactly once
+      if (coreOrder.length !== 3) {
+        setColumnOrder(['switcher', 'chat', 'hub']);
+      } else {
+        setColumnOrder(coreOrder);
+      }
     }
     if (prefs.pinnedApps && Array.isArray(prefs.pinnedApps)) {
       setPinnedApps(prefs.pinnedApps);
@@ -182,9 +187,17 @@ function HomeContent() {
       if (groupRef.current) {
         try {
           if (Array.isArray(prefs.panelSizes)) {
-            groupRef.current.setLayout(prefs.panelSizes);
+            // Legacy array format - slice to correct visible items to prevent index crash
+            const expectedLength = isRightHubCollapsed ? 2 : 3;
+            const safeSizes = prefs.panelSizes.slice(0, expectedLength);
+            const total = safeSizes.reduce((a: number, b: number) => a + b, 0);
+            groupRef.current.setLayout(safeSizes.map((s: number) => (s / total) * 100));
           } else {
-            const cols = (prefs.columnOrder || columnOrder).filter((c: string) => !(c === 'hub' && isRightHubCollapsed));
+            const ALLOWED_CORE = new Set(['switcher', 'chat', 'hub']);
+            const rawCols = prefs.columnOrder || columnOrder;
+            const uniqueCols = Array.from(new Set<string>(rawCols.filter((c: string) => ALLOWED_CORE.has(c))));
+            // Fallback to default if invalid
+            const cols = (uniqueCols.length === 3 ? uniqueCols : ['switcher', 'chat', 'hub']).filter(c => !(c === 'hub' && isRightHubCollapsed));
             const arr = cols.map((c: string) => prefs.panelSizes[c] !== undefined ? prefs.panelSizes[c] : (c === 'switcher' ? 25 : c === 'chat' ? 45 : 30));
             const total = arr.reduce((a: number, b: number) => a + b, 0);
             const normalized = arr.map((s: number) => (s / total) * 100);
@@ -371,7 +384,16 @@ function HomeContent() {
     
     const storedLayout = localStorage.getItem(getStorageKey('cf_panel_sizes'));
     if (storedLayout && groupRef.current) {
-      try { groupRef.current.setLayout(JSON.parse(storedLayout)); } catch {}
+      try {
+        const parsed = JSON.parse(storedLayout);
+        // Always derive a 3-item array from core columns only — never pass stale 4-item data
+        const CORE = ['switcher', 'chat', 'hub'].filter(c => !(c === 'hub' && isRightHubCollapsed));
+        const arr = Array.isArray(parsed)
+          ? parsed.slice(0, CORE.length)
+          : CORE.map(col => parsed[col] ?? (col === 'switcher' ? 25 : col === 'chat' ? 45 : 30));
+        const total = arr.reduce((a: number, b: number) => a + b, 0);
+        groupRef.current.setLayout(arr.map((s: number) => (s / total) * 100));
+      } catch {}
     }
   };
 
