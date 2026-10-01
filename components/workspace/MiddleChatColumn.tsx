@@ -641,7 +641,7 @@ export const MiddleChatColumn: React.FC<MiddleChatColumnProps> = ({
     } else {
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
-  }, [activeMessages]);
+  }, [activeMessages.length]);
 
   useEffect(() => {
     let interval: any;

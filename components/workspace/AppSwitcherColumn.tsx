@@ -560,17 +560,49 @@ export const AppSwitcherColumn: React.FC<AppSwitcherColumnProps> = ({
 
   return (
     <div className="h-full w-full min-h-0 flex flex-col relative bg-white dark:bg-[#1A1D23] rounded-3xl border border-[#DFDFD4] dark:border-[#2E333D] overflow-hidden select-none shadow-sm">
-      {/* Header - Standardized h-14 to match Column 2 & Column 3 */}
-      <div {...dragHandleProps} className={`h-14 px-4 shrink-0 flex items-center justify-between border-b border-[#DFDFD4] dark:border-[#2E333D] ${dragHandleProps?.className || "cursor-grab active:cursor-grabbing"}`}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @container (max-width: 200px) {
+          .app-item-text { display: none !important; }
+          .app-item-ai-toggle { display: none !important; }
+          .app-item-container { justify-content: center !important; padding: 0.5rem !important; }
+        }
+        @container (max-width: 180px) {
+          .switcher-full-text { display: none !important; }
+          .switcher-logo-icon { display: flex !important; }
+          .switcher-ai-toggle-text { display: none !important; }
+          .switcher-ai-toggle { padding: 0 !important; width: 1.5rem !important; height: 1.5rem !important; aspect-ratio: 1/1 !important; border-radius: 9999px !important; justify-content: center !important; }
+        }
+        @container (min-width: 181px) {
+          .switcher-logo-icon { display: none !important; }
+        }
+        @container (max-width: 120px) {
+          .switcher-ai-toggle { display: none !important; }
+          .switcher-header { justify-content: center !important; }
+        }
+      `}} />
+      <div {...dragHandleProps} className={`switcher-header h-14 px-4 shrink-0 flex items-center justify-between border-b border-[#DFDFD4] dark:border-[#2E333D] ${dragHandleProps?.className || "cursor-grab active:cursor-grabbing"}`}>
         <div className="flex items-center gap-2 cursor-pointer" onPointerDown={(e) => e.stopPropagation()}>
-          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#1B6648] dark:text-emerald-400">
-            Channels
-          </span>
-          <span suppressHydrationWarning className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#1B6648]/10 text-[#1B6648] dark:bg-emerald-950/40 dark:text-emerald-400 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            {liveCount}/{channels.length} Live
-          </span>
+          <div className="switcher-logo-icon hidden items-center justify-center w-7 h-7 rounded-lg bg-[#1B6648] text-white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          </div>
+          <div className="switcher-full-text flex items-center gap-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#1B6648] dark:text-emerald-400">
+              Channels
+            </span>
+            <span suppressHydrationWarning className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#1B6648]/10 text-[#1B6648] dark:bg-emerald-950/40 dark:text-emerald-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {liveCount}/{channels.length} Live
+            </span>
+          </div>
         </div>
+        
+        <button
+          className="switcher-ai-toggle ml-auto relative inline-flex h-6 items-center gap-1.5 rounded-full px-2 transition-all duration-200 cursor-pointer shadow-inner focus:outline-none hover:scale-105 z-20 bg-[#1B6648] text-white"
+          title="Master AI Toggle"
+        >
+          <Bot className="w-3.5 h-3.5" />
+          <span className="switcher-ai-toggle-text text-[10px] font-bold">Auto-AI</span>
+        </button>
       </div>
 
       {/* Channels List */}

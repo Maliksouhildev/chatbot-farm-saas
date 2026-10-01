@@ -1502,7 +1502,7 @@ function HomeContent() {
                   ` }} />
                   <DndContext sensors={colSensors} collisionDetection={closestCorners} onDragStart={handleColDragStart} onDragEnd={handleColDragEnd} modifiers={[restrictToHorizontalAxis]}>
                     <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
-                      <Group key={columnOrder.filter(c => !(c === 'hub' && isRightHubCollapsed)).length} groupRef={groupRef} orientation="horizontal" id="desktop-workspace-main" className="w-full h-full overflow-hidden flex gap-1.5" onLayoutChanged={(layout) => {
+                      <Group key={columnOrder.filter(c => !(c === 'hub' && isRightHubCollapsed)).length} groupRef={groupRef} orientation="horizontal" id="desktop-workspace-main" className="w-full h-full overflow-hidden flex" onLayoutChanged={(layout) => {
                         const visibleCols = columnOrder.filter(c => !(c === 'hub' && isRightHubCollapsed));
                         const sizeDict: Record<string, number> = {};
                         
@@ -1522,7 +1522,9 @@ function HomeContent() {
                       }}>
                         {(() => {
                           const visibleColumns = columnOrder.filter(c => !(c === 'hub' && isRightHubCollapsed));
-                          return visibleColumns.map((colId, index) => {
+                          const children: React.ReactNode[] = [];
+                          
+                          visibleColumns.forEach((colId, index) => {
                             const colThemeColor = activeThemeColor;
                             
                             let savedSize = undefined;
@@ -1534,14 +1536,14 @@ function HomeContent() {
                               }
                             } catch {}
 
-                            return (
-                              <React.Fragment key={colId}>
-                                <Panel 
-                                  id={colId}
-                                  defaultSize={savedSize !== undefined ? savedSize : (colId === 'switcher' ? 25 : colId === 'chat' ? (isRightHubCollapsed ? 75 : 45) : 30)} 
-                                  minSize={colId === 'switcher' ? 18 : colId === 'chat' ? 30 : 22}
-                                  style={{ overflow: activeDragColId ? 'visible' : 'hidden', zIndex: activeDragColId === colId ? 9999 : 1 }}
-                                >
+                            children.push(
+                              <Panel 
+                                key={colId}
+                                id={colId}
+                                defaultSize={savedSize !== undefined ? savedSize : (colId === 'switcher' ? 25 : colId === 'chat' ? (isRightHubCollapsed ? 75 : 45) : 30)} 
+                                minSize={colId === 'switcher' ? 22 : colId === 'chat' ? 35 : 25}
+                                style={{ overflow: activeDragColId ? 'visible' : 'hidden', zIndex: activeDragColId === colId ? 9999 : 1 }}
+                              >
                                 <SortableColumn id={colId} activeThemeColor={colThemeColor}>
                                   {(dragHandleProps) => (
                                     colId === 'switcher' ? (
@@ -1617,12 +1619,16 @@ function HomeContent() {
                                   )}
                                 </SortableColumn>
                               </Panel>
-                              {index < visibleColumns.length - 1 && (
-                                  <Separator className="custom-resize-handle" />
-                                )}
-                              </React.Fragment>
                             );
+
+                            if (index < visibleColumns.length - 1) {
+                              children.push(
+                                <Separator key={`handle-${index}`} className="custom-resize-handle" />
+                              );
+                            }
                           });
+                          
+                          return children;
                         })()}
                       </Group>
                     </SortableContext>

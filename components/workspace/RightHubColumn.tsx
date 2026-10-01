@@ -373,6 +373,12 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
         .hub-tab-count { display: none !important; }
         .hub-action-text { display: none !important; }
         .hub-action-btn { padding: 0.5rem !important; aspect-ratio: 1/1; justify-content: center; }
+        .analytics-grid { grid-template-columns: 1fr !important; gap: 0.5rem !important; }
+        .settings-row { flex-direction: column !important; align-items: stretch !important; gap: 0.5rem !important; }
+        .settings-input-group { width: 100% !important; margin-left: 0 !important; }
+        .settings-buttons { flex-direction: column !important; width: 100% !important; }
+        .settings-buttons button { width: 100% !important; }
+        label, .font-bold { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; max-width: 100% !important; display: block !important; }
       }
       @container righthub (max-width: 200px) {
         .contact-extra-details { display: none !important; }
@@ -703,7 +709,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
           {/* App Specific Metrics */}
           {selectedAppId === 'whatsapp' && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 analytics-grid">
                 <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
                   <span className="text-[10px] text-gray-500 flex items-center gap-1"><ShoppingBag className="w-3 h-3 text-[#EB6708]" /> Orders Closed</span>
                   <p className="text-base font-black mt-1">14 orders</p>
@@ -729,7 +735,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
 
           {selectedAppId === 'instagram' && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 analytics-grid">
                 <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
                   <span className="text-[10px] text-gray-500">IG Inbound DMs</span>
                   <p className="text-base font-black text-[#8338EC] mt-1">42 DMs</p>
@@ -748,7 +754,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
 
           {selectedAppId === 'telegram' && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 analytics-grid">
                 <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
                   <span className="text-[10px] text-gray-500">Bot Commands</span>
                   <p className="text-base font-black text-blue-500 mt-1">128 hits</p>
@@ -767,7 +773,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
 
           {selectedAppId === 'messenger' && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 analytics-grid">
                 <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
                   <span className="text-[10px] text-gray-500">Facebook Ad Leads</span>
                   <p className="text-base font-black text-[#0084FF] mt-1">34 leads</p>
@@ -782,7 +788,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
 
           {selectedAppId === 'web_widget' && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 analytics-grid">
                 <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
                   <span className="text-[10px] text-gray-500">Live Active Visitors</span>
                   <p className="text-base font-black text-teal-600 mt-1">8 online</p>
@@ -797,7 +803,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
 
           {selectedAppId === 'gmail' && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 analytics-grid">
                 <div className="p-3 rounded-xl bg-gray-50 dark:bg-[#111317] border border-[#DFDFD4] dark:border-neutral-800">
                   <span className="text-[10px] text-gray-500">Emails Resolved</span>
                   <p className="text-base font-black text-red-500 mt-1">24 threads</p>
@@ -845,7 +851,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
                 </div>
                 <div>
                   <label className="text-[11px] text-gray-500 font-medium">n8n Webhook Router</label>
-                  <div className="flex items-center gap-1 mt-0.5">
+                  <div className="flex items-center gap-1 mt-0.5 settings-row">
                     <input type="text" readOnly value="http://localhost:5678/webhook/farm-router" className="flex-1 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-lg p-2 font-mono text-xs" />
                     <button 
                       onClick={() => copyToClipboard('http://localhost:5678/webhook/farm-router', 'webhook')}
@@ -873,7 +879,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
                 </div>
                 <div>
                   <label className="text-[11px] text-gray-600 dark:text-gray-400 font-bold">Meta Page / User Access Token</label>
-                  <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="flex items-center gap-1.5 mt-0.5 settings-row">
                     <input
                       type="password"
                       value={metaToken}
@@ -901,7 +907,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
                   </div>
                   <div>
                     <label className="text-[10px] text-gray-500 font-medium">Callback URL</label>
-                    <div className="flex items-center gap-1 mt-0.5">
+                    <div className="flex items-center gap-1 mt-0.5 settings-row">
                       <input
                         type="text"
                         readOnly
@@ -919,7 +925,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
                   </div>
                   <div>
                     <label className="text-[10px] text-gray-500 font-medium">Verify Token</label>
-                    <div className="flex items-center gap-1 mt-0.5">
+                    <div className="flex items-center gap-1 mt-0.5 settings-row">
                       <input
                         type="text"
                         readOnly
@@ -937,7 +943,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-1 flex items-center gap-2">
+                <div className="pt-1 flex items-center gap-2 settings-buttons">
                   <button
                     type="button"
                     onClick={() => handleSaveChannelSettings('instagram')}
@@ -984,7 +990,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
                     className="w-full bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 rounded-xl p-2.5 font-mono text-xs mt-0.5 focus:outline-none focus:border-blue-500"
                   />
                 </div>
-                <div className="pt-1 flex items-center gap-2">
+                <div className="pt-1 flex items-center gap-2 settings-buttons">
                   <button
                     type="button"
                     onClick={() => handleSaveChannelSettings('telegram')}
@@ -1031,7 +1037,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
                     className="w-full bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 rounded-xl p-2.5 font-mono text-xs mt-0.5 focus:outline-none focus:border-[#1877F2]"
                   />
                 </div>
-                <div className="pt-1 flex items-center gap-2">
+                <div className="pt-1 flex items-center gap-2 settings-buttons">
                   <button
                     type="button"
                     onClick={() => handleSaveChannelSettings('messenger')}
@@ -1091,7 +1097,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
                     className="w-full bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 rounded-xl p-2.5 font-medium text-xs mt-0.5 focus:outline-none focus:border-red-500"
                   />
                 </div>
-                <div className="pt-1 flex items-center gap-2">
+                <div className="pt-1 flex items-center gap-2 settings-buttons">
                   <button
                     type="button"
                     onClick={() => handleSaveChannelSettings('gmail')}
@@ -1132,7 +1138,7 @@ export const RightHubColumn: React.FC<RightHubColumnProps> = ({
                 </div>
                 <div>
                   <label className="text-[11px] text-gray-600 dark:text-gray-400 font-bold">Live Inbound Endpoint / Webhook</label>
-                  <div className="flex items-center gap-1 mt-0.5">
+                  <div className="flex items-center gap-1 mt-0.5 settings-row">
                     <input
                       type="text"
                       readOnly
