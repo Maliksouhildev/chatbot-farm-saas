@@ -1,0 +1,1106 @@
+{
+  "timestamp": "2026-10-01T17:16:07.875Z",
+  "durationSeconds": 438.6,
+  "totalTests": 108,
+  "passedCount": 87,
+  "failedCount": 21,
+  "passRatePercent": 80.6,
+  "byTier": {
+    "Tier 1": {
+      "total": 48,
+      "passed": 36,
+      "failed": 12
+    },
+    "Tier 2": {
+      "total": 45,
+      "passed": 39,
+      "failed": 6
+    },
+    "Tier 3": {
+      "total": 10,
+      "passed": 8,
+      "failed": 2
+    },
+    "Tier 4": {
+      "total": 5,
+      "passed": 4,
+      "failed": 1
+    }
+  },
+  "byFeature": {
+    "F1": {
+      "total": 16,
+      "passed": 15,
+      "failed": 1
+    },
+    "F2": {
+      "total": 15,
+      "passed": 14,
+      "failed": 1
+    },
+    "F3": {
+      "total": 15,
+      "passed": 15,
+      "failed": 0
+    },
+    "F4": {
+      "total": 16,
+      "passed": 16,
+      "failed": 0
+    },
+    "F5": {
+      "total": 14,
+      "passed": 14,
+      "failed": 0
+    },
+    "F6": {
+      "total": 16,
+      "passed": 15,
+      "failed": 1
+    },
+    "F7": {
+      "total": 13,
+      "passed": 12,
+      "failed": 1
+    },
+    "F8": {
+      "total": 14,
+      "passed": 1,
+      "failed": 13
+    },
+    "F9": {
+      "total": 14,
+      "passed": 7,
+      "failed": 7
+    }
+  },
+  "results": [
+    {
+      "id": "F1-1",
+      "feature": "F1",
+      "tier": 1,
+      "name": "Navbar logo is present, visible, and anchored far left",
+      "passed": true,
+      "error": null,
+      "durationMs": 2583
+    },
+    {
+      "id": "F1-2",
+      "feature": "F1",
+      "tier": 1,
+      "name": "Desktop nav tabs are visible at viewport width > 880px",
+      "passed": true,
+      "error": null,
+      "durationMs": 2716
+    },
+    {
+      "id": "F1-3",
+      "feature": "F1",
+      "tier": 1,
+      "name": "Nav tabs hide when navbar container/viewport <= 880px",
+      "passed": true,
+      "error": null,
+      "durationMs": 2364
+    },
+    {
+      "id": "F1-4",
+      "feature": "F1",
+      "tier": 1,
+      "name": "AI Agent toggle is visible with label text at 1024px",
+      "passed": true,
+      "error": null,
+      "durationMs": 2299
+    },
+    {
+      "id": "F1-5",
+      "feature": "F1",
+      "tier": 1,
+      "name": "AI Agent label text is collapsed/hidden at <= 640px",
+      "passed": true,
+      "error": null,
+      "durationMs": 2558
+    },
+    {
+      "id": "F1-6",
+      "feature": "F1",
+      "tier": 1,
+      "name": "AI Agent toggle disappears or becomes transparent at <= 400px",
+      "passed": false,
+      "error": "AI Agent toggle must be transparent or hidden at <= 400px, got display=flex, opacity=1",
+      "durationMs": 2426
+    },
+    {
+      "id": "F2-1",
+      "feature": "F2",
+      "tier": 1,
+      "name": "App Switcher header displays Channels title and Live count badge at standard width",
+      "passed": true,
+      "error": null,
+      "durationMs": 2333
+    },
+    {
+      "id": "F2-2",
+      "feature": "F2",
+      "tier": 1,
+      "name": "App Switcher \"Auto-AI\" toggle displays text at standard column width",
+      "passed": true,
+      "error": null,
+      "durationMs": 2772
+    },
+    {
+      "id": "F2-3",
+      "feature": "F2",
+      "tier": 1,
+      "name": "App Switcher \"Auto-AI\" collapses text into logo icon at minimal column width",
+      "passed": true,
+      "error": null,
+      "durationMs": 2224
+    },
+    {
+      "id": "F2-4",
+      "feature": "F2",
+      "tier": 1,
+      "name": "App Switcher bottom button displays \"Add Channel / Phone\" at standard width",
+      "passed": true,
+      "error": null,
+      "durationMs": 3076
+    },
+    {
+      "id": "F2-5",
+      "feature": "F2",
+      "tier": 1,
+      "name": "App Switcher bottom button collapses text without overflow when column is <= 200px",
+      "passed": true,
+      "error": null,
+      "durationMs": 2702
+    },
+    {
+      "id": "F2-6",
+      "feature": "F2",
+      "tier": 1,
+      "name": "Clicking Add Channel button opens App Catalog drawer",
+      "passed": true,
+      "error": null,
+      "durationMs": 2657
+    },
+    {
+      "id": "F3-1",
+      "feature": "F3",
+      "tier": 1,
+      "name": "Workspace contains SortableContext managing 3 main columns",
+      "passed": true,
+      "error": null,
+      "durationMs": 2606
+    },
+    {
+      "id": "F3-2",
+      "feature": "F3",
+      "tier": 1,
+      "name": "AppSwitcher header has cursor-grab and drag listeners",
+      "passed": true,
+      "error": null,
+      "durationMs": 2477
+    },
+    {
+      "id": "F3-3",
+      "feature": "F3",
+      "tier": 1,
+      "name": "Initiating column drag applies active drag styling or overlay",
+      "passed": true,
+      "error": null,
+      "durationMs": 2910
+    },
+    {
+      "id": "F3-4",
+      "feature": "F3",
+      "tier": 1,
+      "name": "Dragging App Switcher over Middle Chat updates column order",
+      "passed": true,
+      "error": null,
+      "durationMs": 4320
+    },
+    {
+      "id": "F3-5",
+      "feature": "F3",
+      "tier": 1,
+      "name": "Column reorder persists layout in local storage cf_panel_sizes / preferences",
+      "passed": true,
+      "error": null,
+      "durationMs": 2619
+    },
+    {
+      "id": "F4-1",
+      "feature": "F4",
+      "tier": 1,
+      "name": "MiddleChatColumn header has cursor-grab and drag handle attributes",
+      "passed": true,
+      "error": null,
+      "durationMs": 2692
+    },
+    {
+      "id": "F4-2",
+      "feature": "F4",
+      "tier": 1,
+      "name": "MiddleChatColumn header initiates drag event on pointer down",
+      "passed": true,
+      "error": null,
+      "durationMs": 2830
+    },
+    {
+      "id": "F4-3",
+      "feature": "F4",
+      "tier": 1,
+      "name": "MiddleChatColumn can be dragged left to swap positions with AppSwitcher",
+      "passed": true,
+      "error": null,
+      "durationMs": 3603
+    },
+    {
+      "id": "F4-4",
+      "feature": "F4",
+      "tier": 1,
+      "name": "WhatsApp channel header includes dragHandleProps",
+      "passed": true,
+      "error": null,
+      "durationMs": 3006
+    },
+    {
+      "id": "F4-5",
+      "feature": "F4",
+      "tier": 1,
+      "name": "Telegram channel header includes dragHandleProps",
+      "passed": true,
+      "error": null,
+      "durationMs": 3112
+    },
+    {
+      "id": "F4-6",
+      "feature": "F4",
+      "tier": 1,
+      "name": "Channel header avatar images have draggable=false",
+      "passed": true,
+      "error": null,
+      "durationMs": 2457
+    },
+    {
+      "id": "F5-1",
+      "feature": "F5",
+      "tier": 1,
+      "name": "Panel resize handles (.custom-resize-handle) exist between columns",
+      "passed": true,
+      "error": null,
+      "durationMs": 2249
+    },
+    {
+      "id": "F5-2",
+      "feature": "F5",
+      "tier": 1,
+      "name": "Resize handles are visible before drag begins",
+      "passed": true,
+      "error": null,
+      "durationMs": 2493
+    },
+    {
+      "id": "F5-3",
+      "feature": "F5",
+      "tier": 1,
+      "name": "Workspace sets is-dragging or hides resize handles during column drag",
+      "passed": true,
+      "error": null,
+      "durationMs": 2941
+    },
+    {
+      "id": "F5-4",
+      "feature": "F5",
+      "tier": 1,
+      "name": "Resize handles have pointer-events: none during drag",
+      "passed": true,
+      "error": null,
+      "durationMs": 2554
+    },
+    {
+      "id": "F5-5",
+      "feature": "F5",
+      "tier": 1,
+      "name": "Resize handles restore visibility and interactivity after drag release",
+      "passed": true,
+      "error": null,
+      "durationMs": 2696
+    },
+    {
+      "id": "F6-1",
+      "feature": "F6",
+      "tier": 1,
+      "name": "RightHubColumn has detachable tabs (Analytics, Settings)",
+      "passed": true,
+      "error": null,
+      "durationMs": 2076
+    },
+    {
+      "id": "F6-2",
+      "feature": "F6",
+      "tier": 1,
+      "name": "Detaching Analytics tab creates 4th standalone column in workspace",
+      "passed": true,
+      "error": null,
+      "durationMs": 3397
+    },
+    {
+      "id": "F6-3",
+      "feature": "F6",
+      "tier": 1,
+      "name": "Detached panel persists after 1 second",
+      "passed": true,
+      "error": null,
+      "durationMs": 4043
+    },
+    {
+      "id": "F6-4",
+      "feature": "F6",
+      "tier": 1,
+      "name": "Detached panel persists past 4 seconds without 3s disappearance reset",
+      "passed": true,
+      "error": null,
+      "durationMs": 7618
+    },
+    {
+      "id": "F6-5",
+      "feature": "F6",
+      "tier": 1,
+      "name": "Detached panel has Reattach action that closes standalone panel",
+      "passed": true,
+      "error": null,
+      "durationMs": 4036
+    },
+    {
+      "id": "F7-1",
+      "feature": "F7",
+      "tier": 1,
+      "name": "Active detachable tab displays detach button",
+      "passed": true,
+      "error": null,
+      "durationMs": 2636
+    },
+    {
+      "id": "F7-2",
+      "feature": "F7",
+      "tier": 1,
+      "name": "Detach button has distinct, prominent styling",
+      "passed": false,
+      "error": "Detach button should have distinct prominent styling, got class: p-1 hover:bg-black/10 rounded-md transition-colors ml-1 cursor-pointer",
+      "durationMs": 2867
+    },
+    {
+      "id": "F7-3",
+      "feature": "F7",
+      "tier": 1,
+      "name": "Detach button has accessible title / tooltip",
+      "passed": true,
+      "error": null,
+      "durationMs": 2676
+    },
+    {
+      "id": "F7-4",
+      "feature": "F7",
+      "tier": 1,
+      "name": "Detach button is visible in Light Mode",
+      "passed": true,
+      "error": null,
+      "durationMs": 2638
+    },
+    {
+      "id": "F7-5",
+      "feature": "F7",
+      "tier": 1,
+      "name": "Detach button is visible in Dark Mode",
+      "passed": true,
+      "error": null,
+      "durationMs": 2851
+    },
+    {
+      "id": "F8-1",
+      "feature": "F8",
+      "tier": 1,
+      "name": "Telegram channel loads Telegram contacts including forum group",
+      "passed": false,
+      "error": "page.waitForSelector: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=\"Automatique L3\"') to be visible\u001b[22m\n",
+      "durationMs": 6990
+    },
+    {
+      "id": "F8-2",
+      "feature": "F8",
+      "tier": 1,
+      "name": "Selecting Automatique L3 displays topics list",
+      "passed": false,
+      "error": "page.waitForSelector: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=\"Automatique L3\"') to be visible\u001b[22m\n",
+      "durationMs": 6642
+    },
+    {
+      "id": "F8-3",
+      "feature": "F8",
+      "tier": 1,
+      "name": "Clicking topic \"General\" opens topic messages view",
+      "passed": false,
+      "error": "page.waitForSelector: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=\"Automatique L3\"') to be visible\u001b[22m\n",
+      "durationMs": 8806
+    },
+    {
+      "id": "F8-4",
+      "feature": "F8",
+      "tier": 1,
+      "name": "Topic split pane persists for 2 seconds without reverting",
+      "passed": false,
+      "error": "page.waitForSelector: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=\"Automatique L3\"') to be visible\u001b[22m\n",
+      "durationMs": 6685
+    },
+    {
+      "id": "F8-5",
+      "feature": "F8",
+      "tier": 1,
+      "name": "Switching topics updates topic header and active topic indicator",
+      "passed": false,
+      "error": "page.waitForSelector: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=\"Automatique L3\"') to be visible\u001b[22m\n",
+      "durationMs": 7232
+    },
+    {
+      "id": "F9-1",
+      "feature": "F9",
+      "tier": 1,
+      "name": "RightHub contacts list renders real <img> avatars for contacts",
+      "passed": false,
+      "error": "RightHub contacts list must render real <img> profile pictures, found 0",
+      "durationMs": 2329
+    },
+    {
+      "id": "F9-2",
+      "feature": "F9",
+      "tier": 1,
+      "name": "WhatsApp chat header renders real <img> profile picture",
+      "passed": false,
+      "error": "WhatsApp chat header must render real <img> profile picture",
+      "durationMs": 2314
+    },
+    {
+      "id": "F9-3",
+      "feature": "F9",
+      "tier": 1,
+      "name": "Telegram chat header renders real <img> profile picture",
+      "passed": false,
+      "error": "Telegram chat header must render real <img> profile picture",
+      "durationMs": 6751
+    },
+    {
+      "id": "F9-4",
+      "feature": "F9",
+      "tier": 1,
+      "name": "Discord chat header renders real <img> profile picture",
+      "passed": false,
+      "error": "Discord chat header must render real <img> profile picture",
+      "durationMs": 8217
+    },
+    {
+      "id": "F9-5",
+      "feature": "F9",
+      "tier": 1,
+      "name": "Global contacts data in mock_chats contains valid profilePicUrls across all channels",
+      "passed": false,
+      "error": "Expected global real profile picture URLs in UI, found 0",
+      "durationMs": 3848
+    },
+    {
+      "id": "F1-B1",
+      "feature": "F1",
+      "tier": 2,
+      "name": "Extreme narrow viewport (320px) produces zero horizontal scroll/overflow",
+      "passed": true,
+      "error": null,
+      "durationMs": 4029
+    },
+    {
+      "id": "F1-B2",
+      "feature": "F1",
+      "tier": 2,
+      "name": "Navbar boundary at 880px vs 881px: nav tabs visibility toggle",
+      "passed": true,
+      "error": null,
+      "durationMs": 7083
+    },
+    {
+      "id": "F1-B3",
+      "feature": "F1",
+      "tier": 2,
+      "name": "Navbar boundary at 640px vs 641px: AI Agent text visibility transition",
+      "passed": true,
+      "error": null,
+      "durationMs": 12612
+    },
+    {
+      "id": "F1-B4",
+      "feature": "F1",
+      "tier": 2,
+      "name": "Navbar boundary at 400px: AI toggle opacity/visibility disappears",
+      "passed": true,
+      "error": null,
+      "durationMs": 2877
+    },
+    {
+      "id": "F1-B5",
+      "feature": "F1",
+      "tier": 2,
+      "name": "Dark mode toggle operates reliably across multiple viewport resizing events",
+      "passed": true,
+      "error": null,
+      "durationMs": 2981
+    },
+    {
+      "id": "F2-B1",
+      "feature": "F2",
+      "tier": 2,
+      "name": "AppSwitcher handles minimal width (120px) without breaking or horizontal scrolling",
+      "passed": true,
+      "error": null,
+      "durationMs": 2480
+    },
+    {
+      "id": "F2-B2",
+      "feature": "F2",
+      "tier": 2,
+      "name": "Channel items have no text overflow or text clipping outside panel bounds at 160px",
+      "passed": true,
+      "error": null,
+      "durationMs": 2413
+    },
+    {
+      "id": "F2-B3",
+      "feature": "F2",
+      "tier": 2,
+      "name": "Boundary at 200px: bottom button .add-channel-text hides gracefully",
+      "passed": true,
+      "error": null,
+      "durationMs": 2112
+    },
+    {
+      "id": "F2-B4",
+      "feature": "F2",
+      "tier": 2,
+      "name": "Rapid channel switching (WhatsApp -> Telegram -> Gmail) updates state cleanly",
+      "passed": true,
+      "error": null,
+      "durationMs": 3452
+    },
+    {
+      "id": "F2-B5",
+      "feature": "F2",
+      "tier": 2,
+      "name": "App Catalog drawer opens and closes repeatedly without lingering backdrops",
+      "passed": false,
+      "error": "elementHandle.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <div class=\"absolute inset-x-0 bottom-0 top-[40%] bg-white dark:bg-[#1A1D23] z-50 rounded-b-3xl border-t border-[#DFDFD4] dark:border-[#2E333D] overflow-y-auto shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)] p-4 custom-scrollbar flex flex-col\">…</div> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <div class=\"absolute inset-x-0 bottom-0 top-[40%] bg-white dark:bg-[#1A1D23] z-50 rounded-b-3xl border-t border-[#DFDFD4] dark:border-[#2E333D] overflow-y-auto shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)] p-4 custom-scrollbar flex flex-col\">…</div> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    9 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <div class=\"absolute inset-x-0 bottom-0 top-[40%] bg-white dark:bg-[#1A1D23] z-50 rounded-b-3xl border-t border-[#DFDFD4] dark:border-[#2E333D] overflow-y-auto shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)] p-4 custom-scrollbar flex flex-col\">…</div> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 500ms\u001b[22m\n",
+      "durationMs": 8084
+    },
+    {
+      "id": "F3-B1",
+      "feature": "F3",
+      "tier": 2,
+      "name": "Drag cancellation via Escape key restores initial column arrangement without error",
+      "passed": true,
+      "error": null,
+      "durationMs": 3175
+    },
+    {
+      "id": "F3-B2",
+      "feature": "F3",
+      "tier": 2,
+      "name": "Micro-drags (< 5px) do not trigger unwanted column reorder",
+      "passed": true,
+      "error": null,
+      "durationMs": 2516
+    },
+    {
+      "id": "F3-B3",
+      "feature": "F3",
+      "tier": 2,
+      "name": "Extreme drag velocity across all 3 columns preserves column integrity",
+      "passed": true,
+      "error": null,
+      "durationMs": 2868
+    },
+    {
+      "id": "F3-B4",
+      "feature": "F3",
+      "tier": 2,
+      "name": "Column reorder works when RightHubColumn is collapsed (2 columns active)",
+      "passed": true,
+      "error": null,
+      "durationMs": 2290
+    },
+    {
+      "id": "F3-B5",
+      "feature": "F3",
+      "tier": 2,
+      "name": "Dragging with 4 columns (1 detached panel) updates placeholder without offset bug",
+      "passed": true,
+      "error": null,
+      "durationMs": 3385
+    },
+    {
+      "id": "F4-B1",
+      "feature": "F4",
+      "tier": 2,
+      "name": "Channel switching preserves draggable MiddleChatColumn header across all channels",
+      "passed": true,
+      "error": null,
+      "durationMs": 2827
+    },
+    {
+      "id": "F4-B2",
+      "feature": "F4",
+      "tier": 2,
+      "name": "Clicking interactive buttons inside chat header does NOT trigger column drag",
+      "passed": true,
+      "error": null,
+      "durationMs": 2113
+    },
+    {
+      "id": "F4-B3",
+      "feature": "F4",
+      "tier": 2,
+      "name": "Selecting text inside chat message thread does NOT initiate column drag",
+      "passed": true,
+      "error": null,
+      "durationMs": 2546
+    },
+    {
+      "id": "F4-B4",
+      "feature": "F4",
+      "tier": 2,
+      "name": "Header drag operates smoothly when chat column is resized to minimum width",
+      "passed": true,
+      "error": null,
+      "durationMs": 2280
+    },
+    {
+      "id": "F4-B5",
+      "feature": "F4",
+      "tier": 2,
+      "name": "Attempting to drag avatar image does not produce native browser ghost image drag",
+      "passed": true,
+      "error": null,
+      "durationMs": 2087
+    },
+    {
+      "id": "F5-B1",
+      "feature": "F5",
+      "tier": 2,
+      "name": "Drag start and immediate Escape key unhides resize handles immediately",
+      "passed": true,
+      "error": null,
+      "durationMs": 2604
+    },
+    {
+      "id": "F5-B2",
+      "feature": "F5",
+      "tier": 2,
+      "name": "Dragging with 4 columns (1 detached panel) hides all 3 separators simultaneously",
+      "passed": true,
+      "error": null,
+      "durationMs": 3090
+    },
+    {
+      "id": "F5-B3",
+      "feature": "F5",
+      "tier": 2,
+      "name": "Mouse hovering over separator during active drag does not change cursor to col-resize",
+      "passed": true,
+      "error": null,
+      "durationMs": 2460
+    },
+    {
+      "id": "F5-B4",
+      "feature": "F5",
+      "tier": 2,
+      "name": "Fast consecutive drag-starts and drag-ends do not leave handles stuck at opacity: 0",
+      "passed": true,
+      "error": null,
+      "durationMs": 3042
+    },
+    {
+      "id": "F5-B5",
+      "feature": "F5",
+      "tier": 2,
+      "name": "Resizing a panel before dragging works normally without lingering drag classes",
+      "passed": true,
+      "error": null,
+      "durationMs": 2353
+    },
+    {
+      "id": "F6-B1",
+      "feature": "F6",
+      "tier": 2,
+      "name": "Detached panel stays open continuously for 8+ seconds without resetting",
+      "passed": true,
+      "error": null,
+      "durationMs": 11181
+    },
+    {
+      "id": "F6-B2",
+      "feature": "F6",
+      "tier": 2,
+      "name": "Detaching BOTH Analytics and Settings simultaneously creates 5 columns without crash",
+      "passed": true,
+      "error": null,
+      "durationMs": 4119
+    },
+    {
+      "id": "F6-B3",
+      "feature": "F6",
+      "tier": 2,
+      "name": "Local storage preferences update while panel is detached does not wipe detached panel",
+      "passed": true,
+      "error": null,
+      "durationMs": 3978
+    },
+    {
+      "id": "F6-B4",
+      "feature": "F6",
+      "tier": 2,
+      "name": "Channel switching (WhatsApp -> Telegram) while panel is detached preserves detached panel",
+      "passed": true,
+      "error": null,
+      "durationMs": 3574
+    },
+    {
+      "id": "F6-B5",
+      "feature": "F6",
+      "tier": 2,
+      "name": "Resizing detached panel updates sizes without triggering panel collapse",
+      "passed": true,
+      "error": null,
+      "durationMs": 3281
+    },
+    {
+      "id": "F7-B1",
+      "feature": "F7",
+      "tier": 2,
+      "name": "Contacts tab does NOT display detach button (non-detachable tab)",
+      "passed": true,
+      "error": null,
+      "durationMs": 2559
+    },
+    {
+      "id": "F7-B2",
+      "feature": "F7",
+      "tier": 2,
+      "name": "Inactive detachable tab does NOT render active detach button",
+      "passed": true,
+      "error": null,
+      "durationMs": 2497
+    },
+    {
+      "id": "F7-B3",
+      "feature": "F7",
+      "tier": 2,
+      "name": "Detach button remains clickable when RightHubColumn is narrow (250px)",
+      "passed": true,
+      "error": null,
+      "durationMs": 2329
+    },
+    {
+      "id": "F7-B4",
+      "feature": "F7",
+      "tier": 2,
+      "name": "Hovering over detach button produces visual feedback transition",
+      "passed": true,
+      "error": null,
+      "durationMs": 3144
+    },
+    {
+      "id": "F7-B5",
+      "feature": "F7",
+      "tier": 2,
+      "name": "Clicking detach button triggers single detach event without double-firing",
+      "passed": true,
+      "error": null,
+      "durationMs": 2977
+    },
+    {
+      "id": "F8-B1",
+      "feature": "F8",
+      "tier": 2,
+      "name": "Polling interval does NOT reset active topic path after 5 seconds",
+      "passed": false,
+      "error": "page.waitForSelector: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=\"Automatique L3\"') to be visible\u001b[22m\n",
+      "durationMs": 6564
+    },
+    {
+      "id": "F8-B2",
+      "feature": "F8",
+      "tier": 2,
+      "name": "Direct message contact (Alex) does not display topics list and opens DM immediately",
+      "passed": false,
+      "error": "page.waitForSelector: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=\"Alex\"') to be visible\u001b[22m\n",
+      "durationMs": 6516
+    },
+    {
+      "id": "F8-B3",
+      "feature": "F8",
+      "tier": 2,
+      "name": "Rapid switching between forum group and direct message does not crash React state",
+      "passed": false,
+      "error": "page.waitForSelector: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=\"Automatique L3\"') to be visible\u001b[22m\n",
+      "durationMs": 6568
+    },
+    {
+      "id": "F8-B4",
+      "feature": "F8",
+      "tier": 2,
+      "name": "Navigating between topics updates message contents accurately",
+      "passed": false,
+      "error": "page.waitForSelector: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=\"Automatique L3\"') to be visible\u001b[22m\n",
+      "durationMs": 6638
+    },
+    {
+      "id": "F8-B5",
+      "feature": "F8",
+      "tier": 2,
+      "name": "Empty topic (Exams or Cours) displays empty state gracefully without errors",
+      "passed": false,
+      "error": "page.waitForSelector: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=\"Automatique L3\"') to be visible\u001b[22m\n",
+      "durationMs": 6596
+    },
+    {
+      "id": "F9-B1",
+      "feature": "F9",
+      "tier": 2,
+      "name": "Contact avatar images do not trigger layout shift or horizontal overflow",
+      "passed": true,
+      "error": null,
+      "durationMs": 2095
+    },
+    {
+      "id": "F9-B2",
+      "feature": "F9",
+      "tier": 2,
+      "name": "Contact avatar fallback initial is rendered gracefully if image fails",
+      "passed": true,
+      "error": null,
+      "durationMs": 2435
+    },
+    {
+      "id": "F9-B3",
+      "feature": "F9",
+      "tier": 2,
+      "name": "Header avatar image explicitly prevents HTML5 drag hijacking (draggable=false)",
+      "passed": true,
+      "error": null,
+      "durationMs": 2207
+    },
+    {
+      "id": "F9-B4",
+      "feature": "F9",
+      "tier": 2,
+      "name": "Profile pictures render with 1:1 circular aspect ratio",
+      "passed": true,
+      "error": null,
+      "durationMs": 2330
+    },
+    {
+      "id": "F9-B5",
+      "feature": "F9",
+      "tier": 2,
+      "name": "Switching between contacts updates header avatar image src reliably",
+      "passed": true,
+      "error": null,
+      "durationMs": 3192
+    },
+    {
+      "id": "T3-1",
+      "features": [
+        "F1",
+        "F2"
+      ],
+      "tier": 3,
+      "name": "Shrinking viewport to 640px while AppSwitcher is minimized produces zero overflow and proper collapses",
+      "passed": true,
+      "error": null,
+      "durationMs": 2591
+    },
+    {
+      "id": "T3-2",
+      "features": [
+        "F1",
+        "F6"
+      ],
+      "tier": 3,
+      "name": "Detaching Analytics panel while viewport is at 768px tablet width keeps detached panel and navbar responsive",
+      "passed": true,
+      "error": null,
+      "durationMs": 3715
+    },
+    {
+      "id": "T3-3",
+      "features": [
+        "F2",
+        "F3"
+      ],
+      "tier": 3,
+      "name": "Dragging App Switcher while in minimized state preserves drag handle and placeholder position",
+      "passed": true,
+      "error": null,
+      "durationMs": 2872
+    },
+    {
+      "id": "T3-4",
+      "features": [
+        "F3",
+        "F4"
+      ],
+      "tier": 3,
+      "name": "Dragging MiddleChatColumn swaps positions with AppSwitcher smoothly",
+      "passed": true,
+      "error": null,
+      "durationMs": 3814
+    },
+    {
+      "id": "T3-5",
+      "features": [
+        "F4",
+        "F5"
+      ],
+      "tier": 3,
+      "name": "Initiating drag from MiddleChatColumn header hides all resize handles and restores them on drop",
+      "passed": true,
+      "error": null,
+      "durationMs": 3287
+    },
+    {
+      "id": "T3-6",
+      "features": [
+        "F6",
+        "F7"
+      ],
+      "tier": 3,
+      "name": "Clicking prominent detach button in Dark Mode detaches panel and retains standalone state beyond 4s",
+      "passed": true,
+      "error": null,
+      "durationMs": 7631
+    },
+    {
+      "id": "T3-7",
+      "features": [
+        "F6",
+        "F8"
+      ],
+      "tier": 3,
+      "name": "Detaching Settings tab while active in Telegram Topics view preserves topics split pane",
+      "passed": false,
+      "error": "page.waitForSelector: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=\"Automatique L3\"') to be visible\u001b[22m\n",
+      "durationMs": 6628
+    },
+    {
+      "id": "T3-8",
+      "features": [
+        "F8",
+        "F9"
+      ],
+      "tier": 3,
+      "name": "Telegram topics view renders real group avatar <img> in chat header",
+      "passed": false,
+      "error": "page.waitForSelector: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=\"Automatique L3\"') to be visible\u001b[22m\n",
+      "durationMs": 6707
+    },
+    {
+      "id": "T3-9",
+      "features": [
+        "F3",
+        "F5",
+        "F6"
+      ],
+      "tier": 3,
+      "name": "Dragging detached 4th panel across workspace hides all 3 resize handles cleanly",
+      "passed": true,
+      "error": null,
+      "durationMs": 3799
+    },
+    {
+      "id": "T3-10",
+      "features": [
+        "F1",
+        "F4",
+        "F9"
+      ],
+      "tier": 3,
+      "name": "Dragging chat header at 900px viewport with real contact avatar preserves drag integrity and zero overflow",
+      "passed": true,
+      "error": null,
+      "durationMs": 2437
+    },
+    {
+      "id": "T4-S1",
+      "features": [
+        "F1",
+        "F2"
+      ],
+      "tier": 4,
+      "name": "Narrow Mobile Navigation & Channel Switching",
+      "passed": true,
+      "error": null,
+      "durationMs": 2157
+    },
+    {
+      "id": "T4-S2",
+      "features": [
+        "F3",
+        "F4",
+        "F5"
+      ],
+      "tier": 4,
+      "name": "Full Workspace Column Reordering & Drag Polish",
+      "passed": true,
+      "error": null,
+      "durationMs": 4239
+    },
+    {
+      "id": "T4-S3",
+      "features": [
+        "F6",
+        "F7"
+      ],
+      "tier": 4,
+      "name": "Detached Analytics & Settings Long-Lived Monitoring (10+ seconds)",
+      "passed": true,
+      "error": null,
+      "durationMs": 14717
+    },
+    {
+      "id": "T4-S4",
+      "features": [
+        "F8",
+        "F9"
+      ],
+      "tier": 4,
+      "name": "Telegram Omnichannel Topic Browsing & Chat",
+      "passed": false,
+      "error": "Telegram contacts list must render real profile avatars",
+      "durationMs": 2659
+    },
+    {
+      "id": "T4-S5",
+      "features": [
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6",
+        "F7",
+        "F8",
+        "F9"
+      ],
+      "tier": 4,
+      "name": "End-to-End Multitasking: Detached Panels + Drag Reorder + Mobile Collapse",
+      "passed": true,
+      "error": null,
+      "durationMs": 5273
+    }
+  ]
+}

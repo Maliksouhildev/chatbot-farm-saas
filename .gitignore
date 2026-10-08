@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+saas-web/node_modules/
+
+# Next.js build
+saas-web/.next/
+saas-web/out/
+*.tsbuildinfo
+
+# Environment files
+.env.local
+.env.*.local
+saas-web/.env.local
+
+# Screenshots & Test Artifacts
+saas-web/tests/screenshots/
+saas-web/*.png
+test_screenshots/
+*.png
+
+# Logs and debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

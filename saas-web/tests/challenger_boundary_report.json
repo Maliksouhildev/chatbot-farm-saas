@@ -1,0 +1,432 @@
+{
+  "navbarTests": [
+    {
+      "name": "Navbar at 881px",
+      "width": 881,
+      "measurements": {
+        "width": 881,
+        "docWidth": 881,
+        "docScrollWidth": 881,
+        "hasDocScroll": false,
+        "hasHeaderScroll": false,
+        "headerWidth": 881,
+        "centerNavDisplay": "none",
+        "mobileToggleDisplay": "flex",
+        "aiLabelDisplay": "block",
+        "aiToggleDisplay": "flex",
+        "aiToggleOpacity": 1,
+        "aiToggleWidth": 152.25,
+        "hasCollision": false,
+        "collisionDetails": [],
+        "textClippings": []
+      },
+      "passed": false,
+      "details": [
+        "Expected .navbar-center-nav to be visible at 881px, got display: none",
+        "Expected .navbar-mobile-toggle to be hidden at 881px, got display: flex"
+      ]
+    },
+    {
+      "name": "Navbar at 880px",
+      "width": 880,
+      "measurements": {
+        "width": 880,
+        "docWidth": 880,
+        "docScrollWidth": 880,
+        "hasDocScroll": false,
+        "hasHeaderScroll": false,
+        "headerWidth": 880,
+        "centerNavDisplay": "none",
+        "mobileToggleDisplay": "flex",
+        "aiLabelDisplay": "block",
+        "aiToggleDisplay": "flex",
+        "aiToggleOpacity": 1,
+        "aiToggleWidth": 152.25,
+        "hasCollision": false,
+        "collisionDetails": [],
+        "textClippings": []
+      },
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "Navbar at 641px",
+      "width": 641,
+      "measurements": {
+        "width": 641,
+        "docWidth": 641,
+        "docScrollWidth": 641,
+        "hasDocScroll": false,
+        "hasHeaderScroll": false,
+        "headerWidth": 641,
+        "centerNavDisplay": "none",
+        "mobileToggleDisplay": "flex",
+        "aiLabelDisplay": "none",
+        "aiToggleDisplay": "flex",
+        "aiToggleOpacity": 1,
+        "aiToggleWidth": 82,
+        "hasCollision": false,
+        "collisionDetails": [],
+        "textClippings": []
+      },
+      "passed": false,
+      "details": [
+        "Expected .navbar-ai-label to be visible at 641px, got display: none"
+      ]
+    },
+    {
+      "name": "Navbar at 640px",
+      "width": 640,
+      "measurements": {
+        "width": 640,
+        "docWidth": 640,
+        "docScrollWidth": 640,
+        "hasDocScroll": false,
+        "hasHeaderScroll": false,
+        "headerWidth": 640,
+        "centerNavDisplay": "none",
+        "mobileToggleDisplay": "flex",
+        "aiLabelDisplay": "none",
+        "aiToggleDisplay": "flex",
+        "aiToggleOpacity": 1,
+        "aiToggleWidth": 82,
+        "hasCollision": false,
+        "collisionDetails": [],
+        "textClippings": []
+      },
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "Navbar at 401px",
+      "width": 401,
+      "measurements": {
+        "width": 401,
+        "docWidth": 401,
+        "docScrollWidth": 401,
+        "hasDocScroll": false,
+        "hasHeaderScroll": false,
+        "headerWidth": 401,
+        "centerNavDisplay": "none",
+        "mobileToggleDisplay": "flex",
+        "aiLabelDisplay": "none",
+        "aiToggleDisplay": "none",
+        "aiToggleOpacity": 0,
+        "aiToggleWidth": 0,
+        "hasCollision": false,
+        "collisionDetails": [],
+        "textClippings": []
+      },
+      "passed": false,
+      "details": [
+        "Expected .navbar-ai-toggle to be visible at 401px, got display: none, opacity: 0"
+      ]
+    },
+    {
+      "name": "Navbar at 400px",
+      "width": 400,
+      "measurements": {
+        "width": 400,
+        "docWidth": 400,
+        "docScrollWidth": 400,
+        "hasDocScroll": false,
+        "hasHeaderScroll": false,
+        "headerWidth": 400,
+        "centerNavDisplay": "none",
+        "mobileToggleDisplay": "flex",
+        "aiLabelDisplay": "none",
+        "aiToggleDisplay": "none",
+        "aiToggleOpacity": 0,
+        "aiToggleWidth": 0,
+        "hasCollision": false,
+        "collisionDetails": [],
+        "textClippings": []
+      },
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "Navbar at 320px",
+      "width": 320,
+      "measurements": {
+        "width": 320,
+        "docWidth": 320,
+        "docScrollWidth": 320,
+        "hasDocScroll": false,
+        "hasHeaderScroll": false,
+        "headerWidth": 320,
+        "centerNavDisplay": "none",
+        "mobileToggleDisplay": "flex",
+        "aiLabelDisplay": "none",
+        "aiToggleDisplay": "none",
+        "aiToggleOpacity": 0,
+        "aiToggleWidth": 0,
+        "hasCollision": false,
+        "collisionDetails": [],
+        "textClippings": []
+      },
+      "passed": true,
+      "details": []
+    }
+  ],
+  "appSwitcherTests": [
+    {
+      "name": "App Switcher at 251px",
+      "targetWidth": 251,
+      "measurements": {
+        "targetWidth": 251,
+        "actualWidth": 251,
+        "switcherOverflow": false,
+        "headerOverflow": false,
+        "headerCollision": false,
+        "headerCollisionDetail": "",
+        "aiToggleTextDisplay": "none",
+        "aiToggleBtnWidth": 28,
+        "aiToggleBtnHeight": 24,
+        "aiToggleBtnDisplay": "flex",
+        "fullTextDisplay": null,
+        "logoIconDisplay": "none",
+        "addChannelTextDisplay": "block",
+        "bottomBtnWidth": 217,
+        "bottomBtnHeight": 38,
+        "firstItemTextDisplay": "flex",
+        "firstItemAiToggleDisplay": "flex",
+        "textClippings": []
+      },
+      "passed": false,
+      "details": [
+        "Expected .switcher-ai-toggle-text to be visible at 251px, got display: none"
+      ]
+    },
+    {
+      "name": "App Switcher at 250px",
+      "targetWidth": 250,
+      "measurements": {
+        "targetWidth": 250,
+        "actualWidth": 250,
+        "switcherOverflow": false,
+        "headerOverflow": false,
+        "headerCollision": false,
+        "headerCollisionDetail": "",
+        "aiToggleTextDisplay": "none",
+        "aiToggleBtnWidth": 28,
+        "aiToggleBtnHeight": 24,
+        "aiToggleBtnDisplay": "flex",
+        "fullTextDisplay": null,
+        "logoIconDisplay": "none",
+        "addChannelTextDisplay": "block",
+        "bottomBtnWidth": 216,
+        "bottomBtnHeight": 38,
+        "firstItemTextDisplay": "flex",
+        "firstItemAiToggleDisplay": "flex",
+        "textClippings": []
+      },
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "App Switcher at 201px",
+      "targetWidth": 201,
+      "measurements": {
+        "targetWidth": 201,
+        "actualWidth": 201,
+        "switcherOverflow": false,
+        "headerOverflow": false,
+        "headerCollision": false,
+        "headerCollisionDetail": "",
+        "aiToggleTextDisplay": "none",
+        "aiToggleBtnWidth": 28,
+        "aiToggleBtnHeight": 24,
+        "aiToggleBtnDisplay": "flex",
+        "fullTextDisplay": null,
+        "logoIconDisplay": "flex",
+        "addChannelTextDisplay": "none",
+        "bottomBtnWidth": 167,
+        "bottomBtnHeight": 36,
+        "firstItemTextDisplay": "none",
+        "firstItemAiToggleDisplay": "flex",
+        "textClippings": []
+      },
+      "passed": false,
+      "details": [
+        "Expected .add-channel-text to be visible at 201px, got display: none",
+        "Expected .app-item-text to be visible at 201px, got display: none"
+      ]
+    },
+    {
+      "name": "App Switcher at 200px",
+      "targetWidth": 200,
+      "measurements": {
+        "targetWidth": 200,
+        "actualWidth": 200,
+        "switcherOverflow": false,
+        "headerOverflow": false,
+        "headerCollision": false,
+        "headerCollisionDetail": "",
+        "aiToggleTextDisplay": "none",
+        "aiToggleBtnWidth": 28,
+        "aiToggleBtnHeight": 24,
+        "aiToggleBtnDisplay": "flex",
+        "fullTextDisplay": null,
+        "logoIconDisplay": "flex",
+        "addChannelTextDisplay": "none",
+        "bottomBtnWidth": 166,
+        "bottomBtnHeight": 36,
+        "firstItemTextDisplay": "none",
+        "firstItemAiToggleDisplay": "flex",
+        "textClippings": []
+      },
+      "passed": false,
+      "details": [
+        "Expected .bottom-action-btn to collapse to ~36px at 200px, got width 166px"
+      ]
+    },
+    {
+      "name": "App Switcher at 191px",
+      "targetWidth": 191,
+      "measurements": {
+        "targetWidth": 191,
+        "actualWidth": 191,
+        "switcherOverflow": false,
+        "headerOverflow": false,
+        "headerCollision": false,
+        "headerCollisionDetail": "",
+        "aiToggleTextDisplay": "none",
+        "aiToggleBtnWidth": 28,
+        "aiToggleBtnHeight": 24,
+        "aiToggleBtnDisplay": "flex",
+        "fullTextDisplay": null,
+        "logoIconDisplay": "flex",
+        "addChannelTextDisplay": "none",
+        "bottomBtnWidth": 157,
+        "bottomBtnHeight": 36,
+        "firstItemTextDisplay": "none",
+        "firstItemAiToggleDisplay": "flex",
+        "textClippings": []
+      },
+      "passed": false,
+      "details": [
+        "Expected .switcher-logo-icon to be hidden at 191px, got display: flex"
+      ]
+    },
+    {
+      "name": "App Switcher at 190px",
+      "targetWidth": 190,
+      "measurements": {
+        "targetWidth": 190,
+        "actualWidth": 190,
+        "switcherOverflow": false,
+        "headerOverflow": false,
+        "headerCollision": false,
+        "headerCollisionDetail": "",
+        "aiToggleTextDisplay": "none",
+        "aiToggleBtnWidth": 28,
+        "aiToggleBtnHeight": 24,
+        "aiToggleBtnDisplay": "flex",
+        "fullTextDisplay": null,
+        "logoIconDisplay": "flex",
+        "addChannelTextDisplay": "none",
+        "bottomBtnWidth": 156,
+        "bottomBtnHeight": 36,
+        "firstItemTextDisplay": "none",
+        "firstItemAiToggleDisplay": "flex",
+        "textClippings": []
+      },
+      "passed": false,
+      "details": [
+        "Expected .switcher-full-text to be hidden at 190px, got display: null"
+      ]
+    },
+    {
+      "name": "App Switcher at 110px",
+      "targetWidth": 110,
+      "measurements": {
+        "targetWidth": 110,
+        "actualWidth": 110,
+        "switcherOverflow": false,
+        "headerOverflow": false,
+        "headerCollision": false,
+        "headerCollisionDetail": "",
+        "aiToggleTextDisplay": "none",
+        "aiToggleBtnWidth": 0,
+        "aiToggleBtnHeight": 0,
+        "aiToggleBtnDisplay": "none",
+        "fullTextDisplay": null,
+        "logoIconDisplay": "flex",
+        "addChannelTextDisplay": "none",
+        "bottomBtnWidth": 76,
+        "bottomBtnHeight": 36,
+        "firstItemTextDisplay": "none",
+        "firstItemAiToggleDisplay": "none",
+        "textClippings": []
+      },
+      "passed": true,
+      "details": []
+    }
+  ],
+  "failures": [
+    {
+      "group": "navbar",
+      "name": "Navbar at 881px",
+      "details": [
+        "Expected .navbar-center-nav to be visible at 881px, got display: none",
+        "Expected .navbar-mobile-toggle to be hidden at 881px, got display: flex"
+      ]
+    },
+    {
+      "group": "navbar",
+      "name": "Navbar at 641px",
+      "details": [
+        "Expected .navbar-ai-label to be visible at 641px, got display: none"
+      ]
+    },
+    {
+      "group": "navbar",
+      "name": "Navbar at 401px",
+      "details": [
+        "Expected .navbar-ai-toggle to be visible at 401px, got display: none, opacity: 0"
+      ]
+    },
+    {
+      "group": "appSwitcher",
+      "name": "App Switcher at 251px",
+      "details": [
+        "Expected .switcher-ai-toggle-text to be visible at 251px, got display: none"
+      ]
+    },
+    {
+      "group": "appSwitcher",
+      "name": "App Switcher at 201px",
+      "details": [
+        "Expected .add-channel-text to be visible at 201px, got display: none",
+        "Expected .app-item-text to be visible at 201px, got display: none"
+      ]
+    },
+    {
+      "group": "appSwitcher",
+      "name": "App Switcher at 200px",
+      "details": [
+        "Expected .bottom-action-btn to collapse to ~36px at 200px, got width 166px"
+      ]
+    },
+    {
+      "group": "appSwitcher",
+      "name": "App Switcher at 191px",
+      "details": [
+        "Expected .switcher-logo-icon to be hidden at 191px, got display: flex"
+      ]
+    },
+    {
+      "group": "appSwitcher",
+      "name": "App Switcher at 190px",
+      "details": [
+        "Expected .switcher-full-text to be hidden at 190px, got display: null"
+      ]
+    }
+  ],
+  "summary": {
+    "total": 14,
+    "passed": 6,
+    "failed": 8
+  }
+}
