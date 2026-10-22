@@ -1,0 +1,538 @@
+  // Dynamic Quick Responses Bar with Pinned, Drag & Drop, Right-Click Menu, Dynamic Variables & App Color Adaptation
+  const renderQuickTemplatesBar = () => {
+    if (isChatReadOnly) return null;
+
+    // Filter by contact scope and app scope, then sort pinned templates first
+    const visibleTemplates = quickTemplates
+      .filter((t) => {
+        if (t.contactId && activeContact && t.contactId !== activeContact.id) {
+          return false;
+        }
+        if (t.appScope && t.appScope.length > 0 && !t.appScope.includes('all')) {
+          if (!t.appScope.includes(appId)) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return 0;
+      });
+
+    const getTemplateColorStyles = (t: QuickTemplate) => {
+      // 1. Contact-specific gets gold / amber badge
+      if (t.contactId) {
+        return 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:border-amber-500 shadow-amber-500/10';
+      }
+
+      // 2. App-specific gets tailored app theme colors
+      const scope = t.appScope;
+      if (scope && scope.length === 1 && !scope.includes('all')) {
+        const targetApp = scope[0];
+        switch (targetApp) {
+          case 'whatsapp':
+          case 'whatsapp_2':
+            return 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:border-emerald-500';
+          case 'telegram':
+            return 'bg-sky-50 dark:bg-sky-950/40 text-[#2AABEE] dark:text-sky-300 border-sky-300 dark:border-sky-700 hover:border-[#2AABEE]';
+          case 'instagram':
+            return 'bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-200 border-purple-300 dark:border-purple-700 hover:border-purple-500';
+          case 'messenger':
+            return 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700 hover:border-[#0084FF]';
+          case 'gmail':
+            return 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700 hover:border-[#EA4335]';
+          case 'web_widget':
+            return 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200 border-teal-300 dark:border-teal-700 hover:border-[#1B6648]';
+        }
+      } else if (scope && scope.length > 1 && !scope.includes('all')) {
+        return 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700 hover:border-indigo-500';
+      }
+
+      // 3. Default universal all-apps
+      return 'bg-white dark:bg-[#1E293B] text-gray-800 dark:text-gray-100 border-gray-200 dark:border-slate-700/80 hover:border-[#1B6648] dark:hover:border-emerald-400';
+    };
+
+    return (
+      <>
+        {/* Dynamic Quick Responses Bar */}
+        <div className="relative px-3 py-1.5 bg-[#F0F2F5] dark:bg-[#111B21] border-t border-[#DFDFD4] dark:border-[#2E333D] flex items-center gap-2 shrink-0 select-none">
+          {/* Left Category Label & Quick Variables Drawer Toggle */}
+          <div className="flex items-center gap-1.5 shrink-0 pr-1.5 border-r border-gray-300/60 dark:border-neutral-700/60">
+            <Zap className="w-3.5 h-3.5 text-[#1B6648] dark:text-emerald-400 shrink-0" />
+            <span className="text-[10px] font-extrabold uppercase text-gray-600 dark:text-gray-300 shrink-0 tracking-wider hidden sm:inline">
+              RÉPONSES
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsVariablesBarExpanded(prev => !prev)}
+              className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                isVariablesBarExpanded
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-black/5 dark:bg-white/10 text-gray-600 dark:text-gray-300 hover:bg-black/10'
+              }`}
+              title="Afficher les variables dynamiques glissables"
+            >
+              <Sparkles className="w-2.5 h-2.5" />
+              <span>{'{x}'}</span>
+            </button>
+          </div>
+
+          {/* Quick Draggable Variables Drawer (if expanded) */}
+          {isVariablesBarExpanded && (
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 border-r border-gray-300/60 dark:border-neutral-700/60 pr-1.5 shrink-0 max-w-[200px] sm:max-w-[280px]">
+              {DYNAMIC_VARIABLES.map((v) => (
+                <button
+                  key={v.key}
+                  type="button"
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', resolveTemplateVariables(v.key));
+                  }}
+                  onClick={() => setInputMessage(prev => prev + (prev.endsWith(' ') || prev.length === 0 ? '' : ' ') + resolveTemplateVariables(v.key))}
+                  className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300/80 dark:border-emerald-700/80 text-[10px] font-mono text-emerald-800 dark:text-emerald-200 shrink-0 cursor-grab active:cursor-grabbing hover:scale-105 transition-transform"
+                  title={`${v.label}: Cliquez ou glissez dans le message`}
+                >
+                  {v.icon} {v.key}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Scrollable Templates Stream with Drag & Drop and Right-Click support */}
+          <div 
+            id="quick-templates-scroll-stream"
+            onWheel={(e) => {
+              if (e.deltaY !== 0) {
+                e.currentTarget.scrollLeft += e.deltaY;
+              }
+            }}
+            className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 scroll-smooth touch-pan-x"
+          >
+            {visibleTemplates.length === 0 ? (
+              <span className="text-[11px] text-gray-400 italic">
+                Aucun message pour ce canal. Cliquez sur Ajouter pour en créer un.
+              </span>
+            ) : (
+              visibleTemplates.map((t) => {
+                const resolvedText = resolveTemplateVariables(t.text);
+                const colorClasses = getTemplateColorStyles(t);
+                const isBeingDragged = draggedTemplateId === t.id;
+                const isDragTarget = dragOverTemplateId === t.id;
+
+                return (
+                  <div
+                    key={t.id}
+                    draggable={true}
+                    onDragStart={(e) => handleTemplateDragStart(e, t.id)}
+                    onDragOver={(e) => handleTemplateDragOver(e, t.id)}
+                    onDrop={(e) => handleTemplateDrop(e, t.id)}
+                    onDragEnd={() => { setDraggedTemplateId(null); setDragOverTemplateId(null); }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setTemplateContextMenu({
+                        x: Math.min(e.clientX, typeof window !== 'undefined' ? window.innerWidth - 260 : 300),
+                        y: Math.min(e.clientY, typeof window !== 'undefined' ? window.innerHeight - 380 : 300),
+                        template: t,
+                      });
+                    }}
+                    className={`relative group/tpl shrink-0 flex items-center transition-all ${
+                      isBeingDragged ? 'opacity-40 scale-95' : 'opacity-100'
+                    } ${
+                      isDragTarget ? 'ring-2 ring-emerald-500 ring-offset-1 rounded-full' : ''
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setInputMessage(resolvedText)}
+                      className={`text-xs px-2.5 py-1 rounded-full shadow-2xs border font-medium transition-all active:scale-95 cursor-grab active:cursor-grabbing flex items-center gap-1.5 whitespace-nowrap select-none ${colorClasses}`}
+                      title={`${resolvedText}\n\n[Clic droit: Épingler, Scoper à l'app, Modifier, Supprimer | Glisser pour réorganiser]`}
+                    >
+                      <GripVertical className="w-2.5 h-2.5 opacity-30 group-hover/tpl:opacity-75 shrink-0 -ml-1 cursor-grab" />
+                      <span className="text-sm leading-none">{t.icon || '💬'}</span>
+                      <span className="font-semibold">{t.label}</span>
+                      {t.isPinned && (
+                        <span className="text-[10px] text-amber-500 font-bold shrink-0" title="Épinglé au début">📌</span>
+                      )}
+                      {t.contactId && (
+                        <span className="text-[9px] px-1 py-0.2 rounded-full bg-amber-500 text-white font-bold shrink-0" title={`Réservé à ${t.contactName || 'ce chat'}`}>
+                          🎯
+                        </span>
+                      )}
+                      {t.appScope && !t.appScope.includes('all') && t.appScope.length > 0 && (
+                        <span className="text-[8.5px] px-1 py-0.2 rounded-full bg-black/10 dark:bg-white/15 font-mono font-bold shrink-0 uppercase">
+                          {t.appScope.join(',')}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Quick 1-click Delete button on hover */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteTemplate(t.id, e)}
+                      className="opacity-0 group-hover/tpl:opacity-100 p-0.5 -ml-2 mr-1 bg-red-500 hover:bg-red-600 text-white rounded-full transition-opacity cursor-pointer shadow-2xs"
+                      title="Supprimer ce message préenregistré"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Pinned / Sticky Add Premade Message Button */}
+          <div className="sticky right-0 shrink-0 flex items-center pl-2 border-l border-gray-300/60 dark:border-neutral-700/60 bg-[#F0F2F5] dark:bg-[#111B21] shadow-[-8px_0_10px_-3px_rgba(0,0,0,0.06)] dark:shadow-[-8px_0_10px_-3px_rgba(0,0,0,0.4)] z-10">
+            <button
+              id="sticky-add-template-btn"
+              type="button"
+              onClick={() => {
+                setEditingTemplateId(null);
+                setNewTemplateLabel('');
+                setNewTemplateText('');
+                setNewTemplateIcon('💬');
+                setNewTemplateAppScope(['all']);
+                setNewTemplateIsSpecificToChat(false);
+                setIsTemplateModalOpen(true);
+              }}
+              className="text-xs px-3 py-1 rounded-full bg-[#1B6648] hover:bg-[#155239] text-white dark:bg-emerald-600 dark:hover:bg-emerald-500 font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-xs"
+              title="Ajouter un message préenregistré personnalisé"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Ajouter</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Right-Click Context Menu for Quick Template */}
+        {templateContextMenu && (
+          <div
+            style={{
+              position: 'fixed',
+              top: `${templateContextMenu.y}px`,
+              left: `${templateContextMenu.x}px`,
+              zIndex: 99999,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-64 bg-white/95 dark:bg-[#1E222A]/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 p-2 text-xs select-none animate-in fade-in zoom-in-95 duration-100 space-y-1"
+          >
+            <div className="px-2 py-1.5 border-b border-gray-100 dark:border-neutral-800 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="text-sm">{templateContextMenu.template.icon || '💬'}</span>
+                <span className="font-bold text-gray-900 dark:text-white truncate">
+                  {templateContextMenu.template.label}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTemplateContextMenu(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Option 1: Pin / Unpin */}
+            <button
+              type="button"
+              onClick={() => handleTogglePinTemplate(templateContextMenu.template.id)}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-700 dark:text-gray-200 cursor-pointer font-medium text-left transition-colors"
+            >
+              {templateContextMenu.template.isPinned ? (
+                <>
+                  <PinOff className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Détacher de l'avant</span>
+                </>
+              ) : (
+                <>
+                  <Pin className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Épingler au début (📌 En tête)</span>
+                </>
+              )}
+            </button>
+
+            {/* Option 2: Specific to this chat */}
+            <button
+              type="button"
+              onClick={() => handleToggleChatSpecific(templateContextMenu.template.id)}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-700 dark:text-gray-200 cursor-pointer font-medium text-left transition-colors"
+            >
+              <Target className="w-3.5 h-3.5 text-amber-500" />
+              <span className="truncate">
+                {templateContextMenu.template.contactId
+                  ? 'Rendre accessible à tous les contacts'
+                  : `Spécifique à ce contact (${activeContact?.name || 'Contact'})`}
+              </span>
+            </button>
+
+            {/* Option 3: App Scope Selector with Color Adaptation */}
+            <div className="px-2.5 py-1.5 border-t border-b border-gray-100 dark:border-neutral-800 space-y-1">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                Adapter la couleur à l'app :
+              </span>
+              <div className="grid grid-cols-2 gap-1">
+                {AVAILABLE_APPS_FOR_TEMPLATES.map((app) => {
+                  const isSelected = templateContextMenu.template.appScope
+                    ? (app.id === 'all'
+                        ? templateContextMenu.template.appScope.includes('all')
+                        : templateContextMenu.template.appScope.includes(app.id))
+                    : app.id === 'all';
+
+                  return (
+                    <button
+                      key={app.id}
+                      type="button"
+                      onClick={() => handleToggleTemplateAppScope(templateContextMenu.template.id, app.id)}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-semibold flex items-center justify-between border cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold'
+                          : 'border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-800 text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1 truncate">
+                        <span>{app.icon}</span>
+                        <span className="truncate">{app.name}</span>
+                      </span>
+                      {isSelected && <Check className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Option 4: Edit */}
+            <button
+              type="button"
+              onClick={() => handleStartEditTemplate(templateContextMenu.template)}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-700 dark:text-gray-200 cursor-pointer font-medium text-left transition-colors"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-blue-500" />
+              <span>Modifier texte & variables</span>
+            </button>
+
+            {/* Option 5: Delete */}
+            <button
+              type="button"
+              onClick={() => handleDeleteTemplate(templateContextMenu.template.id)}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 cursor-pointer font-medium text-left transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Supprimer ce message</span>
+            </button>
+          </div>
+        )}
+
+        {/* Custom Template Creator & Editor Modal with Draggable Variables */}
+        <AnimatePresence>
+          {isTemplateModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white dark:bg-[#1E222A] rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-700 p-5 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar"
+              >
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-neutral-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#1B6648] dark:text-emerald-400">
+                      {editingTemplateId ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    </span>
+                    <div>
+                      <h3 className="font-bold text-sm text-gray-900 dark:text-gray-100">
+                        {editingTemplateId ? 'Modifier le message préenregistré' : 'Nouveau message préenregistré'}
+                      </h3>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                        Glissez des variables dynamiques pour personnaliser automatiquement la réponse
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsTemplateModalOpen(false)}
+                    className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveCustomTemplate} className="space-y-3.5">
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="col-span-1 space-y-1">
+                      <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">Icône</label>
+                      <input
+                        type="text"
+                        maxLength={4}
+                        value={newTemplateIcon}
+                        onChange={(e) => setNewTemplateIcon(e.target.value)}
+                        placeholder="💬"
+                        className="w-full text-center px-2 py-1.5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 caret-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-[#1B6648] dark:focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="col-span-3 space-y-1">
+                      <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">Titre du bouton</label>
+                      <input
+                        type="text"
+                        required
+                        value={newTemplateLabel}
+                        onChange={(e) => setNewTemplateLabel(e.target.value)}
+                        placeholder="Ex: Devis Rapide"
+                        className="w-full px-3 py-1.5 rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 caret-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-[#1B6648] dark:focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dynamic Variables Draggable & Clickable Drawer */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Variables Dynamiques (Glissez ou Cliquez pour insérer)</span>
+                      </label>
+                      <span className="text-[10px] text-gray-400">
+                        Remplacées en temps réel
+                      </span>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-gray-50 dark:bg-neutral-800/80 border border-gray-200 dark:border-neutral-700 space-y-2">
+                      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar p-0.5">
+                        {DYNAMIC_VARIABLES.map((v) => (
+                          <button
+                            key={v.key}
+                            type="button"
+                            draggable={true}
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('text/plain', v.key);
+                            }}
+                            onClick={() => insertVariableIntoTemplate(v.key)}
+                            className="px-2 py-1 rounded-lg bg-white dark:bg-neutral-700/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-gray-200 dark:border-neutral-600 hover:border-emerald-400 text-gray-800 dark:text-gray-200 hover:text-emerald-700 text-[10.5px] font-mono font-bold flex items-center gap-1 shrink-0 cursor-grab active:cursor-grabbing hover:scale-105 active:scale-95 transition-all shadow-2xs"
+                            title={`${v.description} (Cliquez ou glissez dans le texte)`}
+                          >
+                            <span>{v.icon}</span>
+                            <span>{v.key}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Message Textarea with Drag & Drop */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">Message</label>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">
+                        Glissez les variables directement dans la zone de texte
+                      </span>
+                    </div>
+                    <textarea
+                      ref={templateTextareaRef}
+                      required
+                      rows={3}
+                      value={newTemplateText}
+                      onChange={(e) => setNewTemplateText(e.target.value)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        const data = e.dataTransfer.getData('text/plain');
+                        if (data) {
+                          e.preventDefault();
+                          insertVariableIntoTemplate(data);
+                        }
+                      }}
+                      placeholder="Ex: Bonjour {name}, votre commande {order_id} pour {wilaya} est prête chez {entreprise}..."
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 text-xs text-gray-900 dark:text-white placeholder-gray-400 caret-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-[#1B6648] dark:focus:ring-emerald-500 resize-none leading-relaxed"
+                    />
+
+                    {/* Live preview with real runtime values */}
+                    {newTemplateText && (
+                      <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 text-[11px] space-y-1">
+                        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">
+                          <Sparkles className="w-2.5 h-2.5" />
+                          <span>Aperçu en direct (données réelles) :</span>
+                        </div>
+                        <p className="text-gray-800 dark:text-gray-200 italic leading-relaxed whitespace-pre-wrap">
+                          {resolveTemplateVariables(newTemplateText)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* App Scope and Chat Scope Selectors */}
+                  <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-neutral-800">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">
+                        Applications ciblées (Adapte la couleur du bouton) :
+                      </span>
+                      <span className="text-[10px] text-gray-400">Multi-sélection</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {AVAILABLE_APPS_FOR_TEMPLATES.map((app) => {
+                        const isSelected = newTemplateAppScope.includes(app.id);
+                        return (
+                          <button
+                            key={app.id}
+                            type="button"
+                            onClick={() => {
+                              if (app.id === 'all') {
+                                setNewTemplateAppScope(['all']);
+                              } else {
+                                let updated = newTemplateAppScope.filter(a => a !== 'all');
+                                if (updated.includes(app.id)) {
+                                  updated = updated.filter(a => a !== app.id);
+                                  if (updated.length === 0) updated = ['all'];
+                                } else {
+                                  updated = [...updated, app.id];
+                                }
+                                setNewTemplateAppScope(updated);
+                              }
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold border flex items-center gap-1 cursor-pointer transition-all ${
+                              isSelected
+                                ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 shadow-2xs font-bold'
+                                : 'border-gray-200 dark:border-neutral-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-neutral-800'
+                            }`}
+                          >
+                            <span>{app.icon}</span>
+                            <span>{app.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Specific to active contact switch */}
+                    {activeContact && (
+                      <label className="flex items-center gap-2 pt-1 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={newTemplateIsSpecificToChat}
+                          onChange={(e) => setNewTemplateIsSpecificToChat(e.target.checked)}
+                          className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
+                        />
+                        <span className="text-xs text-gray-700 dark:text-gray-300">
+                          Réserver ce message à <strong>{activeContact.name}</strong> uniquement (badge 🎯)
+                        </span>
+                      </label>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100 dark:border-neutral-800">
+                    <button
+                      type="button"
+                      onClick={() => setIsTemplateModalOpen(false)}
+                      className="px-3 py-1.5 rounded-xl text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-800 font-medium transition-colors cursor-pointer"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 rounded-xl text-xs bg-[#1B6648] hover:bg-[#144f37] text-white font-semibold shadow-xs transition-colors cursor-pointer"
+                    >
+                      {editingTemplateId ? 'Mettre à jour' : 'Enregistrer'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </>
+    );
+  };

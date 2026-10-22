@@ -135,10 +135,10 @@
     },
     {
       "parameters": {
-        "command": "=mkdir -p /files/outputs/archive && [ -f \"{{ $('Loop Over Items').item.json.video_path }}\" ] && mv \"{{ $('Loop Over Items').item.json.video_path }}\" /files/outputs/archive/ || echo 'Already archived.'"
+        "command": "rm -f \"{{ $('Loop Over Items').item.json.video_path }}\" \"{{ $('Loop Over Items').item.json.video_path.replace('.mp4','.json') }}\""
       },
       "id": "f5e57d1d-8304-4a2c-89a6-f733bebb7779",
-      "name": "Execute Command1",
+      "name": "Delete Clip & JSON",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [

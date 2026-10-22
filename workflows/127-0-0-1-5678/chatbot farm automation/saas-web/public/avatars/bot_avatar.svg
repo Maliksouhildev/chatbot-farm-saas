@@ -1,0 +1,17 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="botBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#064E3B"/>
+    </linearGradient>
+    <linearGradient id="botSpark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+  <circle cx="50" cy="50" r="50" fill="url(#botBg)"/>
+  <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1.5"/>
+  <path d="M50 22 C34.5 22 22 33.5 22 47.5 C22 55.2 25.6 62 31.4 66.7 L29 78 L41 72.3 C43.8 73.1 46.8 73.5 50 73.5 C65.5 73.5 78 62 78 47.5 C78 33.5 65.5 22 50 22 Z" fill="#1E293B" stroke="#10B981" stroke-width="2"/>
+  <path d="M50 33 C50 41 55 46.5 63 48 C55 49.5 50 55 50 63 C50 55 45 49.5 37 48 C45 46.5 50 41 50 33 Z" fill="url(#botSpark)"/>
+  <circle cx="64" cy="35" r="2.5" fill="#38BDF8"/>
+</svg>

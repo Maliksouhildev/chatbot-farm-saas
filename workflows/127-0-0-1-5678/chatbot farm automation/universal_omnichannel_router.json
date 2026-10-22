@@ -1,0 +1,277 @@
+{
+  "name": "Chatbot Farm - Universal Omnichannel Multimodal Router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "universal-omnichannel-router",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "11111111-1111-4111-8111-111111111111",
+      "name": "Incoming Omnichannel Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [ 100, 300 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\n// 1. Detect Channel Origin\nlet channel = 'whatsapp';\nif (body.channel) {\n  channel = body.channel.toLowerCase();\n} else if (body.guild_id || body.channel_id || body.author) {\n  channel = 'discord';\n} else if (body.update_id || body.message?.chat) {\n  channel = 'telegram';\n}\n\n// 2. Parse per-channel payloads\nlet instanceName = body.instance || body.instanceName || 'default_instance';\nlet isFromMe = false;\nlet remoteJid = '';\nlet customerPhone = '';\nlet customerName = 'Client';\nlet messageId = body.messageId || body.id || `msg_${Date.now()}`;\nlet messageText = '';\nlet isAudio = false;\nlet audioUrl = '';\nlet isImage = false;\nlet imageUrl = '';\nlet aiEnabled = body.isAiActive ?? body.ai_enabled ?? true;\n\nif (channel === 'whatsapp') {\n  if (body.event && body.event !== 'messages.upsert') return [];\n  const data = body.data || body;\n  const key = data.key || {};\n  const message = data.message || {};\n  isFromMe = key.fromMe === true;\n  remoteJid = key.remoteJid || data.sender || '';\n  customerName = data.pushName || 'Client';\n  messageId = key.id || messageId;\n\n  if (message.conversation) messageText = message.conversation;\n  else if (message.extendedTextMessage?.text) messageText = message.extendedTextMessage.text;\n  else if (message.audioMessage) {\n    isAudio = true;\n    audioUrl = message.audioMessage.url || '';\n  } else if (message.imageMessage) {\n    isImage = true;\n    imageUrl = message.imageMessage.url || '';\n    if (message.imageMessage.caption) messageText = message.imageMessage.caption;\n  } else if (body.text) {\n    messageText = body.text;\n  }\n  customerPhone = remoteJid.split('@')[0].split(':')[0];\n} else if (channel === 'discord') {\n  const author = body.author || {};\n  isFromMe = Boolean(author.bot || body.isFromMe);\n  remoteJid = body.channel_id || body.chatId || '';\n  customerName = author.username || 'Discord User';\n  customerPhone = author.id || remoteJid;\n  messageId = body.id || messageId;\n  messageText = body.content || body.text || '';\n  if (body.attachments && body.attachments.length > 0) {\n    const att = body.attachments[0];\n    if (att.content_type?.startsWith('audio/')) {\n      isAudio = true;\n      audioUrl = att.url;\n    } else if (att.content_type?.startsWith('image/')) {\n      isImage = true;\n      imageUrl = att.url;\n    }\n  }\n} else if (channel === 'telegram') {\n  const msg = body.message || body;\n  const from = msg.from || {};\n  isFromMe = Boolean(from.is_bot || body.isFromMe);\n  remoteJid = String(msg.chat?.id || body.chatId || '');\n  customerName = from.first_name || 'Telegram User';\n  customerPhone = String(from.id || remoteJid);\n  messageId = String(msg.message_id || messageId);\n  messageText = msg.text || msg.caption || '';\n  if (msg.voice || msg.audio) {\n    isAudio = true;\n    audioUrl = msg.voice?.file_id || msg.audio?.file_id || '';\n  } else if (msg.photo && msg.photo.length > 0) {\n    isImage = true;\n    imageUrl = msg.photo[msg.photo.length - 1].file_id;\n  }\n}\n\n// Loop prevention & empty guard\nif (isFromMe || (!messageText.trim() && !isAudio && !isImage)) {\n  return [];\n}\n\nreturn {\n  json: {\n    channel,\n    instance_name: instanceName,\n    remote_jid: remoteJid,\n    customer_phone: customerPhone,\n    customer_name: customerName,\n    message_id: messageId,\n    message_text: messageText.trim(),\n    is_audio: isAudio,\n    audio_url: audioUrl,\n    is_image: isImage,\n    image_url: imageUrl,\n    ai_enabled: aiEnabled,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "22222222-2222-4222-8222-222222222222",
+      "name": "Parse & Validate Inbound Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 320, 300 ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "c3333333-3333-4333-8333-333333333333",
+              "leftValue": "={{ $json.ai_enabled }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "33333333-3333-4333-8333-333333333333",
+      "name": "Is AI Bot Toggle Active?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [ 540, 300 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Smart Typing-Aware Debounced Buffer per sender & channel (Default 3s silence window)\nconst inbound = $input.first().json;\n\nconst textFragments = [inbound.message_text].filter(Boolean);\nconst aggregatedText = textFragments.join(' ').trim();\nconst debounceSeconds = (typeof inbound.debounce_seconds === 'number' && inbound.debounce_seconds > 0) ? inbound.debounce_seconds : 3;\nconst typingSimulation = inbound.typing_simulation_enabled !== false && inbound.realistic_typing !== false;\n\nreturn {\n  json: {\n    ...inbound,\n    aggregated_text: aggregatedText,\n    latest_message_id: inbound.message_id,\n    debounce_window_seconds: debounceSeconds,\n    typing_simulation_enabled: typingSimulation\n  }\n};"
+      },
+      "id": "44444444-4444-4444-8444-444444444444",
+      "name": "Debounce Sliding Buffer (17s Aggregator)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 780, 300 ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "c5555555-5555-4555-8555-555555555555",
+              "leftValue": "={{ $json.is_audio }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "55555555-5555-4555-8555-555555555555",
+      "name": "Is Voice Note Audio Present?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [ 1020, 300 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.GROQ_API_KEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"whisper-large-v3\",\n  \"url\": \"{{ $('Debounce Sliding Buffer (17s Aggregator)').first().json.audio_url }}\",\n  \"temperature\": 0.0,\n  \"language\": \"ar\"\n}",
+        "options": {}
+      },
+      "id": "66666666-6666-4666-8666-666666666666",
+      "name": "Transcribe Voice Note (Whisper Audio-First)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 1260, 200 ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "c7777777-7777-4777-8777-777777777777",
+              "leftValue": "={{ $('Debounce Sliding Buffer (17s Aggregator)').first().json.is_image }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "77777777-7777-4777-8777-777777777777",
+      "name": "Is Image Present?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [ 1500, 300 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"role\": \"user\",\n      \"parts\": [\n        {\n          \"text\": \"Context: \" + ($('Debounce Sliding Buffer (17s Aggregator)').first().json.aggregated_text || '') + \" Spoken: \" + ($('Transcribe Voice Note (Whisper Audio-First)').first()?.json?.text || '') + \"\\nBased on this query context, extract ONLY the relevant visual facts needed to answer (e.g. product, color, model). Do not write a long essay.\"\n        },\n        {\n          \"image_url\": \"{{ $('Debounce Sliding Buffer (17s Aggregator)').first().json.image_url }}\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "88888888-8888-4888-8888-888888888888",
+      "name": "Context-Aware Vision Analysis (Gemini Flash)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 1740, 200 ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "4ifvA2ET1NbduXfK",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inbound = $('Debounce Sliding Buffer (17s Aggregator)').first().json;\nconst whisperText = $('Transcribe Voice Note (Whisper Audio-First)').first()?.json?.text || '';\nconst visionText = $('Context-Aware Vision Analysis (Gemini Flash)').first()?.json?.candidates?.[0]?.content?.parts?.[0]?.text || '';\n\n// Roll 33% chance for random reaction emoji\nconst rollReaction = Math.random() < 0.33;\nconst emojis = ['👍', '❤️', '🔥', '👌', '👏'];\nconst reactionEmoji = rollReaction ? emojis[Math.floor(Math.random() * emojis.length)] : null;\n\nconst localTime = new Date().toLocaleString('fr-DZ', {\n  timeZone: 'Africa/Algiers',\n  weekday: 'long',\n  year: 'numeric',\n  month: 'long',\n  day: 'numeric',\n  hour: '2-digit',\n  minute: '2-digit'\n});\n\nconst systemPrompt = `You are the authentic Algerian commercial assistant for Chatbot Farm Store.\\nROLE & RULES:\\n- Respond warmly and helpfully (\"khoya\", \"khti\", \"saha\").\\n- If customer writes in Latin Arabizi, reply in authentic Algerian Arabizi with numbers (3, 7, 9).\\n- If in Arabic script, reply in Arabic Darija script.\\n- If in French, reply in polite French.\\n- Use \"doka\" or \"dorka\" for now (never derk). Use \"lazem\" for must. Use \"t3ich\" for please. Use \"chbab/hayel\" for great.\\n- Delivery across all 58 wilayas via Yalidine (payment on delivery).\\n- State prices in DA (e.g. 3500 DA / 350 alf).\\n\\n[METADATA]\\nPlatform: ${inbound.channel.toUpperCase()}\\nSender: ${inbound.customer_name} (${inbound.customer_phone})\\nTime: ${localTime}\\n\\n[CUSTOMER QUERY]\\nText: ${inbound.aggregated_text || '(none)'}\\nSpoken Voice: ${whisperText || '(none)'}\\nImage Analysis: ${visionText || '(none)'}`;\n\nreturn {\n  json: {\n    system_prompt: systemPrompt,\n    user_question: inbound.aggregated_text || whisperText || 'Salam khoya',\n    latest_message_id: inbound.latest_message_id,\n    channel: inbound.channel,\n    customer_phone: inbound.customer_phone,\n    remote_jid: inbound.remote_jid,\n    instance_name: inbound.instance_name,\n    should_react: rollReaction,\n    reaction_emoji: reactionEmoji,\n    typing_simulation_enabled: inbound.typing_simulation_enabled !== false,\n    typing_cadence: inbound.typing_cadence || 'natural'\n  }\n};"
+      },
+      "id": "99999999-9999-4999-8999-999999999999",
+      "name": "Assemble Master Multimodal Darija Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 1980, 300 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"system_instruction\": {\n    \"parts\": [{ \"text\": {{ JSON.stringify($json.system_prompt) }} }]\n  },\n  \"contents\": [\n    {\n      \"role\": \"user\",\n      \"parts\": [{ \"text\": {{ JSON.stringify($json.user_question) }} }]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.3\n  }\n}",
+        "options": {}
+      },
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "name": "LLM Chat Completion (Gemini 2.5 Flash)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 2220, 300 ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "4ifvA2ET1NbduXfK",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": "={{ $('Assemble Master Multimodal Darija Prompt').first().json.typing_simulation_enabled === false ? 0.5 : Math.min(8, Math.max(1, Math.round(((($('LLM Chat Completion (Gemini 2.5 Flash)').first()?.json?.candidates?.[0]?.content?.parts?.[0]?.text?.length) || 60) * 0.035)))) }}",
+        "unit": "seconds"
+      },
+      "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "name": "Anti-Bot Safe Cadence Delay (Typing Simulator)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [ 2460, 300 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/channels/whatsapp/send",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"remoteJid\": \"{{ $('Assemble Master Multimodal Darija Prompt').first().json.remote_jid }}\",\n  \"text\": \"{{ $('LLM Chat Completion (Gemini 2.5 Flash)').first().json.candidates[0].content.parts[0].text.replace(/\\\"/g, '\\\\\"').replace(/\\n/g, '\\\\n') }}\",\n  \"quotedMessageId\": \"{{ $('Assemble Master Multimodal Darija Prompt').first().json.latest_message_id }}\",\n  \"channel\": \"{{ $('Assemble Master Multimodal Darija Prompt').first().json.channel }}\"\n}",
+        "options": {}
+      },
+      "id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      "name": "Dispatch Native Quoted Reply (WhatsApp / Discord / Telegram)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [ 2700, 300 ]
+    }
+  ],
+  "connections": {
+    "Incoming Omnichannel Webhook": {
+      "main": [
+        [ { "node": "Parse & Validate Inbound Event", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Parse & Validate Inbound Event": {
+      "main": [
+        [ { "node": "Is AI Bot Toggle Active?", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Is AI Bot Toggle Active?": {
+      "main": [
+        [ { "node": "Debounce Sliding Buffer (17s Aggregator)", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Debounce Sliding Buffer (17s Aggregator)": {
+      "main": [
+        [ { "node": "Is Voice Note Audio Present?", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Is Voice Note Audio Present?": {
+      "main": [
+        [ { "node": "Transcribe Voice Note (Whisper Audio-First)", "type": "main", "index": 0 } ],
+        [ { "node": "Is Image Present?", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Transcribe Voice Note (Whisper Audio-First)": {
+      "main": [
+        [ { "node": "Is Image Present?", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Is Image Present?": {
+      "main": [
+        [ { "node": "Context-Aware Vision Analysis (Gemini Flash)", "type": "main", "index": 0 } ],
+        [ { "node": "Assemble Master Multimodal Darija Prompt", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Context-Aware Vision Analysis (Gemini Flash)": {
+      "main": [
+        [ { "node": "Assemble Master Multimodal Darija Prompt", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Assemble Master Multimodal Darija Prompt": {
+      "main": [
+        [ { "node": "LLM Chat Completion (Gemini 2.5 Flash)", "type": "main", "index": 0 } ]
+      ]
+    },
+    "LLM Chat Completion (Gemini 2.5 Flash)": {
+      "main": [
+        [ { "node": "Anti-Bot Safe Cadence Delay (Typing Simulator)", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Anti-Bot Safe Cadence Delay (Typing Simulator)": {
+      "main": [
+        [ { "node": "Dispatch Native Quoted Reply (WhatsApp / Discord / Telegram)", "type": "main", "index": 0 } ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -3,3 +3,12 @@ extensions/
 scratch/
 exec*.json
 exec_*.json
+
+# Never commit these
+node_modules/
+.next/
+database.sqlite
+keys.json
+creds_dump.json
+*.sqlite
+brain/

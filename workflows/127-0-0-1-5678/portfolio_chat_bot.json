@@ -1,0 +1,79 @@
+{
+  "name": "Portfolio Chat Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio-chat",
+        "responseMode": "responseNode",
+        "options": {
+          "corsAllowOrigins": "*",
+          "corsAllowMethods": "POST, OPTIONS",
+          "corsAllowHeaders": "Content-Type, Accept"
+        }
+      },
+      "id": "1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "portfolio-chat-webhook-1234"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "2",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const sessionId = $input.item.json.body.sessionId || 'unknown';\nconst message = $input.item.json.body.message || '';\n\n// MOCK RESPONSE - Replace this node with an AI Agent node\n// In your Memory node, set the Session ID to: {{$json.body.sessionId}}\n\nreturn {\n  reply: `I received your message: \"${message}\".\\n\\nYour isolated Session ID is: ${sessionId}.\\n\\nYou can replace this Code node in n8n with an actual AI Agent!`\n};"
+      },
+      "id": "3",
+      "name": "Process Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Message": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "f7a3f8c8-b42d-4e9e-8c3b-7a2e2d8e4b7b"
+}

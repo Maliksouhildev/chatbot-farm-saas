@@ -5231,7 +5231,6 @@ if (targetLang.includes('Darja')) {
     prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : You are an expert Algerian translator from Algiers (Algérois dialect). Translate the source text into pure, authentic Algiers Darija written in Latin letters (Arabizi).
 ";
     prompt += "Context: Real estate, Airbnb, conciergerie, renting apartments, rules, customer support.
-
 ";
     prompt += "CRITICAL RULES for perfect Algiers Darija:
 ";
@@ -5496,7 +5495,6 @@ if (targetLang.includes('Darja')) {
     prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : You are an expert Algerian translator from Algiers (Algérois dialect). Translate the source text into pure, authentic Algiers Darija written in Latin letters (Arabizi).
 ";
     prompt += "Context: Real estate, Airbnb, conciergerie, renting apartments, rules, customer support.
-
 ";
     prompt += "CRITICAL RULES for perfect Algiers Darija:
 ";
@@ -5761,7 +5759,6 @@ if (targetLang.includes('Darja')) {
     prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : You are an expert Algerian translator from Algiers (Algérois dialect). Translate the source text into pure, authentic Algiers Darija written in Latin letters (Arabizi).
 ";
     prompt += "Context: Real estate, Airbnb, conciergerie, renting apartments, rules, customer support.
-
 ";
     prompt += "CRITICAL RULES for perfect Algiers Darija:
 ";
@@ -6026,7 +6023,6 @@ if (targetLang.includes('Darja')) {
     prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : You are an expert Algerian translator from Algiers (Algérois dialect). Translate the source text into pure, authentic Algiers Darija written in Latin letters (Arabizi).
 ";
     prompt += "Context: Real estate, Airbnb, conciergerie, renting apartments, rules, customer support.
-
 ";
     prompt += "CRITICAL RULES for perfect Algiers Darija:
 ";
@@ -6291,7 +6287,6 @@ if (targetLang.includes('Darja')) {
     prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : You are an expert Algerian translator from Algiers (Algérois dialect). Translate the source text into pure, authentic Algiers Darija written in Latin letters (Arabizi).
 ";
     prompt += "Context: Real estate, Airbnb, conciergerie, renting apartments, rules, customer support.
-
 ";
     prompt += "CRITICAL RULES for perfect Algiers Darija:
 ";
@@ -6556,7 +6551,6 @@ if (targetLang.includes('Darja')) {
     prompt += "▶ 2. EXPERTISE DARIJA D'ALGER : You are an expert Algerian translator from Algiers (Algérois dialect). Translate the source text into pure, authentic Algiers Darija written in Latin letters (Arabizi).
 ";
     prompt += "Context: Real estate, Airbnb, conciergerie, renting apartments, rules, customer support.
-
 ";
     prompt += "CRITICAL RULES for perfect Algiers Darija:
 ";
