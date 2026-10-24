@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 const EVOLUTION_URL = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
 const API_KEY = process.env.EVOLUTION_API_KEY || 'farm_evolution_master_secret_2026';
 const INSTANCE = 'default_instance';

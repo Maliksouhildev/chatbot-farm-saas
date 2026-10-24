@@ -1,0 +1,273 @@
+{
+  "createdAt": "2026-03-21T18:50:56.359Z",
+  "updatedAt": "2026-03-21T19:31:52.000Z",
+  "id": "2tMPxCOepHbbScnX",
+  "name": "My workflow 2",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "0be382f4-2ec3-42a0-95b5-933279b9ce00",
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1340,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "keys",
+        "keyPattern": "res_pending:*"
+      },
+      "id": "16235546-6c68-4bd9-92c6-e1175e0e2b11",
+      "name": "Redis: Get Pending Keys",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        -40
+      ],
+      "credentials": {
+        "redis": {
+          "id": "V8K02flgy9UVw9wq",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "if (!$input.first().json.keys || $input.first().json.keys.length === 0) return [];\nreturn $input.first().json.keys.map(key => ({ json: { key } }));"
+      },
+      "id": "7086d5b9-75fd-4a22-bfe3-6fb2080036ce",
+      "name": "Split Keys",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -900,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "={{ $json.key }}",
+        "options": {}
+      },
+      "id": "23512ec5-9d8e-43da-8e0b-5d732263e451",
+      "name": "Redis: Get Value",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -680,
+        -40
+      ],
+      "credentials": {
+        "redis": {
+          "id": "V8K02flgy9UVw9wq",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "check-time",
+              "leftValue": "={{ Date.now() - JSON.parse($json.value).timestamp }}",
+              "rightValue": 43200000,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "09e682ba-af49-41a1-a5bc-d1d7f9512485",
+      "name": "If > 12 Hours (43.2M ms)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -460,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.hospitable.com/v2/reservations/{{ JSON.parse($json.value).reservation_id }}/cancel",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"message\": \"Annulation automatique: Delai de paiement de 12h depasse.\"}",
+        "options": {}
+      },
+      "id": "1a4ba3e7-2554-4ed9-b950-459a089f7b62",
+      "name": "Hospitable: Cancel Res",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -220,
+        -140
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fWa7mv4OTPOJ9HRv",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1035565869637770",
+        "recipientPhoneNumber": "={{ $json.key.split(':')[1] }}",
+        "textBody": "⚠️ Bonjour, le délai de 12 heures pour finaliser votre paiement est écoulé. Votre réservation a été annulée et l'appartement a été débloqué.\n\nN'hésitez pas à nous recontacter si vous souhaitez faire une nouvelle demande !",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "id": "9f2e2a7f-e7fb-4e8b-ac00-e30f6fa85482",
+      "name": "WA: Expiration Message",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -140
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "A5i0TdmXFmQSw5T3",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $json.key }}"
+      },
+      "id": "46f3af7b-8379-4cf1-b93b-8c02e6389b40",
+      "name": "Redis: Delete Key",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        220,
+        -140
+      ],
+      "credentials": {
+        "redis": {
+          "id": "V8K02flgy9UVw9wq",
+          "name": "Redis account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every Hour": {
+      "main": [
+        [
+          {
+            "node": "Redis: Get Pending Keys",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis: Get Pending Keys": {
+      "main": [
+        [
+          {
+            "node": "Split Keys",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Keys": {
+      "main": [
+        [
+          {
+            "node": "Redis: Get Value",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis: Get Value": {
+      "main": [
+        [
+          {
+            "node": "If > 12 Hours (43.2M ms)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If > 12 Hours (43.2M ms)": {
+      "main": [
+        [
+          {
+            "node": "Hospitable: Cancel Res",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hospitable: Cancel Res": {
+      "main": [
+        [
+          {
+            "node": "WA: Expiration Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA: Expiration Message": {
+      "main": [
+        [
+          {
+            "node": "Redis: Delete Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "7f99e8c8-84fc-47e6-93a7-b197d1c55e5b",
+  "triggerCount": 0,
+  "tags": []
+}

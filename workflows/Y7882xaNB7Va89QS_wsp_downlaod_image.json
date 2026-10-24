@@ -1,0 +1,275 @@
+{
+  "createdAt": "2026-04-07T22:45:48.050Z",
+  "updatedAt": "2026-04-14T09:48:05.000Z",
+  "id": "Y7882xaNB7Va89QS",
+  "name": "wsp downlaod image",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "url"
+            },
+            {
+              "name": "phone"
+            },
+            {
+              "name": "nom_client"
+            },
+            {
+              "name": "ville_quartier"
+            },
+            {
+              "name": "surface"
+            },
+            {
+              "name": "situation_actuelle"
+            },
+            {
+              "name": "disponibilite_annuelle"
+            },
+            {
+              "name": "timing_et_etat"
+            },
+            {
+              "name": "score_sur_5"
+            },
+            {
+              "name": "appt_id",
+              "type": "number"
+            },
+            {
+              "name": "liens_photos"
+            }
+          ]
+        }
+      },
+      "id": "2cdfd1f7-4192-48be-b2f0-f8329888fe0f",
+      "name": "Execute Subworkflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.url.match(/mid=([^&]+)/)[1] }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "id": "29fca393-43bd-4db4-80ec-57a04491e69b",
+      "name": "Get Fresh URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        200,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "whatsAppApi": {
+          "id": "A5i0TdmXFmQSw5T3",
+          "name": "WhatsApp account 2"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// If Get Fresh URL failed, pass through with a flag\nconst input = $input.first().json;\nif (input.error || !input.url) {\n    const original = $('Execute Subworkflow').first().json;\n    return [{ json: { ...original, url: null, _failed: true } }];\n}\nreturn [{ json: input }];"
+      },
+      "id": "fd0d3956-47c6-4eb5-b0cb-94473b7292ed",
+      "name": "Check Fresh URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "6cd1f8ab-b3f2-4c32-9af2-ad6aad2b5929",
+      "name": "Download Binary File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "whatsAppApi": {
+          "id": "A5i0TdmXFmQSw5T3",
+          "name": "WhatsApp account 2"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/files/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "folderPath",
+              "value": "/appartements"
+            },
+            {
+              "name": "options",
+              "value": "{\"access\":\"PUBLIC_INDEXABLE\"}"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7ecc6f6d-d8d2-4b67-9546-f6f833256a69",
+      "name": "Upload to HubSpot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "5HBUs8WG3nCRPWi0",
+          "name": "HubSpot account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst original = $('Execute Subworkflow').first().json;\nlet hsUrl = 'upload_echoue';\ntry {\n    const uploadResult = $input.first().json;\n    hsUrl = uploadResult.url || uploadResult.default_hosting_url || 'upload_echoue';\n} catch(e) {}\nconst finalItem = Object.assign({}, original);\nfinalItem.hubspot_url = hsUrl;\nreturn [{ json: finalItem }];\n"
+      },
+      "id": "c999df25-e3b9-4724-89dc-ac038391c02f",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Subworkflow": {
+      "main": [
+        [
+          {
+            "node": "Get Fresh URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Fresh URL": {
+      "main": [
+        [
+          {
+            "node": "Check Fresh URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Fresh URL": {
+      "main": [
+        [
+          {
+            "node": "Download Binary File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Binary File": {
+      "main": [
+        [
+          {
+            "node": "Upload to HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to HubSpot": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "Execute Subworkflow": [
+      {
+        "json": {
+          "url": "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1169278421899217&source=getMedia&ext=1776158402&hash=ARlkmHuuzUdQWub6ifzsXfhuThlcknBSF4-DsIkOlVzxGw",
+          "phone": "213551671229",
+          "nom_client": "Malik Mehdid",
+          "ville_quartier": "Hydra",
+          "surface": "100",
+          "situation_actuelle": "F4",
+          "disponibilite_annuelle": "next summer",
+          "timing_et_etat": "3 million",
+          "score_sur_5": "5",
+          "appt_id": 0,
+          "liens_photos": "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=985220417176174&source=getMedia&ext=1776158403&hash=ARlSPdkAQh4XSxQaaZt0dRfzZCQkLcCK_Y9yo0jLZrf_Ag\nhttps://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1169278421899217&source=getMedia&ext=1776158402&hash=ARlkmHuuzUdQWub6ifzsXfhuThlcknBSF4-DsIkOlVzxGw\nhttps://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=922419540562303&source=getMedia&ext=1776158403&hash=ARnh2RqLlwdLkwoRgIIgxcHj0ILr4nbjLMJl7-Od3M26Mw\nhttps://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=2860729604268771&source=getMedia&ext=1776158493&hash=ARlRXZydWRmjm06vv6lfsvFoH2INu_S71BuAM-tr6bvHnQ"
+        }
+      }
+    ]
+  },
+  "versionId": "09c97fe7-f863-45ec-802f-4faa5a2189ec",
+  "triggerCount": 0,
+  "tags": []
+}

@@ -1,0 +1,104 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "phone"
+            }
+          ]
+        }
+      },
+      "id": "e98e21a2-c111-4777-a8a2-trigger1",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const phone = $('When Executed by Another Workflow').first().json.phone || '';\nreturn [\n  { json: { key_to_delete: 'photo_urls_' + phone } },\n  { json: { key_to_delete: 'vision_batch_' + phone } },\n  { json: { key_to_delete: 'photo_count_' + phone } }\n];"
+      },
+      "id": "code-prep-wipe",
+      "name": "Prep Keys To Delete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $json.key_to_delete }}"
+      },
+      "id": "redis-delete",
+      "name": "Redis Wipe Photos",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ],
+      "credentials": {
+        "redis": {
+          "id": "V8K02flgy9UVw9wq",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { result: \"Photos effacées avec succès. Demande au client d'envoyer les nouvelles photos.\" } }];"
+      },
+      "id": "code-reponse",
+      "name": "Réponse pour IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prep Keys To Delete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Keys To Delete": {
+      "main": [
+        [
+          {
+            "node": "Redis Wipe Photos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Wipe Photos": {
+      "main": [
+        [
+          {
+            "node": "Réponse pour IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,466 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            },
+            {
+              "triggerAtHour": 12
+            },
+            {
+              "triggerAtHour": 16
+            },
+            {
+              "triggerAtHour": 20
+            }
+          ]
+        }
+      },
+      "id": "75b224d4-527b-4d08-97bc-4955c914b3de",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -540,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "command": "ls -1 /files/outputs/*.mp4 | shuf | head -n 1"
+      },
+      "id": "9f9d4327-74ce-4377-bc57-efd8e3939032",
+      "name": "Execute Command",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -340,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.stdout.trim().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "477eb5e3-f998-4861-8755-c3aa27d6fc84",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -140,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "mlkmehdid@gmail.com",
+        "toEmail": "mlkmehdid@gmail.com",
+        "subject": "⚠️ Publisher is EMPTY!",
+        "options": {}
+      },
+      "id": "a504708e-0bfc-4eb2-838c-471c7cb9c7e7",
+      "name": "Email Empty",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        60,
+        -20
+      ],
+      "webhookId": "80f08670-92b6-4e8d-b7c6-058539d5bddf",
+      "credentials": {
+        "smtp": {
+          "id": "y9GfhJenJPSfkVno",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const files = $input.first().json.stdout.trim().split('\\n').filter(f => f);\nreturn files.map(file => ({ json: { video_path: file } }));"
+      },
+      "id": "4816fbc5-7f68-42be-9432-346b1c98f707",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "057cee70-ee2e-4e83-b13f-0618ad2c0f4a",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        240,
+        -340
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $('Loop Over Items').item.json.video_path }}",
+        "options": {
+          "dataPropertyName": "data"
+        }
+      },
+      "id": "55dfe836-5bc7-4bfa-afec-1e7e81622e1c",
+      "name": "Read/Write Files from Disk",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        460,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "command": "rm -f \"{{ $('Loop Over Items').item.json.video_path }}\" \"{{ $('Loop Over Items').item.json.video_path.replace('.mp4','.json') }}\""
+      },
+      "id": "f5e57d1d-8304-4a2c-89a6-f733bebb7779",
+      "name": "Delete Clip & JSON",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1460,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "mlkmehdid@gmail.com",
+        "toEmail": "mlkmehdid@gmail.com",
+        "subject": "🎬 Short Published! {{ $(\"Parse Sidecar\").first().json.meta.viral_caption || \"New Clip\" }}",
+        "options": {
+          "appendAttribution": false
+        },
+        "message": "<h2>🎬 New YouTube Short Published!</h2>\n<p><strong>Clip Title (Caption):</strong> {{ $('Parse Sidecar').first().json.meta.viral_caption || 'N/A' }}</p>\n<p><strong>Game:</strong> {{ $('Parse Sidecar').first().json.meta.game || 'N/A' }}</p>\n<p><strong>Theme:</strong> {{ $('Parse Sidecar').first().json.meta.theme || 'N/A' }}</p>\n<p><strong>Summary:</strong> {{ $('Parse Sidecar').first().json.meta.global_summary || 'N/A' }}</p>\n<hr/>\n<p><strong>📁 File:</strong> {{ $('Loop Over Items').item.json.video_path }}</p>\n<p><strong>✅ Status:</strong> Uploaded to YouTube and archived.</p>\n<p>Check your YouTube Studio for the live link.</p>"
+      },
+      "id": "54125c4e-8f9c-4cad-96b8-764f7e714d0b",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1660,
+        -320
+      ],
+      "webhookId": "3f903da9-8afc-444f-97f2-a826f6f64c28",
+      "credentials": {
+        "smtp": {
+          "id": "y9GfhJenJPSfkVno",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/youtube/v3/videos",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "uploadType",
+              "value": "resumable"
+            },
+            {
+              "name": "part",
+              "value": "snippet,status"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Upload-Content-Type",
+              "value": "video/mp4"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ snippet: { title: ($json.meta.viral_caption || 'INSANE GAMING MOMENT').toUpperCase() + ' 😱💀 #Shorts', description: '😱 ' + ($json.meta.viral_caption || 'INSANE MOMENT').toUpperCase() + '\\n\\n🎮 ' + ($json.meta.global_summary || 'Epic gaming moment!') + '\\n\\n📱 FOLLOW for daily clips! Drop a 🔥 if you want more!\\n\\n#Shorts #Gaming #FunnyMoments #GamingClips #Viral #FYP #Streamer #BrainRot #GamingHighlights #YoutubeShorts #ForYou #Trending #' + ($json.meta.game || 'Gaming').replace(/[^a-zA-Z0-9]/g,''), categoryId: '20' }, status: { privacyStatus: 'public', selfDeclaredMadeForKids: false } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "85aa4008-2841-47c5-801f-2573d5ba5828",
+      "name": "Initiate YouTube Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        860,
+        -320
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "uZZfE7BMA1T5wyqf",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.first().json;\nconst uploadUrl = (resp.headers && resp.headers.location) ? resp.headers.location : null;\nif (!uploadUrl) throw new Error('No upload URL. Headers: ' + JSON.stringify(resp.headers));\n// Binary comes from Parse Sidecar (which grabbed it from Read/Write Files from Disk)\nconst binary = $('Parse Sidecar').first().binary;\nreturn [{ json: { uploadUrl }, binary }];"
+      },
+      "id": "f1971981-7fc7-4489-9e29-d190b1424634",
+      "name": "Extract Upload URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Extract Upload URL').first().json.uploadUrl }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "video/mp4"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "5b4c38d0-143f-4059-98f5-dd72dd0d12db",
+      "name": "Upload Video to YouTube",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1260,
+        -320
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "uZZfE7BMA1T5wyqf",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "=SIDECAR=\"{{ $('Loop Over Items').item.json.video_path.replace('.mp4','.json') }}\"; [ -f \"$SIDECAR\" ] && cat \"$SIDECAR\" || echo '{\"viral_caption\":\"INSANE MOMENT\",\"game\":\"Gaming\",\"global_summary\":\"An insane gaming moment.\",\"vibe\":\"High-energy\",\"theme\":\"Gaming\",\"key_themes\":[\"gaming\",\"funny\"]}'"
+      },
+      "id": "1a32f6ff-3c58-4579-90a7-b04e6af3ea7c",
+      "name": "Read Sidecar",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        600,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.stdout || '{}';\nlet meta = {};\ntry { meta = JSON.parse(raw); } catch(e) { meta = { viral_caption: 'INSANE MOMENT', game: 'Gaming', global_summary: 'Epic gaming moment.', vibe: 'High-energy', theme: 'Gaming', key_themes: ['gaming'] }; }\n// Carry the video binary forward\nconst binary = $('Read/Write Files from Disk').first().binary;\nreturn [{ json: { meta, video_path: $('Loop Over Items').item.json.video_path }, binary }];"
+      },
+      "id": "d6fc2e2a-5658-47fc-9fe6-157399946271",
+      "name": "Parse Sidecar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Read Sidecar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command1": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initiate YouTube Upload": {
+      "main": [
+        [
+          {
+            "node": "Extract Upload URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Upload URL": {
+      "main": [
+        [
+          {
+            "node": "Upload Video to YouTube",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Video to YouTube": {
+      "main": [
+        [
+          {
+            "node": "Execute Command1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sidecar": {
+      "main": [
+        [
+          {
+            "node": "Parse Sidecar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Sidecar": {
+      "main": [
+        [
+          {
+            "node": "Initiate YouTube Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "767f04363e936506eae0879449536a54787511597d7e446272752446a3520170"
+  }
+}

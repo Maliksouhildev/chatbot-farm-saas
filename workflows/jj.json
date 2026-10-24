@@ -1,0 +1,28 @@
+Invoke-RestMethod -Uri "https://gavyn-eerier-kia.ngrok-free.dev/webhook/hospitable-hold" -Method Post -ContentType "application/json" -Body '{
+    "action": "reservation.created",
+    "data": {
+        "status": "accepted",
+        "platform": "manual",
+        "guest": {
+            "first_name": "Malik",
+            "last_name": "Test",
+            "phone_numbers": [
+                "+213551671229"
+            ]
+        },
+        "check_in": "2026-04-21T15:00:00+01:00",
+        "check_out": "2026-04-22T11:00:00+01:00",
+        "properties": [
+            {
+                "public_name": "Le Cypres | secure residence urban 2000"
+            }
+        ],
+        "financials": {
+            "guest": {
+                "total_price": {
+                    "formatted": "110.00"
+                }
+            }
+        }
+    }
+}'

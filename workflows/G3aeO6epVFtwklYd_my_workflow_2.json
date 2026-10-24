@@ -1,0 +1,452 @@
+{
+  "createdAt": "2026-04-11T08:21:17.862Z",
+  "updatedAt": "2026-04-20T11:09:52.000Z",
+  "id": "G3aeO6epVFtwklYd",
+  "name": "My workflow 2",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first().json;\nif (input.blocked) {\n    return [{ json: { output: 'Export bloqué : ' + input.blocking_reason } }];\n}\nreturn [{ json: { output: 'Dossiers transmis avec succès à léquipe Le Bardo !' } }];"
+      },
+      "id": "4974f113-7859-43f2-9152-357961d576f1",
+      "name": "Réponse pour IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2560,
+        1080
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "appToken",
+        "email": "={{ $json.phone + '-' + $now.toMillis() }}@prospect-bardo.com",
+        "additionalFields": {
+          "city": "={{ $json.ville_quartier }}",
+          "message": "=📊 RAPPORT D'ÉVALUATION - CONCIERGERIE LE BARDO 📊\n\n👤 PROFIL CLIENT\n- Nom : {{ $json.nom_client || 'Non renseigné' }}\n- Téléphone : +{{ $json.phone }}\n\n🏠 CARACTÉRISTIQUES DU BIEN\n- Localisation : {{ $json.ville_quartier }}\n- Surface validée : {{ $json.surface }}\n\n📋 ANALYSE DU DOSSIER\n- Situation actuelle : {{ $json.situation_actuelle }}\n- Timing & État estimé : {{ $json.timing_et_etat }}\n- Disponibilité : {{ $json.disponibilite_annuelle }}\n\n⭐ SCORE DE QUALIFICATION IA : {{ $json.score_sur_5 }}/5\n\n📸 PHOTOS DU BIEN :\n{{ $json.liens_photos || 'Aucune photo reçue' }}\n📨 Photos transmises en direct vers le téléphone admin."
+        },
+        "options": {}
+      },
+      "id": "35caf938-8950-4405-9fb6-9bccd28e8c7c",
+      "name": "Créer Contact HubSpot1",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [
+        2360,
+        700
+      ],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "5HBUs8WG3nCRPWi0",
+          "name": "HubSpot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = $('When Executed by Another Workflow').first().json;\nconst phone = t.phone || '';\nreturn [\n  { json: { key_to_delete: 'photo_urls_' + phone } },\n  { json: { key_to_delete: 'vision_batch_' + phone } },\n  { json: { key_to_delete: 'photo_count_' + phone } },\n  { json: { key_to_delete: 'bot_context_' + phone } },\n  { json: { key_to_delete: 'appts_state_' + phone } },\n  { json: { key_to_delete: 'lang_stats_' + phone } },\n  { json: { key_to_delete: 'user_lang_' + phone } }\n];"
+      },
+      "id": "0b9fcfa8-d0f4-4319-9236-f14083941846",
+      "name": "Prep Wipe Keys",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2560,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $json.key_to_delete }}"
+      },
+      "id": "b94414df-dced-40c1-8956-ac656ead2618",
+      "name": "Redis Wipe System",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2760,
+        700
+      ],
+      "credentials": {
+        "redis": {
+          "id": "V8K02flgy9UVw9wq",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "liste_appartements_json"
+            },
+            {
+              "name": "phone"
+            },
+            {
+              "name": "nom_client"
+            },
+            {
+              "name": "liens_photos"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -860,
+        520
+      ],
+      "id": "28011c09-4ee8-49f5-b526-cdf5cf274617",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst t = $('Merge With Redis State').first().json;\nlet appartements = [];\n\ntry {\n  appartements = JSON.parse(t.liste_appartements_json);\n  if (!Array.isArray(appartements)) appartements = [appartements];\n} catch(e) {\n  appartements = [{\n    ville_quartier: 'Erreur Parsing JSON',\n    surface: '',\n    nombre_pieces: '',\n    date_disponibilite: '',\n    loyer_souhaite: 'Data brute: ' + t.liste_appartements_json\n  }];\n}\n\n// Split the global liens_photos across apartments chronologically\n// e.g. 2 apartments + 8 photos → apartment 0 gets photos 0-3, apartment 1 gets photos 4-7\nconst allPhotoUrls = (t.liens_photos || '')\n    .split('\\n')\n    .map(u => u.trim())\n    .filter(u => u.startsWith('http') && u.length > 10);\n\nconst totalPhotos = allPhotoUrls.length;\nconst totalApts = appartements.length;\n\n// Slice photos per apartment\n// If photo counts are uneven, try to use apt.photo_count if available, else divide evenly\nlet photoOffset = 0;\nconst aptPhotoSlices = appartements.map((apt, idx) => {\n    // Use stored photo_count if the agent provided it, otherwise estimate evenly\n    const count = apt.photo_count || Math.ceil(totalPhotos / totalApts);\n    const slice = allPhotoUrls.slice(photoOffset, photoOffset + count);\n    photoOffset += count;\n    return slice;\n});\n\nreturn appartements.map((apt, idx) => ({\n  json: {\n    phone: t.phone || '',\n    nom_client: t.nom_client || 'Non renseigné',\n    liens_photos: aptPhotoSlices[idx].join('\\n') || 'Aucune photo reçue',\n    ville_quartier: apt.ville_quartier || '',\n    surface: String(apt.surface || ''),\n    situation_actuelle: String(apt.nombre_pieces || apt.situation_actuelle || ''),\n    disponibilite_annuelle: String(apt.date_disponibilite || apt.disponibilite_annuelle || ''),\n    timing_et_etat: String(apt.loyer_souhaite || apt.timing_et_etat || ''),\n    score_sur_5: '5'\n  }\n}));\n"
+      },
+      "id": "31c928ce-4d19-42ad-a6a4-e703c815aaab",
+      "name": "Parse Array",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nlet idCounter = 0;\nfor (const item of $input.all()) {\n    const apt = item.json;\n    apt.appt_id = idCounter++;\n    \n    let urls = apt.liens_photos ? apt.liens_photos.split('\\n') : [];\n    let hasUploads = false;\n    \n    for (const u of urls) {\n        if (u.trim().length > 10 && u.startsWith('http')) {\n            const copy = Object.assign({}, apt);\n            copy.url = u.trim();\n            out.push({json: copy});\n            hasUploads = true;\n        }\n    }\n    \n    if (!hasUploads) {\n        const copy = Object.assign({}, apt);\n        copy.url = \"AUCUNE_PHOTO\";\n        out.push({json: copy});\n    }\n}\nreturn out;"
+      },
+      "id": "cb912e42-d3c3-4f5d-be5e-dbe1bf700026",
+      "name": "Split Photos for Upload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.url }}",
+              "operation": "notEqual",
+              "value2": "AUCUNE_PHOTO"
+            }
+          ]
+        }
+      },
+      "id": "3139acfa-7bf4-443f-a80d-9a6569e37e9b",
+      "name": "Has Photos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "Y7882xaNB7Va89QS",
+        "mode": "each",
+        "options": {}
+      },
+      "id": "2ea2b130-7a91-4f4b-94d6-dd0dc0eb3bdc",
+      "name": "Transfer Image to CRM",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        420
+      ],
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "ec7c43f6-d561-4fbf-bfc2-0166a7d1671c",
+      "name": "Merge Uploads",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst grouped = {};\nfor (const item of $input.all()) {\n    const apt = item.json;\n    const id = apt.appt_id || 0;\n    \n    if (!grouped[id]) {\n        // Clone the original properties\n        grouped[id] = Object.assign({}, apt);\n        grouped[id].publicLinks = [];\n    }\n    \n    if (apt.hubspot_url && apt.hubspot_url.startsWith('http')) {\n        grouped[id].publicLinks.push(apt.hubspot_url);\n    }\n}\n\nconst out = [];\nfor (const id in grouped) {\n    const apt = grouped[id];\n    apt.liens_photos = apt.publicLinks.length > 0 ? apt.publicLinks.join('\\n') : 'Aucune photo téléchargée.';\n    \n    // Cleanup temporary fields\n    delete apt.url;\n    delete apt.hubspot_url;\n    delete apt.publicLinks;\n    \n    out.push({ json: apt });\n}\nreturn out;\n"
+      },
+      "id": "53f9f91a-8859-4787-aa7e-d6e6c34a685e",
+      "name": "Group and Format Apartments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "=appts_state_{{ $('When Executed by Another Workflow').first().json.phone }}",
+        "options": {}
+      },
+      "id": "c82655ad-af8f-43bd-878f-e6c0c3b3b695",
+      "name": "Redis Get State",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        480
+      ],
+      "credentials": {
+        "redis": {
+          "id": "V8K02flgy9UVw9wq",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst trigger = $('When Executed by Another Workflow').first().json;\nlet redisStateStr = $input.first().json.value || null;\n\n// If Redis has the state, use it. Otherwise fall back to what the AI sent.\nlet finalAppts = trigger.liste_appartements_json;\nif (redisStateStr && redisStateStr.startsWith('[')) {\n    finalAppts = redisStateStr;\n}\n\nreturn [{\n    json: {\n        phone: trigger.phone || '',\n        nom_client: trigger.nom_client || 'Non renseigné',\n        liens_photos: trigger.liens_photos || 'Aucune photo reçue',\n        liste_appartements_json: finalAppts\n    }\n}];"
+      },
+      "id": "a49e69e0-01e2-4ed4-b5f1-1fc9e91897ec",
+      "name": "Merge With Redis State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -60,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst trigger = $('When Executed by Another Workflow').first().json;\nlet appts = [];\ntry {\n    appts = JSON.parse(trigger.liste_appartements_json || '[]');\n} catch(e) {\n    appts = $input.all().map(i => i.json).filter(j => j.id !== undefined);\n}\n\n// Check if liens_photos from trigger has actual photo URLs\nconst liensPhotos = trigger.liens_photos || \"\";\nconst hasRealPhotoUrls = liensPhotos.includes(\"http\") && \n                          !liensPhotos.includes(\"Aucune\");\n\n// Block export if ANY apartment is missing photos AND no photos were provided via liens_photos\nconst missingPhotos = appts.filter(apt => {\n    // Accept photos_transmises:true OR actual photo URLs in liens_photos\n    return apt.photos_transmises !== true && !hasRealPhotoUrls;\n});\n\nif (missingPhotos.length > 0) {\n    const villes = missingPhotos.map(a => a.ville_quartier || 'inconnu').join(', ');\n    return [{ json: { ...trigger, blocked: true, blocking_reason: 'Photos manquantes pour : ' + villes } }];\n}\n\n// Mark all apartments as having photos (using liens_photos as source of truth)\nappts = appts.map(apt => ({ ...apt, photos_transmises: true }));\n\nreturn [{ json: { ...trigger, blocked: false, liste_appartements_json: JSON.stringify(appts) } }];\n"
+      },
+      "id": "5b2e1476-8e67-4936-8a0a-b6615cdac724",
+      "name": "Check Photos Before Export",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.blocked }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5038835e-0fda-4eba-b497-a8aba7eb661f",
+      "name": "Is Export Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        460,
+        540
+      ]
+    }
+  ],
+  "connections": {
+    "Créer Contact HubSpot1": {
+      "main": [
+        [
+          {
+            "node": "Prep Wipe Keys",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Wipe Keys": {
+      "main": [
+        [
+          {
+            "node": "Redis Wipe System",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Wipe System": {
+      "main": [
+        [
+          {
+            "node": "Réponse pour IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Redis Get State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Array": {
+      "main": [
+        [
+          {
+            "node": "Split Photos for Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Photos for Upload": {
+      "main": [
+        [
+          {
+            "node": "Has Photos?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Photos?": {
+      "main": [
+        [
+          {
+            "node": "Transfer Image to CRM",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Uploads",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Transfer Image to CRM": {
+      "main": [
+        [
+          {
+            "node": "Group and Format Apartments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group and Format Apartments": {
+      "main": [
+        [
+          {
+            "node": "Merge Uploads",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Créer Contact HubSpot1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Get State": {
+      "main": [
+        [
+          {
+            "node": "Merge With Redis State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge With Redis State": {
+      "main": [
+        [
+          {
+            "node": "Check Photos Before Export",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Photos Before Export": {
+      "main": [
+        [
+          {
+            "node": "Is Export Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Export Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Réponse pour IA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "global": {
+      "213551671229": null,
+      "photo_count_213551671229": 0
+    }
+  },
+  "meta": null,
+  "pinData": {},
+  "versionId": "4f953c91-b979-498c-bc3b-d60f44f54f9b",
+  "triggerCount": 1,
+  "tags": []
+}

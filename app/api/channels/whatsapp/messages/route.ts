@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 function extractMessageText(msgObj: any): string {
   if (!msgObj) return '';
   if (typeof msgObj.conversation === 'string') return msgObj.conversation;

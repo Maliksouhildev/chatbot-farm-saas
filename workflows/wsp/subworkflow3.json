@@ -1,0 +1,374 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "query"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1100,
+        60
+      ],
+      "id": "c5ca8482-3865-4743-836b-b1e9de742eb8",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "let rawQuery = $json.query || \"\";\nlet data = {};\n\ntry {\n  // On tente de réparer le JSON s'il manque des guillemets ou des accolades à la fin\n  if (rawQuery.includes('{') && !rawQuery.includes('}')) {\n    rawQuery += '\"}'; \n  }\n  data = JSON.parse(rawQuery);\n} catch (e) {\n  // Si c'est vraiment illisible, on renvoie des valeurs vides pour éviter l'erreur 500\n  data = {};\n}\n\nreturn {\n  property_id: data.property_id || \"\",\n  start_date: data.start_date || \"\",\n  end_date: data.end_date || \"\",\n  guests: data.guests || 1\n};"
+      },
+      "id": "27554796-e681-4e98-b8f2-44a0fb017aaa",
+      "name": "Préparer Devis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -860,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\n\n// 1. Si Hospitable renvoie une erreur (occupé, mauvaises dates, faux ID)\nif (response.error || response.status_code || response.message) {\n    return [{ json: { result: \"NON DISPONIBLE : L'appartement est occupé à ces dates.\" } }];\n}\n\n// 2. Si succès, on extrait les données de la nouvelle structure V2\nconst data = response.data || response;\n\nif (data && data.financials && data.financials.totals && data.financials.totals.total) {\n    // On récupère le prix déjà formaté avec la devise (ex: \"€167.00\")\n    const prixTotal = data.financials.totals.total.formatted;\n    \n    // On récupère le lien de paiement direct généré par Hospitable\n    const lienDirect = data.booking_url || \"\";\n\n    return [{ \n        json: { \n            result: `DISPONIBLE. Le prix total exact du séjour est de : ${prixTotal}. Le lien de réservation direct pour ces dates est : ${lienDirect}` \n        } \n    }];\n}\n\n// Sécurité par défaut\nreturn [{ json: { result: \"NON DISPONIBLE.\" } }];"
+      },
+      "id": "b743bf06-01d8-4929-920d-9aef4a3b618c",
+      "name": "Analyser le Devis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://public.api.hospitable.com/v2/properties/' + $json.property_id + '/quote' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"checkin_date\": $json.start_date, \"checkout_date\": $json.end_date, \"guests\": { \"adults\": $json.guests, \"children\": 0, \"infants\": 0, \"pets\": 0 } } }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "6fb10fa2-ab4f-454d-9e95-eda66a37754e",
+      "name": "API Quote Hospitable1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -620,
+        60
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fWa7mv4OTPOJ9HRv",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://public.api.hospitable.com/v2/properties?per_page=100",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "44439a8f-f91f-4cda-99b1-79ee4aa2b51a",
+      "name": "Récupérer Propriétés Hospitable",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1400,
+        -200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fWa7mv4OTPOJ9HRv",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst properties = $input.first().json.data || [];\n\nconst translateAmenity = (am) => {\n    const dict = {\n        \"wifi\": \"WiFi\", \"ac\": \"Climatisation\", \"free_on_premise_parking\": \"Parking Gratuit\",\n        \"kitchen\": \"Cuisine\", \"tv\": \"Télévision\", \"washer\": \"Lave-linge\", \"heating\": \"Chauffage\",\n        \"beach_access\": \"Accès Plage\", \"pool\": \"Piscine\", \"elevator\": \"Ascenseur\"\n    };\n    return dict[am] || am;\n};\n\nreturn properties.map(p => {\n  const nomAffichage = p.public_name || p.name || \"\";\n  \n  let imageUrl = p.picture || \"Pas d'image\";\n  if (imageUrl.includes(\"?\")) imageUrl = imageUrl.split(\"?\")[0];\n\n  let prix = \"Sur demande\";\n  if (p.base_price) {\n      prix = p.base_price + (p.currency ? \" \" + p.currency : \" DZD\");\n  } else if (p.pricing && p.pricing.base_price) {\n      prix = p.pricing.base_price + \" DZD\";\n  }\n\n  let equipementsStr = \"\";\n  if (p.amenities && Array.isArray(p.amenities)) {\n      const topAmenities = p.amenities.filter(a => [\"wifi\", \"ac\", \"free_on_premise_parking\", \"kitchen\", \"tv\", \"washer\", \"beach_access\", \"elevator\"].includes(a));\n      if (topAmenities.length > 0) {\n          equipementsStr = \" | Équipements: \" + topAmenities.map(translateAmenity).join(', ');\n      }\n  }\n\n  let rulesString = p.house_rules ? JSON.stringify(p.house_rules) : \"Aucune\";\n  let checkinInfos = `Check-in: ${p.checkin || '15:00'} | Check-out: ${p.checkout || '10:00'}`;\n\n  // THE MAGIC FIX: We append rules and checkin directly to Description_Courte\n  // so the AI definitely sees it even if it only reads the Description column!\n  let descriptionComplete = (p.summary ? p.summary.substring(0, 200) + \"...\" : \"Pas de description\") \n        + equipementsStr \n        + \" | RÈGLES ET ANIMAUX: \" + rulesString \n        + \" | HORAIRES: \" + checkinInfos;\n\n  return {\n    json: {\n      Property_ID: p.id,\n      Nom: nomAffichage,\n      Ville_Quartier: p.address ? p.address.city : \"Non défini\",\n      Capacite: p.capacity ? p.capacity.max : 0,\n      Description_Courte: descriptionComplete,\n      Image_URL: imageUrl,\n      Prix_Nuit: prix,\n      informations: rulesString // Keep to not break existing schema if needed\n    }\n  };\n});\n"
+      },
+      "id": "996c693b-c38c-4467-a62d-a19ebd00214a",
+      "name": "Formater pour Redis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1140,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1620,
+        -180
+      ],
+      "id": "a996b5d6-4f31-48ef-b69b-6425bd91df6f",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "all_properties",
+        "options": {}
+      },
+      "id": "redis-aggregate-001",
+      "name": "Aggregate Properties",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -840,
+        -280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.first().json.all_properties || [];\nreturn [{ json: { catalogue_json: JSON.stringify(items) } }];"
+      },
+      "id": "redis-build-json-001",
+      "name": "Build Catalogue JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -620,
+        -280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "catalogue_hospitable",
+        "value": "={{ $json.catalogue_json }}"
+      },
+      "id": "redis-set-catalogue-001",
+      "name": "Redis SET Catalogue",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -280
+      ],
+      "credentials": {
+        "redis": {
+          "id": "V8K02flgy9UVw9wq",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "catalogue_hospitable",
+        "options": {}
+      },
+      "id": "redis-get-catalogue-001",
+      "name": "Redis GET Catalogue",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -340,
+        -60
+      ],
+      "credentials": {
+        "redis": {
+          "id": "V8K02flgy9UVw9wq",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst catalogueStr = Object.values(raw)[0] || '[]';\nlet properties = [];\ntry { properties = JSON.parse(catalogueStr); } catch(e) {}\n\nconst query = ($('When Executed by Another Workflow').first().json.property_name || '').toLowerCase().trim();\n\nlet filtered = properties;\nif (query) {\n    filtered = properties.filter(p => \n        (p.Nom || '').toLowerCase().includes(query) ||\n        (p.Ville_Quartier || '').toLowerCase().includes(query)\n    );\n}\n\nif (filtered.length === 0) filtered = properties;\n\nconst result = filtered.map(p => \n    `ID: ${p.Property_ID} | ${p.Nom} | ${p.Ville_Quartier} | Capacité: ${p.Capacite} | Prix: ${p.Prix_Nuit}\\n${p.Description_Courte}`\n).join('\\n\\n---\\n\\n');\n\nreturn [{ json: { result: result || 'Catalogue vide.' } }];"
+      },
+      "id": "redis-format-ai-001",
+      "name": "Format Catalogue for AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.query ? ($json.query.includes('property_id') ? 'quote' : 'catalogue') : 'catalogue' }}",
+              "rightValue": "quote",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "id": "11111111-2222-3333-4444-555555555555"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "router-catalogue-vs-quote",
+      "name": "Route: Quote vs Catalogue",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -820,
+        60
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Route: Quote vs Catalogue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route: Quote vs Catalogue": {
+      "main": [
+        [
+          {
+            "node": "Préparer Devis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redis GET Catalogue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer Devis": {
+      "main": [
+        [
+          {
+            "node": "API Quote Hospitable1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Quote Hospitable1": {
+      "main": [
+        [
+          {
+            "node": "Analyser le Devis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis GET Catalogue": {
+      "main": [
+        [
+          {
+            "node": "Format Catalogue for AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Récupérer Propriétés Hospitable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Récupérer Propriétés Hospitable": {
+      "main": [
+        [
+          {
+            "node": "Formater pour Redis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formater pour Redis": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Properties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Properties": {
+      "main": [
+        [
+          {
+            "node": "Build Catalogue JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Catalogue JSON": {
+      "main": [
+        [
+          {
+            "node": "Redis SET Catalogue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "767f04363e936506eae0879449536a54787511597d7e446272752446a3520170"
+  }
+}

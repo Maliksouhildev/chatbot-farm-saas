@@ -1,0 +1,209 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "url",
+              "type": "string"
+            },
+            {
+              "name": "phone",
+              "type": "string"
+            },
+            {
+              "name": "nom_client",
+              "type": "string"
+            },
+            {
+              "name": "ville_quartier",
+              "type": "string"
+            },
+            {
+              "name": "surface",
+              "type": "string"
+            },
+            {
+              "name": "situation_actuelle",
+              "type": "string"
+            },
+            {
+              "name": "disponibilite_annuelle",
+              "type": "string"
+            },
+            {
+              "name": "timing_et_etat",
+              "type": "string"
+            },
+            {
+              "name": "score_sur_5",
+              "type": "string"
+            },
+            {
+              "name": "appt_id",
+              "type": "number"
+            },
+            {
+              "name": "liens_photos",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "trigger-sub",
+      "name": "Execute Subworkflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.url.match(/mid=([^&]+)/)[1] }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "id": "get-fresh-url",
+      "name": "Get Fresh URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        200,
+        0
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "A5i0TdmXFmQSw5T3",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "id": "download-binary-no-auth",
+      "name": "Download Binary File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/files/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "folderPath",
+              "value": "/appartements"
+            },
+            {
+              "name": "options",
+              "value": "{\"access\":\"PUBLIC_INDEXABLE\"}"
+            },
+            {
+              "parameterType": "formItem",
+              "name": "file",
+              "inputType": "binary",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "hubspot-upload-final",
+      "name": "Upload to HubSpot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        0
+      ],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "5HBUs8WG3nCRPWi0",
+          "name": "HubSpot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst original = $('Execute Subworkflow').first().json;\nconst hsUrl = $json.url || $json.default_hosting_url || 'erreur_upload';\nconst finalItem = Object.assign({}, original);\nfinalItem.hubspot_url = hsUrl;\nreturn [{ json: finalItem }];\n"
+      },
+      "id": "format-output-final",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Subworkflow": {
+      "main": [
+        [
+          {
+            "node": "Get Fresh URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Fresh URL": {
+      "main": [
+        [
+          {
+            "node": "Download Binary File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Binary File": {
+      "main": [
+        [
+          {
+            "node": "Upload to HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to HubSpot": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

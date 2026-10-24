@@ -1,0 +1,960 @@
+{
+  "createdAt": "2026-03-21T17:41:57.479Z",
+  "updatedAt": "2026-04-18T10:04:18.000Z",
+  "id": "G2M4kss6A5AvxPXI",
+  "name": "wsp hospitable",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hospitable-hold",
+        "options": {}
+      },
+      "id": "17e19a67-d2d7-4616-98e4-de1babf16304",
+      "name": "Webhook from Hospitable",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -480
+      ],
+      "webhookId": "d76004e3-92e8-4515-b3b9-328d257a4f01"
+    },
+    {
+      "parameters": {
+        "jsCode": "// On pointe vers le bon objet \"data\" envoyé par Hospitable\nconst guestData = $json.body.data.guest || {};\n\n// Le numéro de téléphone est dans un tableau (array) appelé \"phone_numbers\"\n// On récupère le premier numéro de la liste, s'il existe\nlet phoneRaw = \"\";\nif (guestData.phone_numbers && guestData.phone_numbers.length > 0) {\n  phoneRaw = guestData.phone_numbers[0];\n}\n\n// Sécurité : si le client n'a pas mis de numéro, on stoppe le flux ici\nif (!phoneRaw) {\n  return []; \n}\n\n// Nettoie le numéro pour qu'il matche WhatsApp (enlève les +, espaces, et remplace le 0 par 213)\n//const phoneClean = phoneRaw.replace(/\\D/g, '').replace(/^0/, '213'); \n// On force ton numéro pour le test (À SUPPRIMER EN PRODUCTION)\nconst phoneClean = \"213551671229\";\n\n// L'ID de réservation se trouve aussi dans l'objet \"data\"\nconst reservation_id = $json.body.data.id;\n\nreturn [{\n  json: {\n    phone: phoneClean,\n    redis_data: JSON.stringify({\n      reservation_id: reservation_id,\n      timestamp: Date.now(),\n      status: \"en_attente_paiement\"\n    })\n  }\n}];"
+      },
+      "id": "b0cf2081-ac84-4ac3-808b-cd98b1558eb5",
+      "name": "Clean Phone & Prepare JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        -620
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ 'res_pending:' + $('Clean Phone & Prepare JSON').first().json.phone }}",
+        "value": "={{ $('Clean Phone & Prepare JSON').first().json.redis_data }}"
+      },
+      "id": "f661bc97-a9ad-4bc8-8d81-11499536956a",
+      "name": "Redis: Lock Reservation",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        -640
+      ],
+      "credentials": {
+        "redis": {
+          "id": "V8K02flgy9UVw9wq",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1035565869637770",
+        "recipientPhoneNumber": "={{ $('Clean Phone & Prepare JSON').first().json.phone }}",
+        "textBody": "Bonjour ! Je viens de recevoir votre pré-réservation.\n\nPour finaliser, dites-moi comment vous souhaitez régler : en Euros ou en Dinars ?",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "id": "a164106d-ceb1-4337-823e-029863c3d8b2",
+      "name": "WA: Proactive Message",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        1880,
+        -640
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "A5i0TdmXFmQSw5T3",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "filtre-action",
+              "leftValue": "={{ $json.body.action }}",
+              "rightValue": "reservation.created",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "filtre-plateforme",
+              "leftValue": "={{ $json.body.data.platform }}",
+              "rightValue": "^(manual|direct)$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cee38e74-2f39-49ff-9c4c-ce63559df306",
+      "name": "Résa Directe Uniquement",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1080,
+        -540
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1035565869637770",
+        "recipientPhoneNumber": "213551671229",
+        "textBody": "=Nouvelle pré-réservation à encaisser.\n\nClient : {{ $('Clean Phone & Prepare JSON').first().json.phone }}\nRéservation : {{ $('Webhook from Hospitable').first().json.body.data.id }}\n\nLe client a 12h pour envoyer son reçu. Je t'alerterai à mi-chemin et à l'échéance.",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "id": "a85f209d-57eb-4821-8146-a60f4ef96d89",
+      "name": "WA: Alerte Admin T-0",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        2480,
+        -360
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "A5i0TdmXFmQSw5T3",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resume": "afterTime"
+      },
+      "id": "603cca02-f031-43ca-b943-876430bc4207",
+      "name": "Wait 6h",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        2680,
+        -360
+      ],
+      "webhookId": "wn4nuy80"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1035565869637770",
+        "recipientPhoneNumber": "={{ $('Clean Phone & Prepare JSON').first().json.phone }}",
+        "textBody": "Bonjour ! Petit rappel amical : il vous reste encore 6 heures pour finaliser le virement et m'envoyer votre reçu.\n\nPassé ce délai, les dates pourraient être remises en disponibilité. N'hésitez pas si vous avez besoin d'aide !",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "id": "25c5bbe6-a7a8-4a74-87cc-7a11639b4860",
+      "name": "WA: Client Warning T-6h",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        2880,
+        -360
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "A5i0TdmXFmQSw5T3",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resume": "afterTime"
+      },
+      "id": "fedbd7a5-35ab-476e-b5c3-8c42e4eca7d4",
+      "name": "Wait another 6h",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        3080,
+        -360
+      ],
+      "webhookId": "92e3kmss"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1035565869637770",
+        "recipientPhoneNumber": "213551671229",
+        "textBody": "=⚠️ DÉLAI DE 12H EXPIRÉ ⚠️\n\nRéservation : {{ $('Webhook from Hospitable').first().json.body.data.id }}\nClient : {{ $('Clean Phone & Prepare JSON').first().json.phone }}\n\nLe client a-t-il payé ?\n\n✅ OUI — Garder la réservation :\nhttps://{{ $('Webhook from Hospitable').first().json.headers['x-forwarded-host'] }}/webhook/valid_resa_3imrjm37?resa={{ $('Webhook from Hospitable').first().json.body.data.id }}&phone={{ $('Clean Phone & Prepare JSON').first().json.phone }}\n\n❌ NON — Annuler la réservation :\nhttps://{{ $('Webhook from Hospitable').first().json.headers['x-forwarded-host'] }}/webhook/cancel_resa_bdg94478?resa={{ $('Webhook from Hospitable').first().json.body.data.id }}&phone={{ $('Clean Phone & Prepare JSON').first().json.phone }}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "id": "71ff71cf-536c-405a-93ab-d89d3205b231",
+      "name": "WA: Admin Verification Request",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        3280,
+        -360
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "A5i0TdmXFmQSw5T3",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "valid_resa_3imrjm37",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "90811260-0ff1-47c6-9bae-c7f9b2738d77",
+      "name": "Webhook Validate",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        2080,
+        40
+      ],
+      "webhookId": "exfzola6"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1035565869637770",
+        "recipientPhoneNumber": "213551671229",
+        "textBody": "=✅ Réservation {{$json.query.resa}} VALIDÉE et MAINTENUE. Le rappel a été annulé.",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "id": "0a9bbb0e-0f5a-4f78-9108-d9966cdac560",
+      "name": "WA: Admin Validated",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        2280,
+        40
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "A5i0TdmXFmQSw5T3",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Réservation validée avec succès. Vous pouvez fermer cette fenêtre.",
+        "options": {}
+      },
+      "id": "8f5e78fe-a352-40e8-9a5d-b9e5268d57be",
+      "name": "Respond to Webhook (Valid)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2480,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "path": "cancel_resa_bdg94478",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "52a4f128-caf5-4422-83c1-b3e0f5f02b61",
+      "name": "Webhook Cancel",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        2080,
+        340
+      ],
+      "webhookId": "3ypjzkyt"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://api.hospitable.com/reservations/{{ $json.query.resa }}",
+        "authentication": "headerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer [INSERT_YOUR_HOSPITABLE_BEARER_TOKEN_HERE]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3fd176db-9e60-4737-9338-837ebf3c509c",
+      "name": "Hospitable API: Cancel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2280,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1035565869637770",
+        "recipientPhoneNumber": "213551671229",
+        "textBody": "=🚫 Réservation {{$('Webhook Cancel').first().json.query.resa}} a été annulée avec succès sur Hospitable suite au non-paiement.",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "id": "717fa621-3ce5-4489-a7ce-6c3f8959e6f2",
+      "name": "WA: Admin Cancelled",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        2480,
+        340
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "A5i0TdmXFmQSw5T3",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1035565869637770",
+        "recipientPhoneNumber": "={{$('Webhook Cancel').first().json.query.phone}}",
+        "textBody": "❌ Bonjour. N'ayant pas reçu votre paiement dans le délai de 12 heures, nous avons dû annuler votre réservation et débloquer les dates.\nSi vous souhaitez réserver à nouveau, n'hésitez pas à nous recontacter !",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "id": "de8f796c-2352-4c67-b82d-1d957f5eb42a",
+      "name": "WA: Client Cancelled",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        2680,
+        340
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "A5i0TdmXFmQSw5T3",
+          "name": "WhatsApp account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Réservation annulée avec succès via Hospitable. Le client a été notifié. Vous pouvez fermer cette fenêtre.",
+        "options": {}
+      },
+      "id": "5dc17986-c534-4061-90ea-586463535aff",
+      "name": "Respond to Webhook (Cancel)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2880,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "={{ 'recent_search:' + $json.phone }}",
+        "options": {}
+      },
+      "id": "a143bf54-8857-4a13-9aa8-1762226148d8",
+      "name": "Redis: Check Recent Search",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        -580
+      ],
+      "credentials": {
+        "redis": {
+          "id": "V8K02flgy9UVw9wq",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "check-val",
+              "leftValue": "={{ $json.propertyName || $json.value || '' }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b0576870-e693-4084-aaef-cffaa0d04593",
+      "name": "If Client Known",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1540,
+        -620
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook from Hospitable": {
+      "main": [
+        [
+          {
+            "node": "Résa Directe Uniquement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Phone & Prepare JSON": {
+      "main": [
+        [
+          {
+            "node": "Redis: Check Recent Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis: Lock Reservation": {
+      "main": [
+        [
+          {
+            "node": "WA: Proactive Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Résa Directe Uniquement": {
+      "main": [
+        [
+          {
+            "node": "Clean Phone & Prepare JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA: Proactive Message": {
+      "main": [
+        [
+          {
+            "node": "WA: Alerte Admin T-0",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA: Alerte Admin T-0": {
+      "main": [
+        [
+          {
+            "node": "Wait 6h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 6h": {
+      "main": [
+        [
+          {
+            "node": "WA: Client Warning T-6h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA: Client Warning T-6h": {
+      "main": [
+        [
+          {
+            "node": "Wait another 6h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait another 6h": {
+      "main": [
+        [
+          {
+            "node": "WA: Admin Verification Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Validate": {
+      "main": [
+        [
+          {
+            "node": "WA: Admin Validated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA: Admin Validated": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook (Valid)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Cancel": {
+      "main": [
+        [
+          {
+            "node": "Hospitable API: Cancel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hospitable API: Cancel": {
+      "main": [
+        [
+          {
+            "node": "WA: Admin Cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA: Admin Cancelled": {
+      "main": [
+        [
+          {
+            "node": "WA: Client Cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA: Client Cancelled": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook (Cancel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis: Check Recent Search": {
+      "main": [
+        [
+          {
+            "node": "If Client Known",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Client Known": {
+      "main": [
+        [
+          {
+            "node": "Redis: Lock Reservation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {
+    "Webhook from Hospitable": [
+      {
+        "json": {
+          "headers": {
+            "host": "gavyn-eerier-kia.ngrok-free.dev",
+            "user-agent": "Hospitable",
+            "content-length": "9297",
+            "accept": "application/json",
+            "baggage": "sentry-environment=production,sentry-release=d11d97c4,sentry-public_key=236a8dca8f6cd604f5dc96695c9013b9,sentry-trace_id=fc954293034648d895459a513ca1e8d6,sentry-transaction=%2Fapps%2Fwebhooks%2F,sentry-sampled=false,sentry-sample_rand=0.8386938805795588,sentry-sample_rate=0",
+            "content-type": "application/json",
+            "sentry-trace": "fc954293034648d895459a513ca1e8d6-3d46cc3ce1a342a6",
+            "signature": "e4049ccc0955752aa5f3573e30425fb73e91e69bd3cbfcf9beb378988579d00a",
+            "x-forwarded-for": "38.80.170.190",
+            "x-forwarded-host": "gavyn-eerier-kia.ngrok-free.dev",
+            "x-forwarded-proto": "https",
+            "accept-encoding": "gzip"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "id": "a15ad50c-4ef8-4e6c-80d2-20bf530c37a0",
+            "data": {
+              "id": "4f6fb48f-d05a-4544-a133-eecd195e961f",
+              "code": "Z9WMNT",
+              "user": {
+                "id": "2f934e96-968e-4d2c-9def-378940341fb5",
+                "name": "Fazel Wassim Mehdid",
+                "email": "wassimehdid2005@gmail.com"
+              },
+              "guest": {
+                "id": "8457c83ead0df44c1e5ba0c1dc6e604ba304ebd3",
+                "email": "Leeilaa.mimi@hotmail.fr",
+                "language": null,
+                "location": null,
+                "last_name": "Leïla",
+                "first_name": "Mimi",
+                "phone_numbers": [
+                  "+33604532432"
+                ],
+                "profile_picture": null
+              },
+              "notes": null,
+              "guests": {
+                "total": 2,
+                "pet_count": 0,
+                "adult_count": 2,
+                "child_count": 0,
+                "infant_count": 0
+              },
+              "nights": 4,
+              "review": null,
+              "status": "accepted",
+              "check_in": "2026-03-31T15:00:00+01:00",
+              "listings": [
+                {
+                  "co_hosts": [],
+                  "platform": "manual",
+                  "platform_id": "32589374-150c-5fa0-9fa0-53c15834a113",
+                  "platform_user_id": "manual_380178"
+                }
+              ],
+              "platform": "manual",
+              "check_out": "2026-04-04T11:00:00+01:00",
+              "stay_type": "guest_stay",
+              "financials": {
+                "host": {
+                  "taxes": [
+                    {
+                      "label": "Pass-through taxes",
+                      "amount": 0,
+                      "category": "Host Tax",
+                      "formatted": "€0.00"
+                    }
+                  ],
+                  "revenue": {
+                    "label": "Revenue",
+                    "amount": 21800,
+                    "category": "Revenue",
+                    "formatted": "€218.00"
+                  },
+                  "discounts": [],
+                  "host_fees": [],
+                  "guest_fees": [
+                    {
+                      "label": "Cleaning Fee",
+                      "amount": 2300,
+                      "category": "Guest fees",
+                      "formatted": "€23.00"
+                    },
+                    {
+                      "label": "Linen Fee",
+                      "amount": 0,
+                      "category": "Guest fees",
+                      "formatted": "€0.00"
+                    },
+                    {
+                      "label": "Management Fee",
+                      "amount": 0,
+                      "category": "Guest fees",
+                      "formatted": "€0.00"
+                    },
+                    {
+                      "label": "Community Fee",
+                      "amount": 0,
+                      "category": "Guest fees",
+                      "formatted": "€0.00"
+                    },
+                    {
+                      "label": "Resort Fee",
+                      "amount": 0,
+                      "category": "Guest fees",
+                      "formatted": "€0.00"
+                    },
+                    {
+                      "label": "Pet Fee",
+                      "amount": 0,
+                      "category": "Guest fees",
+                      "formatted": "€0.00"
+                    },
+                    {
+                      "label": "Extra Guest Fee",
+                      "amount": 0,
+                      "category": "Guest fees",
+                      "formatted": "€0.00"
+                    }
+                  ],
+                  "adjustments": [],
+                  "accommodation": {
+                    "label": "Accommodation",
+                    "amount": 19500,
+                    "category": "Accommodation",
+                    "formatted": "€195.00"
+                  },
+                  "accommodation_breakdown": null
+                },
+                "guest": {
+                  "fees": [
+                    {
+                      "label": "Cleaning Fee",
+                      "amount": 2300,
+                      "category": "Guest fees",
+                      "formatted": "€23.00"
+                    },
+                    {
+                      "label": "Linen Fee",
+                      "amount": 0,
+                      "category": "Guest fees",
+                      "formatted": "€0.00"
+                    },
+                    {
+                      "label": "Management Fee",
+                      "amount": 0,
+                      "category": "Guest fees",
+                      "formatted": "€0.00"
+                    },
+                    {
+                      "label": "Community Fee",
+                      "amount": 0,
+                      "category": "Guest fees",
+                      "formatted": "€0.00"
+                    },
+                    {
+                      "label": "Resort Fee",
+                      "amount": 0,
+                      "category": "Guest fees",
+                      "formatted": "€0.00"
+                    },
+                    {
+                      "label": "Pet Fee",
+                      "amount": 0,
+                      "category": "Guest fees",
+                      "formatted": "€0.00"
+                    },
+                    {
+                      "label": "Extra Guest Fee",
+                      "amount": 0,
+                      "category": "Guest fees",
+                      "formatted": "€0.00"
+                    }
+                  ],
+                  "taxes": [
+                    {
+                      "label": "Pass-through taxes",
+                      "amount": 0,
+                      "category": "Host Tax",
+                      "formatted": "€0.00"
+                    }
+                  ],
+                  "payments": [],
+                  "discounts": [],
+                  "adjustments": [],
+                  "total_price": {
+                    "label": "Guest Total Price",
+                    "amount": 21800,
+                    "category": "Guest total price",
+                    "formatted": "€218.00"
+                  },
+                  "accommodation": {
+                    "label": "Accommodation",
+                    "amount": 19500,
+                    "category": "Accommodation",
+                    "formatted": "€195.00"
+                  },
+                  "average_nightly_rate": {
+                    "label": "Average Nightly Rate",
+                    "amount": 4875,
+                    "category": "Accommodation",
+                    "formatted": "€48.75"
+                  }
+                },
+                "currency": "EUR"
+              },
+              "owner_stay": null,
+              "properties": [
+                {
+                  "id": "ba397f86-bcb2-4443-add2-cfb58ab6c418",
+                  "name": "Le Lilas | résidence sécurisé | parking privé",
+                  "tags": [],
+                  "listed": true,
+                  "address": {
+                    "city": "Chéraga",
+                    "state": "Algiers Province",
+                    "number": "Residence anais ",
+                    "street": "Bloc 2",
+                    "country": "DZ",
+                    "display": "Residence anais , Bloc 2, Chéraga, Algiers Province, DZ",
+                    "postcode": null,
+                    "coordinates": {
+                      "latitude": "36.76410407",
+                      "longitude": "2.96500762"
+                    },
+                    "country_name": null
+                  },
+                  "checkin": "15:00",
+                  "picture": "https://a0.muscache.com/im/pictures/hosting/Hosting-1633892197414147471/original/e0aa5717-4e3c-4a9a-b271-13a698342e68.png?aki_policy=small",
+                  "summary": "Envie de rendre votre séjour à Alger INOUBLIABLE et AUTHENTIQUE ?\n\n→ Vous êtes à la recherche d'un appartement confortable, ultra-sécurisé et moins cher qu'un hôtel\n\n→ Vous aimeriez connaître tous les bons plans pour économiser et profiter au maximum de votre séjour\n\nJe vous comprends.\n\nDécouvrir Alger et ses environs de manière AUTHENTIQUE, voici ce que je vous propose !",
+                  "capacity": {
+                    "max": 4,
+                    "beds": 3,
+                    "bedrooms": 2,
+                    "bathrooms": 1
+                  },
+                  "checkout": "11:00",
+                  "currency": "EUR",
+                  "timezone": "+0100",
+                  "amenities": [],
+                  "room_type": "Entire Home",
+                  "description": "→ APPARTEMENT MODERNE situé dans la prestigieuse « Résidence Anaïs », une résidence privée, fermée et hautement sécurisée avec ascenseur.\n\n→ 4 COUCHAGES de haute qualité avec 1 grand lit double et 2 lits simples. L'ensemble est équipé d'une LITERIE HÔTELIÈRE pour vous garantir des nuits douces et réparatrices.\n\n→ PLACE DE PARKING PRIVÉE pour ne plus galérer à trouver une place et garer votre véhicule en toute sérénité.\n\n→ WIFI INTERNET HAUT DÉBIT pour consulter Internet gratuitement et rapidement. (Optionnel : à adapter selon vos équipements)\n\n→ TV HD pour se divertir en famille après une belle journée de visites. (Optionnel)\n\n→ CUISINE ÉQUIPÉE pour jouer les chefs étoilés et préparer vos plats préférés. (Optionnel)\n\n→ MACHINE À LAVER pour avoir des vêtements propres en toutes circonstances. (Optionnel)\n\n→ MACHINE À CAFÉ ET THÉ pour bien démarrer la journée et se sentir comme à la maison. (Optionnel)\n\nEnvie d'expérimenter Alger comme un vrai local ? Ok, le centre-ville historique et le monument des Martyrs c'est magnifique, mais il y a plein d'autres choses à vivre et à voir à l'ouest de la capitale !\n\nDes restaurants réputés de Chéraga, des cafés animés, la forêt de Bouchaoui garden city à proximité...\n\nDécouvrir la région, hors des sentiers battus, voici ce que je vous propose !\n\nVous trouverez dans mon pack de bienvenue :\n\n→ Les meilleurs itinéraires pour rejoindre facilement la côte ou le centre-ville.\n\n→ Mes 3 restaurants préférés à Chéraga pour découvrir la richesse de la gastronomie algérienne.\n\n→ Mes recommandations pour des balades oxygénantes (comme la forêt de Bouchaoui).\n\n→ Mes meilleurs conseils et bons plans pour profiter au maximum de votre séjour algérois.\n\n→ Situé au cœur de la très prisée commune de Chéraga (Résidence Anaïs).\n\n→ Accès très facile aux axes routiers et à l'autoroute pour faciliter tous vos déplacements.\n\n→ À proximité immédiate à pied des commerces, supermarchés, cliniques et restaurants.\n\n→ Situé à 10 min en voiture de la forêt de Bouchaoui (idéal pour le sport et les pique-niques).\n\n→ Situé à 15 min en voiture des magnifiques plages et complexes touristiques (Sidi Fredj, Club des Pins).\n\n→ Situé à environ 20 min en voiture du centre-ville d'Alger.\n\n📝 Règlement & formalités\n\n📄 Pièces d’identité obligatoires  pièces d’identité / passeports valides de tous les voyageurs enregistrés sera demandée à l’arrivée.\n\n🕒 Check-in / Check-out : arrivée à partir de 15h00 (early check-in possible selon disponibilités) / départ avant 10h00.\n\n👥 Visiteurs / invités : seuls les voyageurs déclarés dans la réservation sont autorisés. Aucun visiteur extérieur n’est accepté.\n\n🎉 Fêtes & événements interdits.\n\n⚠️ Couples (passeport arabe) : un justificatif officiel de mariage est obligatoire (acte / livret de famille ou document équivalent), si au moins l’un des voyageurs est détenteur d’un passeport arabe.\n\n✅ Le respect des règles de la maison et de la tranquillité de la résidence est indispensable afin d’éviter tout désagrément.",
+                  "house_rules": {
+                    "pets_allowed": false,
+                    "events_allowed": null,
+                    "smoking_allowed": null
+                  },
+                  "public_name": "Le Lilas | résidence sécurisé | parking privé",
+                  "parent_child": null,
+                  "room_details": [
+                    {
+                      "beds": [],
+                      "type": "bedroom"
+                    },
+                    {
+                      "beds": [],
+                      "type": "bedroom"
+                    },
+                    {
+                      "beds": [],
+                      "type": "full_bathroom"
+                    },
+                    {
+                      "beds": [],
+                      "type": "dining_room"
+                    },
+                    {
+                      "beds": [],
+                      "type": "living_room"
+                    }
+                  ],
+                  "property_type": "apartment",
+                  "calendar_restricted": false
+                }
+              ],
+              "issue_alert": null,
+              "platform_id": "HOST-Z9WMNT",
+              "arrival_date": "2026-03-31T00:00:00+01:00",
+              "booking_date": "2026-03-21T17:23:07Z",
+              "departure_date": "2026-04-04T00:00:00+01:00",
+              "smartlock_code": null,
+              "status_history": [
+                {
+                  "status": "accepted",
+                  "category": "Accepted",
+                  "changed_at": "2026-03-21T17:23:07+00:00"
+                }
+              ],
+              "conversation_id": "6cbf6922-27c9-4e05-a2f3-b75bb99d968b",
+              "last_message_at": "2026-03-21T17:37:19+00:00",
+              "reservation_status": {
+                "current": {
+                  "category": "accepted",
+                  "sub_category": null
+                },
+                "history": [
+                  {
+                    "category": "accepted",
+                    "changed_at": "2026-03-21T17:23:07+00:00",
+                    "sub_category": null
+                  }
+                ]
+              },
+              "conversation_language": "French"
+            },
+            "action": "reservation.created",
+            "created": "2026-03-21T17:42:46Z",
+            "version": "v2",
+            "triggers": [
+              "test"
+            ]
+          },
+          "webhookUrl": "http://localhost:5678/webhook/hospitable-hold",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "versionId": "98984549-3a76-40e3-a181-6e63ca26a716",
+  "triggerCount": 3,
+  "tags": []
+}
