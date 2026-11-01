@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
+import { updateLocalUserPassword, getLocalUserByEmail, getLocalUserById } from '@/lib/localAuthStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,30 +63,36 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!targetUser || !targetUserId) {
+    // Check if user exists locally
+    const localUser = (email ? getLocalUserByEmail(email) : null) || (userId ? getLocalUserById(userId) : null);
+
+    if (!targetUser && !localUser) {
       return NextResponse.json(
         { error: 'Account not found. Please ensure you are logged in or registered.' },
         { status: 404 }
       );
     }
 
-    // 2. Update user's password and flag has_manual_password in user_metadata
-    const currentMeta = targetUser.user_metadata || {};
-    const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
-      password: password,
-      user_metadata: {
-        ...currentMeta,
-        has_manual_password: true,
-        password_updated_at: new Date().toISOString(),
-      },
-    });
+    // 2. Update user's password in local store
+    if (localUser || email || userId) {
+      updateLocalUserPassword(localUser?.email || email || userId, password);
+    }
 
-    if (updateErr) {
-      console.error('[Set-Password Error]:', updateErr);
-      return NextResponse.json(
-        { error: updateErr.message || 'Failed to update account password.' },
-        { status: 500 }
-      );
+    // 3. Update in Supabase Auth if targetUser was found
+    if (targetUser && targetUserId) {
+      try {
+        const currentMeta = targetUser.user_metadata || {};
+        await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
+          password: password,
+          user_metadata: {
+            ...currentMeta,
+            has_manual_password: true,
+            password_updated_at: new Date().toISOString(),
+          },
+        });
+      } catch (err) {
+        console.warn('[Set-Password Supabase Sync Notice]:', err);
+      }
     }
 
     return NextResponse.json({

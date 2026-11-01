@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
+import { 
+  createLocalUser, 
+  getLocalUserByEmail 
+} from '@/lib/localAuthStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +30,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Strict Duplicate Account Check: Prevent overwriting any existing account!
+    // 1. Check if user already exists locally
+    const localExisting = getLocalUserByEmail(email);
+    if (localExisting) {
+      const isGoogle = localExisting.provider === 'google';
+      return NextResponse.json(
+        {
+          error: isGoogle
+            ? 'An account with this email already exists via Google. Please sign in with Google or log in with your credentials.'
+            : 'An account with this email already exists. Please sign in instead.',
+          accountExists: true,
+          isGoogleAccount: isGoogle,
+        },
+        { status: 409 }
+      );
+    }
+
+    // 1b. Check remote Supabase if accessible
     try {
       const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
       if (!listErr && Array.isArray(users)) {
@@ -49,12 +69,13 @@ export async function POST(req: NextRequest) {
         }
       }
     } catch (checkErr) {
-      console.warn('[Signup Duplicate Check Notice]:', checkErr);
+      console.warn('[Signup Duplicate Check Notice]: Supabase offline or unreachable, proceeding with local check.');
     }
 
-    // 2. Create brand-new user via Supabase Auth Admin
+    // 2. Attempt remote user creation in Supabase Auth Admin
     let userId: string | null = null;
     let authUser: any = null;
+    let supabaseFailed = false;
 
     try {
       const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
@@ -80,48 +101,65 @@ export async function POST(req: NextRequest) {
             { status: 409 }
           );
         }
-        return NextResponse.json({ error: createErr.message }, { status: 400 });
-      }
-
-      if (newUser?.user) {
+        console.warn('[Signup Supabase Notice]:', createErr.message);
+        supabaseFailed = true;
+      } else if (newUser?.user) {
         userId = newUser.user.id;
         authUser = newUser.user;
       }
     } catch (authEx: any) {
-      console.error('[Signup Create Auth Exception]:', authEx);
-      return NextResponse.json({ error: authEx.message || 'Error creating account.' }, { status: 500 });
+      console.warn('[Signup Supabase Network Notice]:', authEx.message);
+      supabaseFailed = true;
     }
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Failed to create user account. Please try again.' },
-        { status: 500 }
-      );
+    // 2b. Resilient Local Auth Fallback if Supabase is offline/unreachable
+    if (!userId || supabaseFailed) {
+      try {
+        const localUser = createLocalUser({
+          email,
+          password,
+          fullName,
+          companyName,
+          phoneNumber,
+          provider: 'email',
+          hasManualPassword: true,
+        });
+        userId = localUser.id;
+      } catch (localEx: any) {
+        return NextResponse.json(
+          { error: localEx.message || 'Failed to create user account locally.' },
+          { status: 400 }
+        );
+      }
     }
 
-    // 3. Ensure profile exists in public.profiles
-    try {
-      await supabaseAdmin.from('profiles').upsert({
-        id: userId,
-        full_name: fullName,
-        company_name: companyName,
-        phone_number: phoneNumber,
-        role: 'admin',
-        updated_at: new Date().toISOString(),
-      });
-    } catch (profErr) {
-      console.warn('[Signup Profile Upsert Notice]:', profErr);
+    // 3. Ensure profile exists in public.profiles (if Supabase is available)
+    if (userId && !supabaseFailed) {
+      try {
+        await supabaseAdmin.from('profiles').upsert({
+          id: userId,
+          full_name: fullName,
+          company_name: companyName,
+          phone_number: phoneNumber,
+          role: 'admin',
+          updated_at: new Date().toISOString(),
+        });
+      } catch (profErr) {
+        console.warn('[Signup Profile Upsert Notice]:', profErr);
+      }
     }
 
-    // 4. Perform direct sign-in to issue session tokens
+    // 4. Perform direct sign-in if Supabase is alive
     let sessionData: any = null;
-    try {
-      const loginRes = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      sessionData = loginRes.data?.session || null;
-    } catch {}
+    if (!supabaseFailed) {
+      try {
+        const loginRes = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        sessionData = loginRes.data?.session || null;
+      } catch {}
+    }
 
     const avatarInitial = (fullName[0] || 'U').toUpperCase();
     const userSession = {

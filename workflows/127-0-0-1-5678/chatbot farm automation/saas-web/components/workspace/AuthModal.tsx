@@ -44,35 +44,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
   if (!isOpen) return null;
 
-  // Official Google OAuth Sign-In
+  // Official Google OAuth Sign-In (Direct NextAuth integration)
   const handleGoogleSignIn = async () => {
     setIsProcessing(true);
     setErrorMsg(null);
     setShowGooglePrompt(false);
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${origin}/`,
-        },
-      });
-      if (error) {
-        await signIn('google', { callbackUrl: `${origin}/` });
-        return;
-      }
-      if (data?.url) {
-        window.location.href = data.url;
-      }
+      await signIn('google', { callbackUrl: `${origin}/` });
     } catch (err: any) {
       console.error('Google OAuth error:', err);
-      try {
-        const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-        await signIn('google', { callbackUrl: `${origin}/` });
-      } catch (naErr: any) {
-        setIsProcessing(false);
-        setErrorMsg(naErr.message || 'Unable to connect to Google sign-in. Please try again.');
-      }
+      setIsProcessing(false);
+      setErrorMsg(err.message || 'Unable to connect to Google sign-in. Please try again.');
     }
   };
 

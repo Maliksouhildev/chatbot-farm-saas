@@ -37,35 +37,17 @@ export default function SignupPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [accountExists, setAccountExists] = useState(false);
 
-  // Official Google OAuth Sign-Up
+  // Official Google OAuth Sign-Up (Direct NextAuth integration)
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true);
     setErrorMessage(null);
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${origin}/`,
-        },
-      });
-      if (error) {
-        // Fallback to NextAuth Google signIn
-        await signIn('google', { callbackUrl: `${origin}/` });
-        return;
-      }
-      if (data?.url) {
-        window.location.href = data.url;
-      }
+      await signIn('google', { callbackUrl: `${origin}/` });
     } catch (err: any) {
       console.error('Google signup error:', err);
-      try {
-        const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-        await signIn('google', { callbackUrl: `${origin}/` });
-      } catch (naErr: any) {
-        setErrorMessage(naErr.message || 'Failed to sign up with Google.');
-        setIsGoogleLoading(false);
-      }
+      setErrorMessage(err.message || 'Failed to sign up with Google.');
+      setIsGoogleLoading(false);
     }
   };
 

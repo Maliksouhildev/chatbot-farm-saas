@@ -35,6 +35,9 @@ database.sqlite
 keys.json
 creds_dump.json
 *.lock.json
+.local-data/
+*.local-data*
+*.local_users*.json
 
 # n8n state
 .n8n-state.json

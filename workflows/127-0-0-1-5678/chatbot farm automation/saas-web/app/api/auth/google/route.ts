@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
+import { upsertLocalGoogleUser, getLocalUserByEmail } from '@/lib/localAuthStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,20 +85,29 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 3b. Sync to local resilient store
+    const localUser = upsertLocalGoogleUser({
+      email,
+      name: fullName,
+      company: body.companyName,
+      phone: body.phone,
+    });
+
     const hasManualPassword = Boolean(
-      targetUser?.user_metadata?.has_manual_password === true
+      targetUser?.user_metadata?.has_manual_password === true ||
+      localUser?.hasManualPassword === true
     );
 
-    const resolvedName = profile?.full_name || targetUser?.user_metadata?.full_name || fullName;
+    const resolvedName = profile?.full_name || targetUser?.user_metadata?.full_name || localUser?.name || fullName;
     const avatarInitial = (resolvedName[0] || 'M').toUpperCase();
 
     // 4. Return authenticated session payload with needsPassword flag
     const userPayload = {
-      id: userId || email,
+      id: userId || localUser?.id || email,
       name: resolvedName,
       email: email,
-      company: profile?.company_name || `${resolvedName}'s Store`,
-      phone: profile?.phone_number || '',
+      company: profile?.company_name || localUser?.company || `${resolvedName}'s Store`,
+      phone: profile?.phone_number || localUser?.phone || '',
       provider: 'google',
       plan: 'Enterprise DZ Pro',
       verified: true,

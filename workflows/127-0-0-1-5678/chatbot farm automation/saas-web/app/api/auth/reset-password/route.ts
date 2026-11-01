@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
+import { getLocalUserByEmail, updateLocalUserPassword } from '@/lib/localAuthStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,15 +14,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email address is required.' }, { status: 400 });
     }
 
-    // 1. Verify user exists in Supabase Auth
-    const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
-    if (listErr) {
-      console.error('[Reset Password Admin List Error]:', listErr);
-      return NextResponse.json({ error: 'Failed to verify account.' }, { status: 500 });
+    // 1. Verify user exists in Supabase Auth or Local Store
+    let targetUser: any = null;
+    try {
+      const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
+      if (!listErr && Array.isArray(users)) {
+        targetUser = users.find((u) => u.email?.toLowerCase() === email);
+      }
+    } catch (listErr) {
+      console.warn('[Reset Password Admin List Warning]:', listErr);
     }
 
-    const targetUser = users?.find((u) => u.email?.toLowerCase() === email);
-    if (!targetUser) {
+    const localUser = getLocalUserByEmail(email);
+
+    if (!targetUser && !localUser) {
       return NextResponse.json({
         error: 'No account found with this email address. Please check your spelling or sign up.'
       }, { status: 404 });
@@ -98,20 +104,18 @@ export async function POST(req: NextRequest) {
       const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(targetUser.id, {
         password: newPassword,
         user_metadata: {
-          ...targetUser.user_metadata,
+          ...targetUser?.user_metadata,
           has_manual_password: true,
           password_updated_at: new Date().toISOString(),
         },
       });
 
-      if (updateErr) {
-        console.error('[Reset Password Update Error]:', updateErr);
-        return NextResponse.json({ error: updateErr.message || 'Failed to update password.' }, { status: 500 });
-      }
+      // Also sync to local store
+      updateLocalUserPassword(email, newPassword);
 
-      const fullName = targetUser.user_metadata?.full_name || email.split('@')[0];
+      const fullName = targetUser?.user_metadata?.full_name || localUser?.name || email.split('@')[0];
       const userSession = {
-        id: targetUser.id,
+        id: targetUser?.id || localUser?.id || email,
         name: fullName,
         email: email,
         provider: 'email',
