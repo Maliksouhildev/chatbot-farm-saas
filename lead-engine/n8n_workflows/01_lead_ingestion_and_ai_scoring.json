@@ -1,0 +1,246 @@
+{
+  "name": "01_Lead_Ingestion_and_AI_Scoring",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-ingestion",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-lead-ingest",
+      "name": "Webhook Lead Ingest",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [180, 300],
+      "webhookId": "9b1c7c90-482a-4cb7-b5b6-764f69de78a1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-poll-new",
+      "name": "Poll New Leads Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [180, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, fingerprint, source, target_market, name, company_name, contact_phone, contact_whatsapp, contact_telegram, contact_instagram, website_url, location_wilaya, category_niche, raw_content, detected_language, identified_pain_points, proposed_service FROM leads WHERE status = 'new' ORDER BY created_at ASC LIMIT 10;"
+      },
+      "id": "postgres-fetch-new",
+      "name": "Fetch Unscored Leads",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [400, 500],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres LeadEngine"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Standardize payload from either Webhook or Postgres polling\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json.body || item.json;\n  if (data.id || data.fingerprint) {\n    results.push({\n      json: {\n        id: data.id,\n        fingerprint: data.fingerprint,\n        source: data.source || 'unknown',\n        target_market: data.target_market || (data.location_wilaya && data.location_wilaya.includes('Alg') ? 'algeria' : 'global'),\n        name: data.name || 'Business Owner',\n        company_name: data.company_name || data.name || 'Store',\n        contact_phone: data.contact_phone || null,\n        contact_whatsapp: data.contact_whatsapp || data.contact_phone || null,\n        contact_telegram: data.contact_telegram || null,\n        contact_instagram: data.contact_instagram || null,\n        website_url: data.website_url || null,\n        location_wilaya: data.location_wilaya || 'Algeria',\n        category_niche: data.category_niche || 'General B2B',\n        raw_content: data.raw_content || '',\n        detected_language: data.detected_language || 'fr',\n        identified_pain_points: data.identified_pain_points || [],\n        proposed_service: data.proposed_service || 'n8n_automation'\n      }\n    });\n  }\n}\nreturn results;"
+      },
+      "id": "code-normalize-lead",
+      "name": "Normalize Lead Object",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [620, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"response_format\": { \"type\": \"json_object\" },\n  \"temperature\": 0.3,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an elite B2B Lead Qualification & Copywriting Specialist for an Agency offering: 1) AI Automations (n8n workflows), 2) Custom Chatbots (WhatsApp/Instagram/Web ordering bots), and 3) Modern Web Development.\\n\\nEvaluate the provided lead using this Rubric:\\n- Intent Strength (0-40 pts): Active hiring/asking for solution vs passive friction.\\n- Friction/Pain Severity (0-30 pts): 'Prix en privé', manual DM orders, no website, 58 wilayas delivery chaos, dead website.\\n- Contact Reachability (0-30 pts): Direct WhatsApp/Phone vs social handle.\\nTOTAL SCORE: 0-100.\\n\\nOutput MUST be valid JSON with keys:\\n{\\n  \\\"ai_fit_score\\\": <number 0-100>,\\n  \\\"ai_scoring_reasoning\\\": \\\"<bullet points justification>\\\",\\n  \\\"proposed_service\\\": \\\"n8n_automation\\\" | \\\"whatsapp_bot\\\" | \\\"instagram_bot\\\" | \\\"ecommerce_web_dev\\\",\\n  \\\"ai_pitch_draft\\\": \\\"<Personalized, culturally resonant icebreaker in the lead's language: If Algerian Darija/Arabizi use friendly professional Darija with 58 wilayas/livraison context; If French use sharp consultative French; If English use ROI-focused B2B tone. Max 3 sentences, zero fluff.>\\\"\\n}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Lead Details:\\n- Name: {{ $json.name }}\\n- Company: {{ $json.company_name }}\\n- Market: {{ $json.target_market }}\\n- Source: {{ $json.source }}\\n- Language: {{ $json.detected_language }}\\n- Wilaya/Location: {{ $json.location_wilaya }}\\n- Website: {{ $json.website_url }}\\n- Phone: {{ $json.contact_phone }}\\n- Pain Points: {{ JSON.stringify($json.identified_pain_points) }}\\n- Raw Content:\\n{{ $json.raw_content }}\"\n    }\n  ]\n}"
+      },
+      "id": "http-ai-qualification",
+      "name": "AI Lead Qualification LLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [840, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "2",
+          "name": "OpenAI API Header"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiRes = JSON.parse($input.first().json.choices[0].message.content);\nconst lead = $('Normalize Lead Object').first().json;\n\nreturn [{\n  json: {\n    lead_id: lead.id,\n    fingerprint: lead.fingerprint,\n    name: lead.name,\n    company_name: lead.company_name,\n    target_market: lead.target_market,\n    contact_phone: lead.contact_phone,\n    contact_whatsapp: lead.contact_whatsapp,\n    contact_telegram: lead.contact_telegram,\n    contact_instagram: lead.contact_instagram,\n    website_url: lead.website_url,\n    source: lead.source,\n    location_wilaya: lead.location_wilaya,\n    ai_fit_score: aiRes.ai_fit_score || 0,\n    ai_scoring_reasoning: aiRes.ai_scoring_reasoning || '',\n    proposed_service: aiRes.proposed_service || lead.proposed_service,\n    ai_pitch_draft: aiRes.ai_pitch_draft || '',\n    status: (aiRes.ai_fit_score >= 70) ? 'hitl_pending' : 'scored'\n  }\n}];"
+      },
+      "id": "code-merge-qualification",
+      "name": "Merge AI Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1060, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE leads \nSET ai_fit_score = {{ $json.ai_fit_score }},\n    ai_scoring_reasoning = '{{ $json.ai_scoring_reasoning.replace(/'/g, \"''\") }}',\n    proposed_service = '{{ $json.proposed_service }}',\n    ai_pitch_draft = '{{ $json.ai_pitch_draft.replace(/'/g, \"''\") }}',\n    status = '{{ $json.status }}'\nWHERE id = '{{ $json.lead_id }}';\n"
+      },
+      "id": "postgres-update-scored",
+      "name": "Persist Scored Lead",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1280, 400],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres LeadEngine"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $('Merge AI Output').first().json.ai_fit_score }}",
+              "operation": "largerEqual",
+              "value2": 70
+            }
+          ]
+        }
+      },
+      "id": "if-high-intent",
+      "name": "Is Fit Score >= 70?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1500, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://n8n:5678/webhook/telegram-hitl-trigger",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Merge AI Output').first().json) }}"
+      },
+      "id": "http-dispatch-hitl",
+      "name": "Trigger Telegram HITL Bot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1740, 340]
+    }
+  ],
+  "connections": {
+    "Webhook Lead Ingest": {
+      "main": [
+        [
+          {
+            "node": "Normalize Lead Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll New Leads Schedule": {
+      "main": [
+        [
+          {
+            "node": "Fetch Unscored Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Unscored Leads": {
+      "main": [
+        [
+          {
+            "node": "Normalize Lead Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Lead Object": {
+      "main": [
+        [
+          {
+            "node": "AI Lead Qualification LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Lead Qualification LLM": {
+      "main": [
+        [
+          {
+            "node": "Merge AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge AI Output": {
+      "main": [
+        [
+          {
+            "node": "Persist Scored Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Scored Lead": {
+      "main": [
+        [
+          {
+            "node": "Is Fit Score >= 70?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Fit Score >= 70?": {
+      "main": [
+        [
+          {
+            "node": "Trigger Telegram HITL Bot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

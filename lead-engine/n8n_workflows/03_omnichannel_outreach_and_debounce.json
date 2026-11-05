@@ -1,0 +1,336 @@
+{
+  "name": "03_Omnichannel_Outreach_and_Debounce",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dispatch-outreach",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-outreach-inbound",
+      "name": "Inbound Approved Lead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [180, 360],
+      "webhookId": "6df83981-d41a-466a-b28b-b79e70188ef7"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule-poll-approved",
+      "name": "Poll Approved Queue",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [180, 560]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM v_ready_for_outreach LIMIT 5;"
+      },
+      "id": "postgres-fetch-ready",
+      "name": "Fetch From Ready View",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [380, 560],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres LeadEngine"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const l = item.json.body || item.json;\n  const leadId = l.lead_id || l.id;\n  if (!leadId) continue;\n\n  // Determine preferred communication channel\n  let channel = 'email';\n  let recipient = l.contact_email;\n\n  if (l.contact_whatsapp || (l.contact_phone && l.contact_phone.startsWith('+213'))) {\n    channel = 'whatsapp';\n    recipient = l.contact_whatsapp || l.contact_phone;\n  } else if (l.contact_telegram && l.contact_telegram.startsWith('@')) {\n    channel = 'telegram';\n    recipient = l.contact_telegram;\n  } else if (l.contact_email) {\n    channel = 'email';\n    recipient = l.contact_email;\n  } else if (l.source === 'reddit') {\n    channel = 'reddit_dm';\n    recipient = l.name;\n  }\n\n  results.push({\n    json: {\n      lead_id: leadId,\n      name: l.name,\n      company_name: l.company_name,\n      target_market: l.target_market,\n      channel: channel,\n      recipient: recipient,\n      message: l.ai_pitch_draft || `Bonjour ${l.name}, nous pouvons vous aider à automatiser vos opérations.`,\n      debounce_days: 14\n    }\n  });\n}\nreturn results;"
+      },
+      "id": "code-resolve-channel",
+      "name": "Resolve Target Channel & Recipient",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 460]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT 1 FROM message_dedup WHERE recipient = '{{ $json.recipient }}' AND debounce_until > NOW();"
+      },
+      "id": "postgres-check-debounce",
+      "name": "Check 14-Day Cooldown",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [820, 460],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres LeadEngine"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $input.all().length }}",
+              "operation": "equal",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "if-not-cooldown",
+      "name": "Allowed to Contact?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1040, 460]
+    },
+    {
+      "parameters": {
+        "amount": 15,
+        "unit": "seconds"
+      },
+      "id": "wait-jitter-delay",
+      "name": "Human Emulation Jitter (15s)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1260, 420]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $('Resolve Target Channel & Recipient').first().json.channel }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "whatsapp"
+            },
+            {
+              "value2": "telegram"
+            },
+            {
+              "value2": "email"
+            }
+          ]
+        }
+      },
+      "id": "switch-channel-router",
+      "name": "Omnichannel Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1480, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://harvesters:8000/leads/{{ $('Resolve Target Channel & Recipient').first().json.lead_id }}/outreach",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"channel\": \"whatsapp\",\n  \"recipient_address\": \"{{ $('Resolve Target Channel & Recipient').first().json.recipient }}\",\n  \"message_content\": \"{{ $('Resolve Target Channel & Recipient').first().json.message }}\",\n  \"sent_status\": \"sent\",\n  \"debounce_days\": 14\n}"
+      },
+      "id": "http-whatsapp-dispatch",
+      "name": "Dispatch WhatsApp & Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1720, 260]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://harvesters:8000/leads/{{ $('Resolve Target Channel & Recipient').first().json.lead_id }}/outreach",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"channel\": \"telegram\",\n  \"recipient_address\": \"{{ $('Resolve Target Channel & Recipient').first().json.recipient }}\",\n  \"message_content\": \"{{ $('Resolve Target Channel & Recipient').first().json.message }}\",\n  \"sent_status\": \"sent\",\n  \"debounce_days\": 14\n}"
+      },
+      "id": "http-telegram-dispatch",
+      "name": "Dispatch Telegram & Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1720, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://harvesters:8000/leads/{{ $('Resolve Target Channel & Recipient').first().json.lead_id }}/outreach",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"channel\": \"email\",\n  \"recipient_address\": \"{{ $('Resolve Target Channel & Recipient').first().json.recipient }}\",\n  \"message_content\": \"{{ $('Resolve Target Channel & Recipient').first().json.message }}\",\n  \"sent_status\": \"sent\",\n  \"debounce_days\": 14\n}"
+      },
+      "id": "http-email-dispatch",
+      "name": "Dispatch Email & Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1720, 580]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_ADMIN_CHAT_ID }}",
+        "text": "=🚀 *OUTREACH DISPATCHED!*\\n\\n*Lead:* {{ $('Resolve Target Channel & Recipient').first().json.name }}\\n*Company:* {{ $('Resolve Target Channel & Recipient').first().json.company_name }}\\n*Channel:* `{{ $('Resolve Target Channel & Recipient').first().json.channel }}`\\n*Recipient:* `{{ $('Resolve Target Channel & Recipient').first().json.recipient }}`\\n*Debounce:* 14 Days Active Cooldown",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-notify-sent",
+      "name": "Notify Admin Outreach Sent",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2000, 420],
+      "credentials": {
+        "telegramApi": {
+          "id": "3",
+          "name": "Telegram Bot Token"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Inbound Approved Lead": {
+      "main": [
+        [
+          {
+            "node": "Resolve Target Channel & Recipient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Approved Queue": {
+      "main": [
+        [
+          {
+            "node": "Fetch From Ready View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch From Ready View": {
+      "main": [
+        [
+          {
+            "node": "Resolve Target Channel & Recipient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Target Channel & Recipient": {
+      "main": [
+        [
+          {
+            "node": "Check 14-Day Cooldown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check 14-Day Cooldown": {
+      "main": [
+        [
+          {
+            "node": "Allowed to Contact?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Allowed to Contact?": {
+      "main": [
+        [
+          {
+            "node": "Human Emulation Jitter (15s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Emulation Jitter (15s)": {
+      "main": [
+        [
+          {
+            "node": "Omnichannel Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Omnichannel Switch": {
+      "main": [
+        [
+          {
+            "node": "Dispatch WhatsApp & Log",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Dispatch Telegram & Log",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Dispatch Email & Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch WhatsApp & Log": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin Outreach Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch Telegram & Log": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin Outreach Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch Email & Log": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin Outreach Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

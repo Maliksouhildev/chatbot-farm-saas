@@ -1,0 +1,267 @@
+{
+  "name": "02_Telegram_HITL_Approval_Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-hitl-trigger",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-hitl-inbound",
+      "name": "Inbound High-Score Lead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "5c90bfa3-0d32-4e4b-9e8c-8f1925b4fa12"
+    },
+    {
+      "parameters": {
+        "jsCode": "const lead = $input.first().json;\n\nconst flag = lead.target_market === 'algeria' ? '🇩🇿 Algeria' : '🌐 Global';\nconst channelTag = (lead.source || '').toUpperCase();\nconst phone = lead.contact_whatsapp || lead.contact_phone || 'N/A';\nconst handle = lead.contact_telegram || lead.contact_instagram || lead.contact_reddit || 'N/A';\n\nconst text = '🎯 *HIGH-INTENT B2B LEAD QUALIFIED*\\n\\n' +\n  '*Market:* ' + flag + ' | *Source:* #' + channelTag + '\\n' +\n  '*Name/Store:* ' + (lead.name || 'Unknown') + '\\n' +\n  '*Company:* ' + (lead.company_name || 'N/A') + '\\n' +\n  '*Location:* ' + (lead.location_wilaya || 'N/A') + '\\n' +\n  '*Phone/WA:* `' + phone + '`\\n' +\n  '*Social/Handle:* `' + handle + '`\\n' +\n  '*AI Fit Score:* *' + lead.ai_fit_score + '/100* ⭐\\n' +\n  '*Proposed Service:* `' + lead.proposed_service + '`\\n\\n' +\n  '💡 *Reasoning:*\\n' + (lead.ai_scoring_reasoning || 'Strong fit with detected friction.') + '\\n\\n' +\n  '📝 *Draft Pitch:*\\n_\"' + (lead.ai_pitch_draft || '') + '\"_';\n\nconst replyMarkup = {\n  inline_keyboard: [\n    [\n      { text: '✅ Approve & Dispatch', callback_data: 'approve:' + (lead.lead_id || lead.id) },\n      { text: '❌ Reject', callback_data: 'reject:' + (lead.lead_id || lead.id) }\n    ]\n  ]\n};\n\nreturn [{\n  json: {\n    chat_id: '{{ $env.TELEGRAM_ADMIN_CHAT_ID }}',\n    text: text,\n    reply_markup: JSON.stringify(replyMarkup),\n    parse_mode: 'Markdown',\n    lead_id: lead.lead_id || lead.id\n  }\n}];"
+      },
+      "id": "code-format-card",
+      "name": "Format Telegram Approval Card",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "reply_markup": "={{ $json.reply_markup }}"
+        }
+      },
+      "id": "telegram-send-card",
+      "name": "Send Card to Admin Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [640, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "3",
+          "name": "Telegram Bot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "telegram-callback-trigger",
+      "name": "Telegram Callback Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 600],
+      "credentials": {
+        "telegramApi": {
+          "id": "3",
+          "name": "Telegram Bot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cb = $input.first().json.callback_query;\nconst data = cb.data || '';\nconst parts = data.split(':');\nconst action = parts[0];\nconst leadId = parts[1];\n\nreturn [{\n  json: {\n    callback_query_id: cb.id,\n    chat_id: cb.message.chat.id,\n    message_id: cb.message.message_id,\n    action: action,\n    lead_id: leadId,\n    original_text: cb.message.text\n  }\n}];"
+      },
+      "id": "code-parse-callback",
+      "name": "Parse Callback Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.action }}",
+              "value2": "approve"
+            }
+          ]
+        }
+      },
+      "id": "if-approved",
+      "name": "Action == Approve?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [640, 600]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE leads SET status = 'approved' WHERE id = '{{ $json.lead_id }}' RETURNING *;"
+      },
+      "id": "postgres-set-approved",
+      "name": "Set Lead Approved in DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [860, 520],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres LeadEngine"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://n8n:5678/webhook/dispatch-outreach",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "http-trigger-outreach",
+      "name": "Trigger Outreach Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 520]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE leads SET status = 'rejected' WHERE id = '{{ $json.lead_id }}';"
+      },
+      "id": "postgres-set-rejected",
+      "name": "Set Lead Rejected in DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [860, 700],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres LeadEngine"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "editMessageText",
+        "chatId": "={{ $('Parse Callback Action').first().json.chat_id }}",
+        "messageId": "={{ $('Parse Callback Action').first().json.message_id }}",
+        "text": "={{ $('Parse Callback Action').first().json.original_text + '\\n\\n' + ($json.action === 'approve' ? '✅ *STATUS: APPROVED & OUTREACH QUEUED*' : '❌ *STATUS: REJECTED BY ADMIN*') }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-update-card",
+      "name": "Update Card Status In-Place",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1300, 600],
+      "credentials": {
+        "telegramApi": {
+          "id": "3",
+          "name": "Telegram Bot Token"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Inbound High-Score Lead": {
+      "main": [
+        [
+          {
+            "node": "Format Telegram Approval Card",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Telegram Approval Card": {
+      "main": [
+        [
+          {
+            "node": "Send Card to Admin Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Callback Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Callback Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Callback Action": {
+      "main": [
+        [
+          {
+            "node": "Action == Approve?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action == Approve?": {
+      "main": [
+        [
+          {
+            "node": "Set Lead Approved in DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Lead Rejected in DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Lead Approved in DB": {
+      "main": [
+        [
+          {
+            "node": "Trigger Outreach Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Outreach Workflow": {
+      "main": [
+        [
+          {
+            "node": "Update Card Status In-Place",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Lead Rejected in DB": {
+      "main": [
+        [
+          {
+            "node": "Update Card Status In-Place",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

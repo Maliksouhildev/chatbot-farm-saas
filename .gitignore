@@ -2,4 +2,14 @@ node_modules/
 .next/
 .env
 .env.*
+!.env.example
+!lead-engine/.env.example
 .DS_Store
+*.session
+session/
+lead-engine/.env
+lead-engine/harvesters/session/
+lead-engine/session/
+__pycache__/
+*.pyc
+
