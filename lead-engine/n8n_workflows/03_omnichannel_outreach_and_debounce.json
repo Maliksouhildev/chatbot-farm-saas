@@ -9,66 +9,32 @@
         "options": {}
       },
       "id": "webhook-outreach-inbound",
-      "name": "Inbound Approved Lead",
+      "name": "Inbound Approved Lead Dispatch",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [180, 360],
+      "position": [160, 300],
       "webhookId": "6df83981-d41a-466a-b28b-b79e70188ef7"
     },
     {
       "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "hours",
-              "hoursInterval": 1
-            }
-          ]
-        }
-      },
-      "id": "schedule-poll-approved",
-      "name": "Poll Approved Queue",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [180, 560]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT * FROM v_ready_for_outreach LIMIT 5;"
-      },
-      "id": "postgres-fetch-ready",
-      "name": "Fetch From Ready View",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [380, 560],
-      "credentials": {
-        "postgres": {
-          "id": "1",
-          "name": "Postgres LeadEngine"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const l = item.json.body || item.json;\n  const leadId = l.lead_id || l.id;\n  if (!leadId) continue;\n\n  // Determine preferred communication channel\n  let channel = 'email';\n  let recipient = l.contact_email;\n\n  if (l.contact_whatsapp || (l.contact_phone && l.contact_phone.startsWith('+213'))) {\n    channel = 'whatsapp';\n    recipient = l.contact_whatsapp || l.contact_phone;\n  } else if (l.contact_telegram && l.contact_telegram.startsWith('@')) {\n    channel = 'telegram';\n    recipient = l.contact_telegram;\n  } else if (l.contact_email) {\n    channel = 'email';\n    recipient = l.contact_email;\n  } else if (l.source === 'reddit') {\n    channel = 'reddit_dm';\n    recipient = l.name;\n  }\n\n  results.push({\n    json: {\n      lead_id: leadId,\n      name: l.name,\n      company_name: l.company_name,\n      target_market: l.target_market,\n      channel: channel,\n      recipient: recipient,\n      message: l.ai_pitch_draft || `Bonjour ${l.name}, nous pouvons vous aider à automatiser vos opérations.`,\n      debounce_days: 14\n    }\n  });\n}\nreturn results;"
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const l = item.json.body || item.json;\n  const leadId = l.lead_id || l.id;\n  if (!leadId) continue;\n\n  let channel = 'email';\n  let recipient = l.contact_email;\n\n  if (l.contact_whatsapp || (l.contact_phone && l.contact_phone.startsWith('+213'))) {\n    channel = 'whatsapp';\n    recipient = l.contact_whatsapp || l.contact_phone;\n  } else if (l.contact_telegram && l.contact_telegram.startsWith('@')) {\n    channel = 'telegram';\n    recipient = l.contact_telegram;\n  } else if (l.contact_email) {\n    channel = 'email';\n    recipient = l.contact_email;\n  } else if (l.source === 'reddit') {\n    channel = 'reddit_dm';\n    recipient = l.name;\n  }\n\n  results.push({\n    json: {\n      lead_id: leadId,\n      name: l.name,\n      company_name: l.company_name,\n      country: l.country || 'Algeria',\n      channel: channel,\n      recipient: recipient,\n      message: l.ai_pitch_draft || ('Bonjour ' + l.name + ', nous pouvons automatiser vos operations.'),\n      debounce_days: 14\n    }\n  });\n}\nreturn results;"
       },
       "id": "code-resolve-channel",
       "name": "Resolve Target Channel & Recipient",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [600, 460]
+      "position": [380, 300]
     },
     {
       "parameters": {
         "operation": "executeQuery",
         "query": "=SELECT 1 FROM message_dedup WHERE recipient = '{{ $json.recipient }}' AND debounce_until > NOW();"
       },
-      "id": "postgres-check-debounce",
-      "name": "Check 14-Day Cooldown",
+      "id": "postgres-check-cooldown",
+      "name": "Check 14-Day Anti-Spam Cooldown",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [820, 460],
+      "position": [600, 300],
       "credentials": {
         "postgres": {
           "id": "1",
@@ -92,18 +58,18 @@
       "name": "Allowed to Contact?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1040, 460]
+      "position": [820, 300]
     },
     {
       "parameters": {
-        "amount": 15,
+        "amount": "={{ Math.floor(Math.random() * 20) + 10 }}",
         "unit": "seconds"
       },
       "id": "wait-jitter-delay",
-      "name": "Human Emulation Jitter (15s)",
+      "name": "Randomized Anti-Ban Jitter (10-30s)",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [1260, 420]
+      "position": [1040, 260]
     },
     {
       "parameters": {
@@ -115,19 +81,63 @@
               "value2": "whatsapp"
             },
             {
-              "value2": "telegram"
-            },
-            {
               "value2": "email"
             }
           ]
         }
       },
       "id": "switch-channel-router",
-      "name": "Omnichannel Switch",
+      "name": "Channel Router Switch",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [1480, 420]
+      "position": [1260, 260]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL || 'http://localhost:8080' }}/message/sendText/{{ $env.EVOLUTION_INSTANCE_NAME || 'default' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY || '' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Resolve Target Channel & Recipient').first().json.recipient.replace(/[^0-9]/g, '') }}\",\n  \"options\": {\n    \"delay\": 1200,\n    \"presence\": \"composing\"\n  },\n  \"text\": \"{{ $('Resolve Target Channel & Recipient').first().json.message }}\"\n}"
+      },
+      "id": "http-evolution-whatsapp",
+      "name": "Evolution API WhatsApp Send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1520, 160]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM_EMAIL || 'contact@agency.com' }}",
+        "toEmail": "={{ $('Resolve Target Channel & Recipient').first().json.recipient }}",
+        "subject": "=Proposition d'automatisation pour {{ $('Resolve Target Channel & Recipient').first().json.company_name }}",
+        "html": "=<p>{{ $('Resolve Target Channel & Recipient').first().json.message.replace(/\\n/g, '<br>') }}</p>",
+        "options": {}
+      },
+      "id": "email-smtp-send",
+      "name": "SMTP Email Send",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1520, 360],
+      "credentials": {
+        "smtp": {
+          "id": "4",
+          "name": "SMTP Outreach Account"
+        }
+      }
     },
     {
       "parameters": {
@@ -135,47 +145,19 @@
         "url": "http://harvesters:8000/leads/{{ $('Resolve Target Channel & Recipient').first().json.lead_id }}/outreach",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"channel\": \"whatsapp\",\n  \"recipient_address\": \"{{ $('Resolve Target Channel & Recipient').first().json.recipient }}\",\n  \"message_content\": \"{{ $('Resolve Target Channel & Recipient').first().json.message }}\",\n  \"sent_status\": \"sent\",\n  \"debounce_days\": 14\n}"
+        "jsonBody": "={\n  \"channel\": \"{{ $('Resolve Target Channel & Recipient').first().json.channel }}\",\n  \"recipient_address\": \"{{ $('Resolve Target Channel & Recipient').first().json.recipient }}\",\n  \"message_content\": \"{{ $('Resolve Target Channel & Recipient').first().json.message }}\",\n  \"sent_status\": \"sent\",\n  \"debounce_days\": 14\n}"
       },
-      "id": "http-whatsapp-dispatch",
-      "name": "Dispatch WhatsApp & Log",
+      "id": "http-log-outreach",
+      "name": "Log Outreach & Set 14-Day Cooldown",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1720, 260]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://harvesters:8000/leads/{{ $('Resolve Target Channel & Recipient').first().json.lead_id }}/outreach",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"channel\": \"telegram\",\n  \"recipient_address\": \"{{ $('Resolve Target Channel & Recipient').first().json.recipient }}\",\n  \"message_content\": \"{{ $('Resolve Target Channel & Recipient').first().json.message }}\",\n  \"sent_status\": \"sent\",\n  \"debounce_days\": 14\n}"
-      },
-      "id": "http-telegram-dispatch",
-      "name": "Dispatch Telegram & Log",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1720, 420]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://harvesters:8000/leads/{{ $('Resolve Target Channel & Recipient').first().json.lead_id }}/outreach",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"channel\": \"email\",\n  \"recipient_address\": \"{{ $('Resolve Target Channel & Recipient').first().json.recipient }}\",\n  \"message_content\": \"{{ $('Resolve Target Channel & Recipient').first().json.message }}\",\n  \"sent_status\": \"sent\",\n  \"debounce_days\": 14\n}"
-      },
-      "id": "http-email-dispatch",
-      "name": "Dispatch Email & Log",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1720, 580]
+      "position": [1800, 260]
     },
     {
       "parameters": {
         "operation": "sendMessage",
         "chatId": "={{ $env.TELEGRAM_ADMIN_CHAT_ID }}",
-        "text": "=🚀 *OUTREACH DISPATCHED!*\\n\\n*Lead:* {{ $('Resolve Target Channel & Recipient').first().json.name }}\\n*Company:* {{ $('Resolve Target Channel & Recipient').first().json.company_name }}\\n*Channel:* `{{ $('Resolve Target Channel & Recipient').first().json.channel }}`\\n*Recipient:* `{{ $('Resolve Target Channel & Recipient').first().json.recipient }}`\\n*Debounce:* 14 Days Active Cooldown",
+        "text": "=🚀 *OUTREACH DISPATCHED!*\\n\\n*Lead:* {{ $('Resolve Target Channel & Recipient').first().json.name }}\\n*Company:* {{ $('Resolve Target Channel & Recipient').first().json.company_name }}\\n*Channel:* `{{ $('Resolve Target Channel & Recipient').first().json.channel.toUpperCase() }}`\\n*Recipient:* `{{ $('Resolve Target Channel & Recipient').first().json.recipient }}`\\n*Status:* Sent (14-Day Cooldown Active)",
         "additionalFields": {
           "parse_mode": "Markdown"
         }
@@ -184,7 +166,73 @@
       "name": "Notify Admin Outreach Sent",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [2000, 420],
+      "position": [2040, 260],
+      "credentials": {
+        "telegramApi": {
+          "id": "3",
+          "name": "Telegram Bot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-incoming",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-wa-incoming",
+      "name": "Evolution API Incoming WA Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [160, 680],
+      "webhookId": "7e3b8a41-2c19-4f73-90d5-1c5e93df1204"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst sender = body.data?.key?.remoteJid || body.sender || 'unknown';\nconst cleanPhone = sender.replace('@s.whatsapp.net', '').replace(/[^0-9]/g, '');\nconst messageText = body.data?.message?.conversation || body.data?.message?.extendedTextMessage?.text || body.text || '';\nconst msgId = body.data?.key?.id || ('msg_' + Date.now());\n\nif (!cleanPhone || !messageText) {\n  return [];\n}\n\nreturn [{\n  json: {\n    sender_phone: cleanPhone,\n    message_id: msgId,\n    message_text: messageText,\n    received_at: Date.now()\n  }\n}];"
+      },
+      "id": "code-extract-incoming-wa",
+      "name": "Extract Inbound WhatsApp Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [380, 680]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n// Emulate / Call Redis LPUSH to buffer rapid incoming messages\n// Key: wa_buffer:<phone>\n// Expire in 60s\nconst bufferKey = 'wa_buffer:' + item.sender_phone;\nconst lockKey = 'wa_lock:' + item.sender_phone;\nconst timestamp = Date.now();\n\nreturn [{\n  json: {\n    sender_phone: item.sender_phone,\n    message_text: item.message_text,\n    buffer_key: bufferKey,\n    lock_key: lockKey,\n    debounce_timestamp: timestamp\n  }\n}];"
+      },
+      "id": "code-init-debounce-buffer",
+      "name": "Buffer Message in Redis Key",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 680]
+    },
+    {
+      "parameters": {
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "id": "wait-10s-debounce",
+      "name": "10-Second Debounce Buffer",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [820, 680]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_ADMIN_CHAT_ID }}",
+        "text": "=💬 *NEW INCOMING WHATSAPP REPLY (DEBOUNCED)*\\n\\n*From:* `+{{ $json.sender_phone }}`\\n*Message:*\\n_\"{{ $json.message_text }}\"_\\n\\n✅ _Processed after 10-second debounce buffer without race conditions._",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-notify-reply",
+      "name": "Alert Admin on Debounced Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1060, 680],
       "credentials": {
         "telegramApi": {
           "id": "3",
@@ -194,29 +242,7 @@
     }
   ],
   "connections": {
-    "Inbound Approved Lead": {
-      "main": [
-        [
-          {
-            "node": "Resolve Target Channel & Recipient",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Poll Approved Queue": {
-      "main": [
-        [
-          {
-            "node": "Fetch From Ready View",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch From Ready View": {
+    "Inbound Approved Lead Dispatch": {
       "main": [
         [
           {
@@ -231,14 +257,14 @@
       "main": [
         [
           {
-            "node": "Check 14-Day Cooldown",
+            "node": "Check 14-Day Anti-Spam Cooldown",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check 14-Day Cooldown": {
+    "Check 14-Day Anti-Spam Cooldown": {
       "main": [
         [
           {
@@ -253,50 +279,65 @@
       "main": [
         [
           {
-            "node": "Human Emulation Jitter (15s)",
+            "node": "Randomized Anti-Ban Jitter (10-30s)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Human Emulation Jitter (15s)": {
+    "Randomized Anti-Ban Jitter (10-30s)": {
       "main": [
         [
           {
-            "node": "Omnichannel Switch",
+            "node": "Channel Router Switch",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Omnichannel Switch": {
+    "Channel Router Switch": {
       "main": [
         [
           {
-            "node": "Dispatch WhatsApp & Log",
+            "node": "Evolution API WhatsApp Send",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Dispatch Telegram & Log",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Dispatch Email & Log",
+            "node": "SMTP Email Send",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Dispatch WhatsApp & Log": {
+    "Evolution API WhatsApp Send": {
+      "main": [
+        [
+          {
+            "node": "Log Outreach & Set 14-Day Cooldown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMTP Email Send": {
+      "main": [
+        [
+          {
+            "node": "Log Outreach & Set 14-Day Cooldown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Outreach & Set 14-Day Cooldown": {
       "main": [
         [
           {
@@ -307,22 +348,44 @@
         ]
       ]
     },
-    "Dispatch Telegram & Log": {
+    "Evolution API Incoming WA Webhook": {
       "main": [
         [
           {
-            "node": "Notify Admin Outreach Sent",
+            "node": "Extract Inbound WhatsApp Payload",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Dispatch Email & Log": {
+    "Extract Inbound WhatsApp Payload": {
       "main": [
         [
           {
-            "node": "Notify Admin Outreach Sent",
+            "node": "Buffer Message in Redis Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buffer Message in Redis Key": {
+      "main": [
+        [
+          {
+            "node": "10-Second Debounce Buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10-Second Debounce Buffer": {
+      "main": [
+        [
+          {
+            "node": "Alert Admin on Debounced Reply",
             "type": "main",
             "index": 0
           }

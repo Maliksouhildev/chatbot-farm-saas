@@ -149,6 +149,12 @@ services:
       EXECUTIONS_DATA_PRUNE: "true"
       EXECUTIONS_DATA_MAX_AGE: 168
       TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID:-}
+      GOOGLE_SHEETS_SPREADSHEET_ID: ${GOOGLE_SHEETS_SPREADSHEET_ID:-}
+      GOOGLE_SHEETS_TAB_NAME: ${GOOGLE_SHEETS_TAB_NAME:-Master Leads}
+      EVOLUTION_API_URL: ${EVOLUTION_API_URL:-http://localhost:8080}
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-}
+      EVOLUTION_INSTANCE_NAME: ${EVOLUTION_INSTANCE_NAME:-lead_dispatch}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n_workflows:/workflows:ro

@@ -1,0 +1,387 @@
+{
+  "name": "04_Midnight_Batch_and_Google_Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-midnight-trigger",
+      "name": "Midnight 00:00 Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [180, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM v_ready_for_sheets_sync LIMIT 100;"
+      },
+      "id": "postgres-fetch-unsynced",
+      "name": "Fetch Unsynced Leads (24h)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [420, 280],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres LeadEngine"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst rows = [];\nconst leadIds = [];\n\nfor (const item of items) {\n  const l = item.json;\n  if (!l.id) continue;\n  leadIds.push(l.id);\n\n  rows.push({\n    json: {\n      lead_id: l.id,\n      'Date': l.lead_date || new Date().toISOString().split('T')[0],\n      'Country': l.country || 'Algeria',\n      'Category (Active Request vs Passive Potential)': l.lead_category || 'PASSIVE_POTENTIAL',\n      'Business/User Name': l.business_name || 'Unknown',\n      'Sub-Niche': l.sub_niche || 'General',\n      'Detected Bottleneck': l.detected_bottleneck || 'Friction identified',\n      'Contact Info': l.contact_info || 'N/A',\n      'Source URL': l.source_url || 'N/A',\n      'Outreach Status': l.outreach_status || 'new',\n      'AI Score': l.ai_fit_score || 0,\n      'Draft Pitch': l.ai_pitch_draft || ''\n    }\n  });\n}\n\nreturn rows;"
+      },
+      "id": "code-format-sheets-rows",
+      "name": "Format Google Sheets Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 280]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEETS_SPREADSHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEETS_TAB_NAME || 'Master Leads' }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        },
+        "options": {}
+      },
+      "id": "sheets-append-rows",
+      "name": "Append to Master Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [880, 280],
+      "credentials": {
+        "googleSheetsOAuth2": {
+          "id": "5",
+          "name": "Google Sheets OAuth / Service Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE leads \nSET synced_to_sheets = TRUE \nWHERE id = '{{ $json.lead_id }}';"
+      },
+      "id": "postgres-mark-synced",
+      "name": "Mark Synced in PostgreSQL",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1120, 280],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres LeadEngine"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM v_midnight_outreach_queue LIMIT 20;"
+      },
+      "id": "postgres-fetch-approved-queue",
+      "name": "Fetch Midnight Outreach Queue",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [420, 520],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres LeadEngine"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const l = item.json;\n  if (!l.lead_id) continue;\n\n  let channel = 'email';\n  let recipient = l.contact_email;\n\n  if (l.contact_whatsapp || (l.contact_phone && l.contact_phone.startsWith('+213'))) {\n    channel = 'whatsapp';\n    recipient = l.contact_whatsapp || l.contact_phone;\n  } else if (l.contact_telegram && l.contact_telegram.startsWith('@')) {\n    channel = 'telegram';\n    recipient = l.contact_telegram;\n  } else if (l.contact_email) {\n    channel = 'email';\n    recipient = l.contact_email;\n  }\n\n  results.push({\n    json: {\n      lead_id: l.lead_id,\n      name: l.name,\n      company_name: l.company_name,\n      country: l.country || 'Algeria',\n      channel: channel,\n      recipient: recipient,\n      message: l.ai_pitch_draft || ('Bonjour ' + l.name + ', nous automatisons vos flux operationnels.')\n    }\n  });\n}\nreturn results;"
+      },
+      "id": "code-resolve-midnight-channel",
+      "name": "Resolve Outreach Channel",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 520]
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.floor(Math.random() * 30) + 15 }}",
+        "unit": "seconds"
+      },
+      "id": "wait-midnight-jitter",
+      "name": "Anti-Ban Rate Limit Delay (15-45s)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [880, 520]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.channel }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "whatsapp"
+            },
+            {
+              "value2": "email"
+            }
+          ]
+        }
+      },
+      "id": "switch-midnight-dispatch",
+      "name": "Midnight Dispatch Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1120, 520]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL || 'http://localhost:8080' }}/message/sendText/{{ $env.EVOLUTION_INSTANCE_NAME || 'default' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY || '' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.recipient.replace(/[^0-9]/g, '') }}\",\n  \"options\": {\n    \"delay\": 1500,\n    \"presence\": \"composing\"\n  },\n  \"text\": \"{{ $json.message }}\"\n}"
+      },
+      "id": "http-midnight-whatsapp",
+      "name": "Midnight Evolution WhatsApp Send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1360, 440]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM_EMAIL || 'contact@agency.com' }}",
+        "toEmail": "={{ $json.recipient }}",
+        "subject": "=Opportunité d'automatisation pour {{ $json.company_name }}",
+        "html": "=<p>{{ $json.message.replace(/\\n/g, '<br>') }}</p>",
+        "options": {}
+      },
+      "id": "email-midnight-smtp",
+      "name": "Midnight SMTP Email Send",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1360, 600],
+      "credentials": {
+        "smtp": {
+          "id": "4",
+          "name": "SMTP Outreach Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://harvesters:8000/leads/{{ $('Resolve Outreach Channel').first().json.lead_id }}/outreach",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"channel\": \"{{ $('Resolve Outreach Channel').first().json.channel }}\",\n  \"recipient_address\": \"{{ $('Resolve Outreach Channel').first().json.recipient }}\",\n  \"message_content\": \"{{ $('Resolve Outreach Channel').first().json.message }}\",\n  \"sent_status\": \"sent\",\n  \"debounce_days\": 14\n}"
+      },
+      "id": "http-midnight-log-outreach",
+      "name": "Log Midnight Outreach & 14-Day Cooldown",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, 520]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_ADMIN_CHAT_ID }}",
+        "text": "=🌙 *MIDNIGHT 00:00 ROUTINE COMPLETED*\\n\\n📊 *Google Sheets Sync:* Updated leads marked synchronized.\\n🚀 *Nightly Outreach:* Dispatched approved leads with anti-ban rate limiting.\\n🛡️ *Debounce:* 14-day anti-spam window enforced.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-midnight-summary",
+      "name": "Telegram Midnight Executive Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1880, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "3",
+          "name": "Telegram Bot Token"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Midnight 00:00 Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Unsynced Leads (24h)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Midnight Outreach Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Unsynced Leads (24h)": {
+      "main": [
+        [
+          {
+            "node": "Format Google Sheets Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Google Sheets Rows": {
+      "main": [
+        [
+          {
+            "node": "Append to Master Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to Master Google Sheet": {
+      "main": [
+        [
+          {
+            "node": "Mark Synced in PostgreSQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Synced in PostgreSQL": {
+      "main": [
+        [
+          {
+            "node": "Telegram Midnight Executive Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Midnight Outreach Queue": {
+      "main": [
+        [
+          {
+            "node": "Resolve Outreach Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Outreach Channel": {
+      "main": [
+        [
+          {
+            "node": "Anti-Ban Rate Limit Delay (15-45s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anti-Ban Rate Limit Delay (15-45s)": {
+      "main": [
+        [
+          {
+            "node": "Midnight Dispatch Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Midnight Dispatch Router": {
+      "main": [
+        [
+          {
+            "node": "Midnight Evolution WhatsApp Send",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Midnight SMTP Email Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Midnight Evolution WhatsApp Send": {
+      "main": [
+        [
+          {
+            "node": "Log Midnight Outreach & 14-Day Cooldown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Midnight SMTP Email Send": {
+      "main": [
+        [
+          {
+            "node": "Log Midnight Outreach & 14-Day Cooldown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Midnight Outreach & 14-Day Cooldown": {
+      "main": [
+        [
+          {
+            "node": "Telegram Midnight Executive Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

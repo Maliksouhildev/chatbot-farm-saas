@@ -246,6 +246,9 @@ class OuedknissHarvester:
             "source": "ouedkniss",
             "external_id": store_id,
             "target_market": "algeria",
+            "country": "Algeria",
+            "lead_category": "PASSIVE_POTENTIAL",
+            "sub_niche": f"Ouedkniss Store ({niche})",
             "name": name,
             "company_name": name,
             "contact_email": store.get("email"),
@@ -262,6 +265,7 @@ class OuedknissHarvester:
             "identified_pain_points": pain_points,
             "proposed_service": proposed_service,
             "status": "new",
+            "synced_to_sheets": False,
             "metadata": {
                 "store_slug": store.get("slug"),
                 "announcements_count": store.get("announcementsCount"),
@@ -284,13 +288,14 @@ class OuedknissHarvester:
                 cur.execute(
                     """
                     INSERT INTO leads (
-                        fingerprint, source, external_id, target_market, name,
-                        company_name, contact_email, contact_phone, contact_whatsapp,
-                        contact_instagram, contact_facebook, website_url, location_wilaya,
-                        category_niche, raw_content, detected_language,
-                        identified_pain_points, proposed_service, status, metadata
+                        fingerprint, source, external_id, target_market, country,
+                        lead_category, sub_niche, name, company_name, contact_email,
+                        contact_phone, contact_whatsapp, contact_instagram, contact_facebook,
+                        website_url, location_wilaya, category_niche, raw_content,
+                        detected_language, identified_pain_points, proposed_service,
+                        status, synced_to_sheets, metadata
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     ON CONFLICT (fingerprint) DO NOTHING
                     RETURNING id;
@@ -300,6 +305,9 @@ class OuedknissHarvester:
                         lead["source"],
                         lead["external_id"],
                         lead["target_market"],
+                        lead["country"],
+                        lead["lead_category"],
+                        lead["sub_niche"],
                         lead["name"],
                         lead["company_name"],
                         lead["contact_email"],
@@ -315,6 +323,7 @@ class OuedknissHarvester:
                         lead["identified_pain_points"],
                         lead["proposed_service"],
                         lead["status"],
+                        lead["synced_to_sheets"],
                         psycopg2.extras.Json(lead["metadata"]),
                     ),
                 )

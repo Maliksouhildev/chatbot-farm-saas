@@ -98,11 +98,15 @@ class TelegramHarvester:
             raw_text=text[:60],
         )
 
+        country = "Algeria" if market == "algeria" else "Global"
         return {
             "fingerprint": fingerprint,
             "source": "telegram",
             "external_id": f"{message.chat_id}_{message.id}",
             "target_market": market,
+            "country": country,
+            "lead_category": "ACTIVE_REQUEST",
+            "sub_niche": chat_title or "Telegram Group",
             "name": full_name,
             "company_name": None,
             "contact_email": None,
@@ -119,6 +123,7 @@ class TelegramHarvester:
             "identified_pain_points": heuristics["pain_points"],
             "proposed_service": heuristics["proposed_service"],
             "status": "new",
+            "synced_to_sheets": False,
             "metadata": {
                 "chat_id": message.chat_id,
                 "message_id": message.id,
@@ -142,12 +147,12 @@ class TelegramHarvester:
                 cur.execute(
                     """
                     INSERT INTO leads (
-                        fingerprint, source, external_id, target_market, name,
-                        contact_phone, contact_whatsapp, contact_telegram,
-                        raw_content, detected_language, identified_pain_points,
-                        proposed_service, status, metadata
+                        fingerprint, source, external_id, target_market, country,
+                        lead_category, sub_niche, name, contact_phone, contact_whatsapp,
+                        contact_telegram, raw_content, detected_language, identified_pain_points,
+                        proposed_service, status, synced_to_sheets, metadata
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     ON CONFLICT (fingerprint) DO NOTHING
                     RETURNING id;
@@ -157,6 +162,9 @@ class TelegramHarvester:
                         lead["source"],
                         lead["external_id"],
                         lead["target_market"],
+                        lead["country"],
+                        lead["lead_category"],
+                        lead["sub_niche"],
                         lead["name"],
                         lead["contact_phone"],
                         lead["contact_whatsapp"],
@@ -166,6 +174,7 @@ class TelegramHarvester:
                         lead["identified_pain_points"],
                         lead["proposed_service"],
                         lead["status"],
+                        lead["synced_to_sheets"],
                         psycopg2.extras.Json(lead["metadata"]),
                     ),
                 )

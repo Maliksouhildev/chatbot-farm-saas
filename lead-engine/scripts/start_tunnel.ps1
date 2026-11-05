@@ -101,15 +101,19 @@ if (Test-Path $resolvedEnv) {
 
 # 4. Print Webhook URLs for Quick Configuration
 Write-Host "`n======================================================================" -ForegroundColor Cyan
-Write-Host "  ACTIVE WEBHOOK ENDPOINTS FOR N8N & TELEGRAM" -ForegroundColor Cyan
+Write-Host "  ACTIVE WEBHOOK ENDPOINTS FOR N8N, TELEGRAM & EVOLUTION API" -ForegroundColor Cyan
 Write-Host "======================================================================" -ForegroundColor Cyan
-Write-Host "• Lead Ingestion Webhook:" -ForegroundColor White
+Write-Host "• Phase 1: Lead Ingestion Webhook:" -ForegroundColor White
 Write-Host "  $publicUrl/webhook/lead-ingestion" -ForegroundColor Yellow
-Write-Host "• Telegram HITL Callback Webhook:" -ForegroundColor White
+Write-Host "• Phase 2: Telegram HITL Callback Webhook:" -ForegroundColor White
 Write-Host "  $publicUrl/webhook/telegram-hitl-trigger" -ForegroundColor Yellow
-Write-Host "• Omnichannel Outreach Dispatch Webhook:" -ForegroundColor White
+Write-Host "• Phase 3: Omnichannel Outreach Dispatch Webhook:" -ForegroundColor White
 Write-Host "  $publicUrl/webhook/dispatch-outreach" -ForegroundColor Yellow
-Write-Host "• Harvester API (Local):" -ForegroundColor White
+Write-Host "• Phase 3: Incoming WhatsApp Reply Buffer Webhook (Evolution API):" -ForegroundColor White
+Write-Host "  $publicUrl/webhook/whatsapp-incoming" -ForegroundColor Yellow
+Write-Host "• Phase 4: Midnight 00:00 Batch (Google Sheets & Queue):" -ForegroundColor White
+Write-Host "  Triggered autonomously every night at 00:00 (Africa/Algiers time)" -ForegroundColor Green
+Write-Host "• Harvester API (Local Microservice):" -ForegroundColor White
 Write-Host "  http://localhost:$HarvesterPort" -ForegroundColor Yellow
 Write-Host "======================================================================`n" -ForegroundColor Cyan
 

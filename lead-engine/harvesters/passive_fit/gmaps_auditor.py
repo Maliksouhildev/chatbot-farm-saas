@@ -177,9 +177,14 @@ class GMapsAuditor:
                     if not clean_phone and not website:
                         continue
 
-                    # Market identification
+                    # Market & Country identification
                     is_dz = "alg" in location.lower() or (clean_phone and clean_phone.startswith("+213"))
                     market = "algeria" if is_dz else "global"
+                    country = "Algeria" if is_dz else (
+                        "France" if "france" in location.lower() or "paris" in location.lower() else
+                        "UK" if "london" in location.lower() or "uk" in location.lower() else
+                        "USA" if "austin" in location.lower() or "us" in location.lower() else "Global"
+                    )
 
                     # Pain points & proposed service
                     pain_points = [audit["pain_point"]]
@@ -202,6 +207,9 @@ class GMapsAuditor:
                         "source": "gmaps",
                         "external_id": str(place.get("cid") or title),
                         "target_market": market,
+                        "country": country,
+                        "lead_category": "PASSIVE_POTENTIAL",
+                        "sub_niche": query,
                         "name": title,
                         "company_name": title,
                         "contact_email": None,
@@ -224,6 +232,7 @@ class GMapsAuditor:
                         "identified_pain_points": pain_points,
                         "proposed_service": proposed_service,
                         "status": "new",
+                        "synced_to_sheets": False,
                         "metadata": {
                             "audit_health": audit["health"],
                             "audit_details": audit["details"],
@@ -261,13 +270,13 @@ class GMapsAuditor:
                 cur.execute(
                     """
                     INSERT INTO leads (
-                        fingerprint, source, external_id, target_market, name,
-                        company_name, contact_phone, contact_whatsapp,
-                        contact_facebook, website_url, location_wilaya,
+                        fingerprint, source, external_id, target_market, country,
+                        lead_category, sub_niche, name, company_name, contact_phone,
+                        contact_whatsapp, contact_facebook, website_url, location_wilaya,
                         category_niche, raw_content, detected_language,
-                        identified_pain_points, proposed_service, status, metadata
+                        identified_pain_points, proposed_service, status, synced_to_sheets, metadata
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     ON CONFLICT (fingerprint) DO NOTHING
                     RETURNING id;
@@ -277,6 +286,9 @@ class GMapsAuditor:
                         lead["source"],
                         lead["external_id"],
                         lead["target_market"],
+                        lead["country"],
+                        lead["lead_category"],
+                        lead["sub_niche"],
                         lead["name"],
                         lead["company_name"],
                         lead["contact_phone"],
@@ -290,6 +302,7 @@ class GMapsAuditor:
                         lead["identified_pain_points"],
                         lead["proposed_service"],
                         lead["status"],
+                        lead["synced_to_sheets"],
                         psycopg2.extras.Json(lead["metadata"]),
                     ),
                 )

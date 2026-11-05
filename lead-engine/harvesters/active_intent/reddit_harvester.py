@@ -164,11 +164,15 @@ class RedditHarvester:
 
                     author_name = str(post.author) if post.author else "anonymous"
 
+                    country = "Algeria" if market == "algeria" else "USA"
                     lead_dict = {
                         "fingerprint": fingerprint,
                         "source": "reddit",
                         "external_id": post.id,
                         "target_market": market,
+                        "country": country,
+                        "lead_category": "ACTIVE_REQUEST",
+                        "sub_niche": f"r/{sub_name}",
                         "name": author_name,
                         "company_name": None,
                         "contact_email": None,
@@ -184,6 +188,7 @@ class RedditHarvester:
                         "identified_pain_points": heuristics["pain_points"],
                         "proposed_service": heuristics["proposed_service"],
                         "status": "new",
+                        "synced_to_sheets": False,
                         "metadata": {
                             "reddit_score": post.score,
                             "num_comments": post.num_comments,
@@ -225,11 +230,11 @@ class RedditHarvester:
                 cur.execute(
                     """
                     INSERT INTO leads (
-                        fingerprint, source, external_id, target_market, name,
-                        raw_content, detected_language, identified_pain_points,
-                        proposed_service, status, metadata
+                        fingerprint, source, external_id, target_market, country,
+                        lead_category, sub_niche, name, raw_content, detected_language,
+                        identified_pain_points, proposed_service, status, synced_to_sheets, metadata
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     ON CONFLICT (fingerprint) DO NOTHING
                     RETURNING id;
@@ -239,12 +244,16 @@ class RedditHarvester:
                         lead["source"],
                         lead["external_id"],
                         lead["target_market"],
+                        lead["country"],
+                        lead["lead_category"],
+                        lead["sub_niche"],
                         lead["name"],
                         lead["raw_content"],
                         lead["detected_language"],
                         lead["identified_pain_points"],
                         lead["proposed_service"],
                         lead["status"],
+                        lead["synced_to_sheets"],
                         psycopg2.extras.Json(lead["metadata"]),
                     ),
                 )
