@@ -12,4 +12,11 @@ lead-engine/harvesters/session/
 lead-engine/session/
 __pycache__/
 *.pyc
+*.backup
+*.tmp
+*.log
+fix*.js
+execute_*.js
+update_*.js
+test_screenshots/
 

@@ -701,7 +701,7 @@
             {
               "name": "key",
               "valueProvider": "fieldValue",
-              "value": "AIzaSyCxHAIbxpUpy_VEKa2PH9QepV-45rZmndc"
+              "value": "={{ $env.GEMINI_API_KEY }}"
             }
           ]
         }
