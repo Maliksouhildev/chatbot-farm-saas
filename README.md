@@ -39,59 +39,28 @@
 
 ---
 
-## 🏛️ System Architecture
+## 🖥️ Live Dashboard & Interface Showcase
 
-```mermaid
-flowchart TD
-    subgraph Clients["Customer Channels"]
-        WA["WhatsApp (Evolution API)"]
-        TG["Telegram (MTProto / Bot)"]
-        DC["Discord (Gateway)"]
-        IG["Instagram Direct"]
-        GM["Gmail (IMAP / API)"]
-        SG["Signal (REST)"]
-    end
+<div align="center">
 
-    subgraph Core["Chatbot Farm Platform (Next.js 14)"]
-        Router["Omnichannel Message Router"]
-        Inbox["Unified Inbox UI"]
-        HITL["Human-in-the-Loop Manager"]
-        RAG["Knowledge Base & Prompt Engine"]
-    end
+![Chatbot Farm SaaS Dashboard](docs/images/chatbot_farm_dashboard.jpg)
 
-    subgraph AI_Layer["Multimodal AI Services"]
-        Gemini["Google Gemini (Flash 2.5 / Pro)"]
-        OpenAI["OpenAI GPT-4o"]
-        Darija["Darija Prompt Builder & Normalizer"]
-    end
+*Unified 3-column SaaS Workspace: Live omnichannel connections (WhatsApp, Telegram, Gmail), active AI sales agent supervision, and real-time command metrics.*
 
-    subgraph Backend_Data["Data & Orchestration"]
-        Supa[("Supabase PostgreSQL")]
-        Redis[("Redis Deduplication")]
-        n8n["n8n Workflow Engine"]
-        Pay["Chargily Pay v2"]
-    end
+</div>
 
-    subgraph Lead_Gen["Autonomous Lead Engine"]
-        TGWatcher["Telegram Group Listener"]
-        GMap["Google Maps Auditor"]
-        Oued["Ouedkniss Harvester"]
-    end
+---
 
-    Clients <-->|Webhooks / WebSockets| Router
-    Router <--> Inbox
-    Router --> HITL
-    HITL -->|Autonomous Mode| RAG
-    RAG --> Darija
-    Darija --> Gemini
-    Darija --> OpenAI
-    Router --> Supa
-    Core --> Pay
+## 🏛️ How the Platform Operates
 
-    Lead_Gen --> Redis
-    Lead_Gen --> n8n
-    n8n --> Supa
-```
+| Layer | Technologies | Core Functionality |
+|:------|:-------------|:-------------------|
+| **Omnichannel Messaging** | WhatsApp (Evolution API), Telegram (MTProto), Discord, Instagram, Gmail, Signal | Single webhook & WebSocket gateway ingesting incoming messages across all customer platforms with unified contact resolution. |
+| **Unified 3-Column UI** | Next.js 14, Tailwind CSS, Lucide Icons, Dark Mode | App Switcher (Left), Real-time conversation thread & audio voice player (Middle), CRM Customer Profile, Tags & Knowledge Base (Right). |
+| **Cognitive Intelligence** | Google Gemini 2.5 Flash, OpenAI GPT-4o, Custom Darija Normalizer | Auto-detects Algerian Darija, French, and Arabic; pulls relevant context from Supabase RAG embeddings; formulates instant sales replies. |
+| **Human-in-the-Loop** | Real-time WebSocket toggle | Operators can instantly pause AI automation per-conversation and take over manually with full conversation history preserved. |
+| **Payments & Billing** | Chargily Pay v2 | Native Algerian checkout supporting EDAHABIA and CIB cards with automated cryptographic webhook verification. |
+| **Autonomous Lead Engine** | Python, Redis, Telegram Scrapers, Google Maps | 24/7 background microservices discovering qualified local business leads and syncing them to n8n outreach sequences. |
 
 ---
 

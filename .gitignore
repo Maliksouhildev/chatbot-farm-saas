@@ -20,3 +20,5 @@ execute_*.js
 update_*.js
 test_screenshots/
 
+
+!docs/images/*
