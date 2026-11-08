@@ -85,6 +85,13 @@ class DorkHarvester:
 
                 try:
                     res = await client.post(self.endpoint, headers=headers, json=payload)
+                    # Handle Serper free-tier query pattern restriction on 'site:' operators
+                    if res.status_code == 400 and "site:" in payload["q"]:
+                        fallback_q = re.sub(r'site:[^\s]+', '', payload["q"]).strip()
+                        logger.info(f"Retrying query without site operator for free Serper account: {fallback_q}")
+                        payload["q"] = fallback_q
+                        res = await client.post(self.endpoint, headers=headers, json=payload)
+
                     if res.status_code != 200:
                         logger.error(f"Serper API returned {res.status_code}: {res.text}")
                         continue

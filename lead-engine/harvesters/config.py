@@ -8,6 +8,15 @@ import re
 from typing import List, Dict, Optional
 
 try:
+    from dotenv import load_dotenv
+    _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _env_path = os.path.join(_root_dir, ".env")
+    if os.path.exists(_env_path):
+        load_dotenv(_env_path, override=True)
+except ImportError:
+    pass
+
+try:
     from pydantic_settings import BaseSettings, SettingsConfigDict
     HAS_PYDANTIC_SETTINGS = True
 except ImportError:

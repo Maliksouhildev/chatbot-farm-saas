@@ -60,7 +60,10 @@ class MediaTranscriber:
         # 1. Try Groq Free-Tier Whisper Large V3 Turbo
         if self.groq_key:
             try:
-                headers = {"Authorization": f"Bearer {self.groq_key}"}
+                headers = {
+                    "Authorization": f"Bearer {self.groq_key}",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) LeadEngine/2.5"
+                }
                 files = {"file": (filename, audio_bytes, "audio/ogg")}
                 data = {
                     "model": "whisper-large-v3-turbo",
