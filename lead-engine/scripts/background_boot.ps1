@@ -85,7 +85,7 @@ if ($DockerRunning) {
     if (Test-Path $HarvesterMain) {
         $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
         $ProcessInfo.FileName = "powershell.exe"
-        $ProcessInfo.Arguments = "-NoProfile -WindowStyle Hidden -Command `"cd '$ProjectRoot'; python -m uvicorn harvesters.main:app --host 0.0.0.0 --port 8000`""
+        $ProcessInfo.Arguments = "-NoProfile -WindowStyle Hidden -Command `"cd '$ProjectRoot'; python -m uvicorn harvesters.main:app --host 0.0.0.0 --port 8005`""
         $ProcessInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
         $ProcessInfo.CreateNoWindow = $true
         [System.Diagnostics.Process]::Start($ProcessInfo) | Out-Null

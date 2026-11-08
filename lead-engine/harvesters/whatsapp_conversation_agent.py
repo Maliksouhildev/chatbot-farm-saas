@@ -75,6 +75,7 @@ class WhatsAppConversationAgent:
         self.api_key = settings.EVOLUTION_API_KEY
         self.gemini_key = settings.GEMINI_API_KEY
         self.openai_key = settings.OPENAI_API_KEY
+        self._bot_sent_message_ids = set()
 
     async def handle_incoming_webhook(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -509,8 +510,8 @@ class WhatsAppConversationAgent:
         data = payload.get("data", payload)
         if isinstance(data, dict):
             key = data.get("key", {})
-            # Ignore messages sent by ourselves
-            if key.get("fromMe", False):
+            msg_id = key.get("id")
+            if msg_id and msg_id in self._bot_sent_message_ids:
                 return None
 
             remote_jid = key.get("remoteJid", "")
@@ -519,6 +520,18 @@ class WhatsAppConversationAgent:
 
             phone_digits = remote_jid.split("@")[0]
             phone = f"+{phone_digits}"
+
+            # If fromMe is True, only process if sender is the Admin messaging themselves (Notes to Self)
+            if key.get("fromMe", False):
+                admin_phones = [
+                    settings.ADMIN_WHATSAPP_PHONE,
+                    settings.ADMIN_PHONE_NUMBER,
+                    os.getenv("ADMIN_WHATSAPP_PHONE"),
+                ]
+                valid_admins = [normalize_algerian_phone(p) or p for p in admin_phones if p]
+                if not any(phone == adm for adm in valid_admins):
+                    return None
+
             msg = data.get("message", {})
 
             # 1. Check Text
@@ -662,6 +675,15 @@ class WhatsAppConversationAgent:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post(url, headers=headers, json=payload)
                 if resp.status_code in [200, 201]:
+                    try:
+                        res_data = resp.json()
+                        msg_id = res_data.get("key", {}).get("id")
+                        if msg_id:
+                            self._bot_sent_message_ids.add(msg_id)
+                            if len(self._bot_sent_message_ids) > 1000:
+                                self._bot_sent_message_ids = set(list(self._bot_sent_message_ids)[-500:])
+                    except Exception:
+                        pass
                     logger.info(f"WhatsApp message dispatched to {clean_digits}.")
                     return True
                 else:

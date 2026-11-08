@@ -105,7 +105,7 @@ services:
       - ./harvesters:/app
       - ./harvesters/session:/app/session
     ports:
-      - "${HOST_HARVESTERS_PORT:-8000}:8000"
+      - "${HOST_HARVESTERS_PORT:-8005}:8000"
     depends_on:
       postgres:
         condition: service_healthy
