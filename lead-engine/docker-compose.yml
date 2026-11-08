@@ -23,7 +23,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "5432:5432"
+      - "${HOST_POSTGRES_PORT:-5434}:5432"
     deploy:
       resources:
         limits:
@@ -54,7 +54,7 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "6379:6379"
+      - "${HOST_REDIS_PORT:-6381}:6379"
     deploy:
       resources:
         limits:
@@ -105,7 +105,7 @@ services:
       - ./harvesters:/app
       - ./harvesters/session:/app/session
     ports:
-      - "8000:8000"
+      - "${HOST_HARVESTERS_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -134,7 +134,7 @@ services:
     container_name: leadengine_n8n
     restart: unless-stopped
     ports:
-      - "5678:5678"
+      - "${HOST_N8N_PORT:-5679}:5678"
     environment:
       DB_TYPE: postgresdb
       DB_POSTGRESDB_HOST: postgres

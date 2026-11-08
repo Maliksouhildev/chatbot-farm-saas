@@ -68,14 +68,16 @@ Strict Docker container resource limits (`deploy.resources.limits.memory`) preve
 
 ```text
 lead-engine/
-├── docker-compose.yml           # Multi-container orchestration with strict resource caps
+├── docker-compose.yml           # Multi-container orchestration with conflict-free host ports
 ├── .env.example                 # Comprehensive environment variable template
 ├── database/
 │   └── init.sql                 # PostgreSQL 16 schema with triggers, views & dedup indexes
 ├── harvesters/                  # Containerized Python FastAPI microservice
 │   ├── Dockerfile
 │   ├── requirements.txt
-│   ├── main.py                  # API endpoints & APScheduler cron runners
+│   ├── main.py                  # API endpoints, 5 APScheduler jobs, & web cockpit
+│   ├── dashboard.html           # Real-Time Mission Control & Instant WhatsApp UI
+│   ├── ai_qualifier.py          # Dual-Engine AI scoring (OpenAI/Gemini + NLP Fallback)
 │   ├── config.py                # Regex extractors (DZ phones, WhatsApp) & Darija/FR/EN triggers
 │   ├── redis_dedup.py           # SHA-256 fingerprinting & 14-day debounce state manager
 │   ├── active_intent/
@@ -88,9 +90,12 @@ lead-engine/
 ├── n8n_workflows/               # Importable n8n workflows
 │   ├── 01_lead_ingestion_and_ai_scoring.json
 │   ├── 02_telegram_hitl_approval_bot.json
-│   └── 03_omnichannel_outreach_and_debounce.json
+│   ├── 03_omnichannel_outreach_and_debounce.json
+│   └── 04_midnight_batch_and_google_sheets.json
 └── scripts/
-    └── start_tunnel.ps1         # Windows 11 PowerShell ngrok tunnel & webhook URL sync
+    ├── run_lead_engine.ps1      # 1-Click Master Launcher (Windows 11 bootstrapper)
+    ├── start_tunnel.ps1         # Windows 11 PowerShell ngrok tunnel & webhook URL sync
+    └── simulate_pipeline.py     # End-to-end pipeline integrity & pitch verification test
 ```
 
 ---
@@ -115,7 +120,14 @@ Fill in your credentials in `.env`:
 - `SERPER_API_KEY` (for Google Dorks & Google Maps places)
 - `REDDIT_CLIENT_ID` & `REDDIT_CLIENT_SECRET` (for r/n8n, r/automation)
 
-### 3. Build & Launch Containers
+### 3. Master 1-Click Launch (PowerShell)
+Launch everything with healthcheck polling and automatic cockpit browser opening:
+```powershell
+.\scripts\run_lead_engine.ps1
+```
+This script initializes `.env`, boots Docker Desktop containers (`leadengine_postgres`, `leadengine_redis`, `leadengine_harvesters`, `leadengine_n8n`), checks connectivity, and opens the **Mission Control Cockpit** at `http://localhost:8000/dashboard`.
+
+Alternatively, launch via standard Docker Compose:
 ```powershell
 docker compose up -d --build
 ```
@@ -124,29 +136,38 @@ Check container status:
 docker compose ps
 ```
 
-### 4. Start the Public Tunnel (PowerShell)
+### 4. Open the Mission Control Cockpit
+- **Mission Control Cockpit:** `http://localhost:8000/dashboard`
+  - Real-time pipeline counters (Total, High Intent, Pending, Approved, Contacted)
+  - 1-Click scraping triggers (`Reddit`, `Ouedkniss`, `Instagram Dorks`, `Google Maps`)
+  - 1-Click **WhatsApp Direct (`wa.me`)** pre-filled with culturally tailored pitches in Darija/French/English
+  - Instant dispatch via Evolution API
+- **n8n Orchestrator:** `http://localhost:5679`
+
+### 5. Start the Public Tunnel (PowerShell)
 Execute the automated tunneling script:
 ```powershell
-.\scripts\start_tunnel.ps1
+.\scripts\start_tunnel.ps1 -N8nPort 5679
 ```
 This script:
-1. Spawns `ngrok http 5678`.
+1. Spawns `ngrok http 5679`.
 2. Queries `http://127.0.0.1:4040/api/tunnels` to extract your public HTTPS URL.
 3. Automatically updates `WEBHOOK_URL` in `.env`.
 4. Outputs ready-to-use webhook URLs.
 
-### 5. Import n8n Workflows
-1. Open n8n at `http://localhost:5678`.
+### 6. Import n8n Workflows
+1. Open n8n at `http://localhost:5679`.
 2. Complete initial admin setup.
 3. Go to **Workflows > Import from File** and import:
    - `n8n_workflows/01_lead_ingestion_and_ai_scoring.json`
    - `n8n_workflows/02_telegram_hitl_approval_bot.json`
    - `n8n_workflows/03_omnichannel_outreach_and_debounce.json`
+   - `n8n_workflows/04_midnight_batch_and_google_sheets.json`
 4. Set credentials in n8n for:
-   - PostgreSQL (`leadengine_postgres:5432`)
+   - PostgreSQL (`postgres:5432` inside docker network)
    - OpenAI or HTTP Header Auth (`Authorization: Bearer sk-...`)
    - Telegram Bot (`TELEGRAM_BOT_TOKEN`)
-5. Toggle all three workflows to **Active**.
+5. Toggle all four workflows to **Active**.
 
 ---
 

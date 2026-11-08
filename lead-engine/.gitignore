@@ -1,0 +1,45 @@
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.token
+*creds*
+*secret*
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Telethon session & runtime files
+*.session
+*.session-journal
+session/
+harvesters/session/
+
+# Logs & temporary files
+*.log
+logs/
+
+# Database dumps & local storage
+database.sqlite
+*.db
+*.sqlite3
+pgdata/
+redis_data/
+n8n_data/
+
+# OS artifacts
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+.DS_Store

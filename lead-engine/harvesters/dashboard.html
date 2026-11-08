@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lead Engine | B2B Mission Control & Client Acquisition Cockpit</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              900: '#064e3b',
+            },
+            surface: {
+              800: '#1e293b',
+              900: '#0f172a',
+              950: '#020617',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #0b0f19; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #0f172a; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  </style>
+</head>
+<body class="text-slate-200 antialiased min-h-screen flex flex-col">
+
+  <!-- TOP NAVIGATION HEADER -->
+  <header class="border-b border-slate-800 bg-surface-950/80 backdrop-blur sticky top-0 z-50 px-6 py-4">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-black text-xl">
+          ⚡
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            Lead Engine <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">v2.5 PRO</span>
+          </h1>
+          <p class="text-xs text-slate-400">Autonomous B2B Lead Gen & Omnichannel Client Acquisition</p>
+        </div>
+      </div>
+
+      <!-- Live Connectivity Badges -->
+      <div class="flex items-center gap-3 text-xs font-medium">
+        <span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300">
+          <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          Harvester API: <span id="apiStatus" class="text-emerald-400">Online</span>
+        </span>
+        <span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300">
+          🇩🇿 Algeria (Darija/FR) & 🌐 Global (EN)
+        </span>
+        <button onclick="refreshData()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition flex items-center gap-1 shadow-md shadow-emerald-600/20">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-6 py-6 w-full flex-1 space-y-6">
+
+    <!-- KPI SUMMARY METRICS -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div class="p-4 rounded-xl bg-surface-900 border border-slate-800/80 shadow-sm">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Harvested</p>
+        <p id="statTotal" class="text-2xl font-bold text-white mt-1">0</p>
+        <span class="text-[11px] text-slate-500">Across all channels</span>
+      </div>
+      <div class="p-4 rounded-xl bg-surface-900 border border-slate-800/80 shadow-sm">
+        <p class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">High Intent (≥7)</p>
+        <p id="statQualified" class="text-2xl font-bold text-emerald-400 mt-1">0</p>
+        <span class="text-[11px] text-slate-500">Ready for outreach</span>
+      </div>
+      <div class="p-4 rounded-xl bg-surface-900 border border-slate-800/80 shadow-sm">
+        <p class="text-xs font-semibold text-amber-400 uppercase tracking-wider">Review Queue (HITL)</p>
+        <p id="statPending" class="text-2xl font-bold text-amber-400 mt-1">0</p>
+        <span class="text-[11px] text-slate-500">Awaiting admin click</span>
+      </div>
+      <div class="p-4 rounded-xl bg-surface-900 border border-slate-800/80 shadow-sm">
+        <p class="text-xs font-semibold text-blue-400 uppercase tracking-wider">Approved Leads</p>
+        <p id="statApproved" class="text-2xl font-bold text-blue-400 mt-1">0</p>
+        <span class="text-[11px] text-slate-500">Midnight queue & instant</span>
+      </div>
+      <div class="p-4 rounded-xl bg-surface-900 border border-slate-800/80 shadow-sm">
+        <p class="text-xs font-semibold text-purple-400 uppercase tracking-wider">Contacted</p>
+        <p id="statContacted" class="text-2xl font-bold text-purple-400 mt-1">0</p>
+        <span class="text-[11px] text-slate-500">14-day debounce active</span>
+      </div>
+      <div class="p-4 rounded-xl bg-surface-900 border border-slate-800/80 shadow-sm">
+        <p class="text-xs font-semibold text-teal-400 uppercase tracking-wider">Google Sheets</p>
+        <p id="statSynced" class="text-2xl font-bold text-teal-400 mt-1">0</p>
+        <span class="text-[11px] text-slate-500">Synchronized rows</span>
+      </div>
+    </div>
+
+    <!-- HARVESTER CONTROL ACTION BAR -->
+    <div class="p-4 rounded-xl bg-gradient-to-r from-surface-900 via-slate-900 to-surface-900 border border-slate-800 flex flex-wrap items-center justify-between gap-3 shadow-md">
+      <div>
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <span>🚀</span> Real-Time Harvesters & AI Qualifier Control
+        </h3>
+        <p class="text-xs text-slate-400">Trigger immediate scrapes or run the AI scoring engine on pending leads.</p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="triggerHarvest('all')" id="btnHarvestAll" class="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow">
+          <span>⚡</span> Harvest All Now
+        </button>
+        <button onclick="triggerHarvest('reddit')" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition">
+          Reddit Intent
+        </button>
+        <button onclick="triggerHarvest('ouedkniss')" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition">
+          Ouedkniss Pro
+        </button>
+        <button onclick="triggerHarvest('dork')" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition">
+          Instagram Dorks
+        </button>
+        <button onclick="triggerHarvest('gmaps')" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition">
+          Google Maps Audit
+        </button>
+        <button onclick="triggerAutoQualify()" id="btnAutoQualify" class="px-3.5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow">
+          <span>🤖</span> Auto-Qualify & Pitch
+        </button>
+      </div>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="flex flex-wrap items-center justify-between gap-4 bg-surface-900/60 p-3.5 rounded-xl border border-slate-800 text-xs">
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Status Filter -->
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-400 font-medium">Status:</label>
+          <select id="filterStatus" onchange="fetchLeads()" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500">
+            <option value="">All Statuses</option>
+            <option value="hitl_pending">HITL Review Pending</option>
+            <option value="approved">Approved</option>
+            <option value="scored">Scored</option>
+            <option value="contacted">Contacted</option>
+            <option value="new">New Unscored</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+
+        <!-- Country Filter -->
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-400 font-medium">Country:</label>
+          <select id="filterCountry" onchange="fetchLeads()" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500">
+            <option value="">All Countries</option>
+            <option value="Algeria">🇩🇿 Algeria</option>
+            <option value="France">🇫🇷 France</option>
+            <option value="USA">🇺🇸 USA</option>
+            <option value="UK">🇬🇧 UK</option>
+            <option value="UAE">🇦🇪 UAE</option>
+          </select>
+        </div>
+
+        <!-- Category Filter -->
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-400 font-medium">Category:</label>
+          <select id="filterCategory" onchange="fetchLeads()" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500">
+            <option value="">All Categories</option>
+            <option value="ACTIVE_REQUEST">🔥 Active Request</option>
+            <option value="PASSIVE_POTENTIAL">⚡ Passive Potential</option>
+          </select>
+        </div>
+
+        <!-- Min Score Filter -->
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-400 font-medium">Min Score:</label>
+          <select id="filterScore" onchange="fetchLeads()" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-emerald-500">
+            <option value="0">All Scores (0+)</option>
+            <option value="7" selected>High Intent (7+)</option>
+            <option value="8">Super High (8+)</option>
+            <option value="9">Top Tier (9+)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="text-slate-400 text-xs">
+        Showing <span id="leadCount" class="font-bold text-white">0</span> matching leads
+      </div>
+    </div>
+
+    <!-- LEADS FEED CONTAINER -->
+    <div id="leadsContainer" class="space-y-4">
+      <!-- Loading Skeleton -->
+      <div class="p-8 text-center text-slate-500 rounded-xl bg-surface-900 border border-slate-800 animate-pulse">
+        Loading fresh qualified leads from PostgreSQL...
+      </div>
+    </div>
+
+  </main>
+
+  <!-- NOTIFICATION TOAST -->
+  <div id="toast" class="fixed bottom-6 right-6 px-4 py-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold shadow-2xl transition-all duration-300 opacity-0 pointer-events-none transform translate-y-2 z-50">
+    Action executed successfully
+  </div>
+
+  <!-- CLIENT-SIDE SCRIPT -->
+  <script>
+    const API_BASE = window.location.origin;
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.innerText = message;
+      toast.className = `fixed bottom-6 right-6 px-4 py-3 rounded-xl text-white text-sm font-semibold shadow-2xl transition-all duration-300 transform translate-y-0 z-50 ${isError ? 'bg-red-600' : 'bg-emerald-600'}`;
+      toast.style.opacity = '1';
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.className += ' translate-y-2';
+      }, 3500);
+    }
+
+    async function fetchStats() {
+      try {
+        const res = await fetch(`${API_BASE}/api/dashboard/stats`);
+        if (res.ok) {
+          const stats = await res.json();
+          document.getElementById('statTotal').innerText = stats.total || 0;
+          document.getElementById('statQualified').innerText = stats.high_intent || 0;
+          document.getElementById('statPending').innerText = stats.hitl_pending || 0;
+          document.getElementById('statApproved').innerText = stats.approved || 0;
+          document.getElementById('statContacted').innerText = stats.contacted || 0;
+          document.getElementById('statSynced').innerText = stats.synced_to_sheets || 0;
+        }
+      } catch (e) {
+        console.warn("Could not load stats:", e);
+      }
+    }
+
+    async function fetchLeads() {
+      const status = document.getElementById('filterStatus').value;
+      const country = document.getElementById('filterCountry').value;
+      const category = document.getElementById('filterCategory').value;
+      const minScore = document.getElementById('filterScore').value;
+
+      let url = `${API_BASE}/leads?limit=50&min_score=${minScore}`;
+      if (status) url += `&status=${encodeURIComponent(status)}`;
+      if (country) url += `&country=${encodeURIComponent(country)}`;
+      if (category) url += `&lead_category=${encodeURIComponent(category)}`;
+
+      const container = document.getElementById('leadsContainer');
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const leads = data.leads || [];
+
+        document.getElementById('leadCount').innerText = leads.length;
+
+        if (leads.length === 0) {
+          container.innerHTML = `
+            <div class="p-12 text-center rounded-xl bg-surface-900 border border-slate-800 text-slate-400">
+              <span class="text-3xl">📭</span>
+              <p class="font-bold text-white mt-2">No leads found matching current filters.</p>
+              <p class="text-xs text-slate-500 mt-1">Click "Harvest All Now" above to scrape fresh buyer leads across Reddit, Ouedkniss, and Instagram.</p>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = leads.map(lead => renderLeadCard(lead)).join('');
+      } catch (err) {
+        container.innerHTML = `
+          <div class="p-6 text-center rounded-xl bg-red-950/40 border border-red-800 text-red-300 text-sm">
+            Failed to connect to API or Database. Ensure Docker containers are running.
+          </div>
+        `;
+      }
+    }
+
+    function renderLeadCard(lead) {
+      const score = lead.ai_fit_score || 0;
+      const scoreColor = score >= 8 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                         score >= 6 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                                      'bg-slate-700/40 text-slate-400 border-slate-700';
+
+      const isAlgeria = (lead.country || 'Algeria') === 'Algeria';
+      const flag = isAlgeria ? '🇩🇿' : (lead.country === 'France' ? '🇫🇷' : (lead.country === 'USA' ? '🇺🇸' : '🌐'));
+      const catBadge = lead.lead_category === 'ACTIVE_REQUEST'
+        ? '<span class="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-bold">🔥 ACTIVE REQUEST</span>'
+        : '<span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-bold">⚡ PASSIVE POTENTIAL</span>';
+
+      const phone = lead.contact_whatsapp || lead.contact_phone || '';
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      const pitch = lead.ai_pitch_draft || 'Bonjour, nous automatisons vos flux opérationnels.';
+      const encodedPitch = encodeURIComponent(pitch);
+      const waUrl = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodedPitch}` : null;
+
+      const statusBadges = {
+        'hitl_pending': '<span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold">Review Pending</span>',
+        'approved': '<span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">Approved</span>',
+        'contacted': '<span class="px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] font-bold">Contacted</span>',
+        'new': '<span class="px-2 py-0.5 rounded bg-slate-500/10 text-slate-400 border border-slate-500/20 text-[10px] font-bold">New</span>',
+        'rejected': '<span class="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold">Rejected</span>',
+      };
+
+      return `
+        <div class="p-5 rounded-xl bg-surface-900 border border-slate-800 shadow-sm hover:border-slate-700 transition">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="space-y-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-base">${flag}</span>
+                <span class="font-bold text-white text-base">${escapeHtml(lead.company_name || lead.name || 'Store / Business')}</span>
+                ${catBadge}
+                <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[11px] font-medium border border-slate-700">${escapeHtml(lead.sub_niche || lead.category_niche || 'General')}</span>
+                ${statusBadges[lead.status] || ''}
+              </div>
+              <p class="text-xs text-slate-400">
+                Source: <span class="text-slate-300 font-mono">#${(lead.source || 'harvester').toUpperCase()}</span>
+                ${lead.location_wilaya ? ` • Wilaya: <span class="text-slate-300">${escapeHtml(lead.location_wilaya)}</span>` : ''}
+                ${lead.website_url ? ` • Web: <a href="${lead.website_url}" target="_blank" class="text-emerald-400 hover:underline">${escapeHtml(lead.website_url.replace(/^https?:\/\//, ''))}</a>` : ''}
+              </p>
+            </div>
+
+            <!-- Score Pill -->
+            <div class="px-3 py-1.5 rounded-lg border font-black text-sm flex items-center gap-1 ${scoreColor}">
+              <span>⭐</span> ${score}/10
+            </div>
+          </div>
+
+          <!-- Contact Row -->
+          <div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-300 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+            ${phone ? `<span>📱 <strong>Phone/WA:</strong> <code class="text-emerald-400">${escapeHtml(phone)}</code></span>` : '<span class="text-slate-500">No phone</span>'}
+            ${lead.contact_instagram ? `<span>📸 <strong>Instagram:</strong> <a href="https://instagram.com/${lead.contact_instagram}" target="_blank" class="text-blue-400 hover:underline">@${escapeHtml(lead.contact_instagram)}</a></span>` : ''}
+            ${lead.contact_telegram ? `<span>✈️ <strong>Telegram:</strong> <span class="text-cyan-400">${escapeHtml(lead.contact_telegram)}</span></span>` : ''}
+            <span class="ml-auto text-slate-400">Proposed: <strong class="text-white">${escapeHtml(lead.proposed_service || 'n8n_automation')}</strong></span>
+          </div>
+
+          <!-- Bottleneck & Pitch Box -->
+          <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="p-3 rounded-lg bg-amber-950/20 border border-amber-900/30 text-xs">
+              <span class="font-bold text-amber-400 flex items-center gap-1">⚠️ Identified Bottleneck:</span>
+              <p class="text-slate-300 mt-1">${escapeHtml(lead.ai_scoring_reasoning || 'Operational friction detected.')}</p>
+            </div>
+            <div class="md:col-span-2 p-3 rounded-lg bg-emerald-950/20 border border-emerald-900/30 text-xs flex flex-col justify-between">
+              <div>
+                <span class="font-bold text-emerald-400 flex items-center gap-1">📝 Personalized Pitch Draft:</span>
+                <p class="text-slate-200 italic mt-1 font-serif">"${escapeHtml(pitch)}"</p>
+              </div>
+              <div class="mt-2 text-right">
+                <button onclick="copyToClipboard('${escapeJs(pitch)}')" class="text-[11px] text-slate-400 hover:text-white underline">
+                  Copy Pitch to Clipboard
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons Bar -->
+          <div class="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              ${waUrl ? `
+                <a href="${waUrl}" target="_blank" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow">
+                  <span>💬</span> 1-Click WhatsApp Direct
+                </a>
+              ` : ''}
+              ${phone ? `
+                <button onclick="sendViaEvolution('${lead.id}', '${phone}', '${escapeJs(pitch)}')" class="px-3 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-600 text-white font-semibold text-xs flex items-center gap-1">
+                  <span>🚀</span> Send via Evolution API
+                </button>
+              ` : ''}
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button onclick="updateLeadStatus('${lead.id}', 'approved')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-700 hover:text-white text-emerald-400 border border-emerald-800/50 text-xs font-bold transition">
+                ✅ Approve
+              </button>
+              <button onclick="updateLeadStatus('${lead.id}', 'rejected')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-900 text-rose-400 border border-rose-900/50 text-xs font-semibold transition">
+                ❌ Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function updateLeadStatus(leadId, newStatus) {
+      try {
+        const res = await fetch(`${API_BASE}/leads/${leadId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        if (res.ok) {
+          showToast(`Lead marked as ${newStatus}`);
+          fetchLeads();
+          fetchStats();
+        } else {
+          showToast('Failed to update status', true);
+        }
+      } catch (e) {
+        showToast('Error communicating with server', true);
+      }
+    }
+
+    async function sendViaEvolution(leadId, recipient, pitch) {
+      if (!confirm(`Dispatch automated WhatsApp message to ${recipient} via Evolution API?`)) return;
+      try {
+        const res = await fetch(`${API_BASE}/outreach/instant-whatsapp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lead_id: leadId,
+            recipient: recipient,
+            message: pitch
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+          showToast(`WhatsApp message dispatched to ${recipient}!`);
+          fetchLeads();
+          fetchStats();
+        } else {
+          showToast(`Evolution dispatch: ${data.detail || 'Service standby'}`, true);
+        }
+      } catch (e) {
+        showToast('Could not reach outreach gateway', true);
+      }
+    }
+
+    async function triggerHarvest(channel) {
+      const btn = document.getElementById('btnHarvestAll');
+      btn.innerText = '⚡ Scraping...';
+      btn.disabled = true;
+      try {
+        const res = await fetch(`${API_BASE}/harvest/${channel}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        if (res.ok) {
+          showToast(`Harvest for ${channel.toUpperCase()} triggered in background!`);
+          setTimeout(() => { fetchLeads(); fetchStats(); }, 2500);
+        } else {
+          showToast('Harvest failed', true);
+        }
+      } catch (e) {
+        showToast('Server connection error', true);
+      } finally {
+        btn.innerText = '⚡ Harvest All Now';
+        btn.disabled = false;
+      }
+    }
+
+    async function triggerAutoQualify() {
+      const btn = document.getElementById('btnAutoQualify');
+      btn.innerText = '🤖 Qualifying...';
+      btn.disabled = true;
+      try {
+        const res = await fetch(`${API_BASE}/leads/auto-qualify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`Qualified ${data.qualified_count || 0} leads with AI pitches!`);
+          fetchLeads();
+          fetchStats();
+        } else {
+          showToast('Auto-qualification failed', true);
+        }
+      } catch (e) {
+        showToast('Error running AI qualifier', true);
+      } finally {
+        btn.innerText = '🤖 Auto-Qualify & Pitch';
+        btn.disabled = false;
+      }
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Pitch copied to clipboard!');
+      }).catch(() => {
+        showToast('Failed to copy', true);
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function escapeJs(str) {
+      if (!str) return '';
+      return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
+    }
+
+    function refreshData() {
+      fetchStats();
+      fetchLeads();
+    }
+
+    // Initial Load
+    document.addEventListener('DOMContentLoaded', () => {
+      refreshData();
+      setInterval(fetchStats, 15000); // 15s live polling for dashboard stats
+    });
+  </script>
+</body>
+</html>

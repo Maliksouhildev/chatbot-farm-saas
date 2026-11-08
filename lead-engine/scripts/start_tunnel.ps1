@@ -7,7 +7,7 @@ Launches ngrok tunnel, queries the local API, and updates .env WEBHOOK_URL
 
 [CmdletBinding()]
 param (
-    [int]$N8nPort = 5678,
+    [int]$N8nPort = 5679,
     [int]$HarvesterPort = 8000,
     [string]$EnvFilePath = "$PSScriptRoot\..\.env"
 )
