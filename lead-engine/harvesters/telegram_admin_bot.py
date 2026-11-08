@@ -111,15 +111,16 @@ class TelegramAdminBot:
             f"👇 _Choose an action or reply to this message with a video/text:_"
         )
 
+        target_ref = client_id if client_id and client_id != "DZ-UNKNOWN" else lead_id
         inline_keyboard = {
             "inline_keyboard": [
                 [
-                    {"text": "✅ Send AI Reply", "callback_data": f"send_ai:{lead_id}"},
-                    {"text": "📹 Send Demo Video", "callback_data": f"send_demo:{lead_id}"},
+                    {"text": "✅ Send AI Reply", "callback_data": f"send_ai:{target_ref}"},
+                    {"text": "📹 Send Demo Video", "callback_data": f"send_demo:{target_ref}"},
                 ],
                 [
-                    {"text": "✏️ Reply Custom", "callback_data": f"custom_prompt:{lead_id}"},
-                    {"text": "❌ Ignore", "callback_data": f"dismiss:{lead_id}"},
+                    {"text": "✏️ Reply Custom", "callback_data": f"custom_prompt:{target_ref}"},
+                    {"text": "❌ Ignore", "callback_data": f"dismiss:{target_ref}"},
                 ],
             ]
         }
@@ -204,10 +205,16 @@ class TelegramAdminBot:
         async def _progress(msg: str):
             await self.send_message(msg, chat_id=chat_id)
 
+        # Detect requested target lead count (defaulting to 1,000 as requested by user)
+        target_leads = 1000
+        count_match = re.search(r"(\d{2,4})\s*(clients|leads|prospects|boutiques|magasins)", idea_text, re.IGNORECASE)
+        if count_match:
+            target_leads = min(int(count_match.group(1)), 1000)
+
         try:
             result = await batch_harvester.execute_campaign(
                 idea_prompt=idea_text,
-                target_leads=50,  # Rapid response batch
+                target_leads=target_leads,
                 progress_callback=_progress,
             )
 
@@ -221,7 +228,7 @@ class TelegramAdminBot:
             )
 
             for l in result["top_leads"][:3]:
-                summary_msg += f"• *{l['client_id']}* - {l['name']} ({l['location_wilaya']}) | Score: {l['ai_fit_score']}/10\n"
+                summary_msg += f"• *{l['client_id']}* - {l['name']} ({l.get('location_wilaya', 'Algérie')}) | Score: {l.get('ai_fit_score', 0)}/10\n"
 
             summary_msg += (
                 f"\n📲 _To outreach on WhatsApp, type:_\n"
@@ -238,33 +245,15 @@ class TelegramAdminBot:
     async def _handle_media_upload(self, message: Dict[str, Any], chat_id: int, reply_to: Optional[Dict[str, Any]]):
         """Handles video/photo uploads from admin, analyzing or relaying to WhatsApp client."""
         caption = message.get("caption", "")
+        reply_to_text = ""
+        if reply_to:
+            reply_to_text = reply_to.get("text") or reply_to.get("caption", "")
 
         # Check if this media is addressed to a specific client ID (e.g. #DZ-PERF-015 or in reply)
         client_id_match = re.search(r"#?(DZ-[A-Z0-9]+-\d+)", caption)
-        if not client_id_match and reply_to and "text" in reply_to:
-            client_id_match = re.search(r"#?(DZ-[A-Z0-9]+-\d+)", reply_to["text"])
+        if not client_id_match and reply_to_text:
+            client_id_match = re.search(r"#?(DZ-[A-Z0-9]+-\d+)", reply_to_text)
 
-        if client_id_match:
-            client_id = client_id_match.group(1)
-            await self.send_message(
-                f"📤 *Relaying Media to Client #{client_id} on WhatsApp...*",
-                chat_id=chat_id,
-            )
-            # Find client in DB
-            lead = self._get_lead_by_client_id(client_id)
-            if lead and lead.get("contact_phone"):
-                phone = lead["contact_phone"]
-                # In production with Evolution API, call /message/sendMedia
-                await self.send_message(
-                    f"✅ Media forwarded to {lead['name']} ({phone}) on WhatsApp successfully!",
-                    chat_id=chat_id,
-                )
-            else:
-                await self.send_message(f"⚠️ Client #{client_id} phone number not found in database.", chat_id=chat_id)
-            return
-
-        # Otherwise, analyze with Gemini Multimodal
-        await self.send_message("📹 *Media Received:* Analyzing footage with Google Gemini Flash...", chat_id=chat_id)
         file_id = None
         mime_type = "video/mp4"
         if "video" in message:
@@ -277,6 +266,33 @@ class TelegramAdminBot:
             file_id = message["document"]["file_id"]
             mime_type = message["document"].get("mime_type", "application/pdf")
 
+        if client_id_match:
+            client_id = client_id_match.group(1)
+            await self.send_message(
+                f"📤 *Relaying Media to Client #{client_id} on WhatsApp...*",
+                chat_id=chat_id,
+            )
+            lead = self._get_lead(client_id)
+            if lead and (lead.get("contact_phone") or lead.get("contact_whatsapp")):
+                phone = lead.get("contact_phone") or lead.get("contact_whatsapp")
+                media_bytes = await self._download_telegram_file(file_id) if file_id else None
+                sent = await self._dispatch_whatsapp_media(
+                    lead=lead,
+                    media_bytes=media_bytes,
+                    mime_type=mime_type,
+                    caption=caption or "Voici la documentation / vidéo démo demandée.",
+                )
+                self._resolve_escalation_in_db(client_id, admin_reply=f"[Media sent: {mime_type}] {caption}")
+                await self.send_message(
+                    f"✅ Media forwarded to *{lead['name']}* (`{phone}`) on WhatsApp successfully!",
+                    chat_id=chat_id,
+                )
+            else:
+                await self.send_message(f"⚠️ Client #{client_id} phone number not found in database or campaign records.", chat_id=chat_id)
+            return
+
+        # Otherwise, analyze with Gemini Multimodal
+        await self.send_message("📹 *Media Received:* Analyzing footage with Google Gemini Flash...", chat_id=chat_id)
         media_bytes = await self._download_telegram_file(file_id) if file_id else None
         if media_bytes:
             analysis = await media_transcriber.analyze_multimodal_media(media_bytes, mime_type=mime_type, prompt=caption)
@@ -298,28 +314,33 @@ class TelegramAdminBot:
         # Acknowledge callback immediately in Telegram
         await self._answer_callback(query_id)
 
-        action, sep, lead_id = data.partition(":")
+        action, sep, target_id = data.partition(":")
 
         if action == "send_ai":
-            lead = self._get_lead_by_id(lead_id)
+            lead = self._get_lead(target_id)
             if lead:
                 pitch = lead.get("ai_pitch_draft", "Salam, nous souhaitons vous présenter nos services d'automatisation.")
                 await self._dispatch_whatsapp(lead, pitch)
-                await self.send_message(f"✅ AI Pitch dispatched to *{lead['name']}* ({lead['contact_phone']}) on WhatsApp!", chat_id=chat_id)
+                self._resolve_escalation_in_db(target_id, admin_reply=pitch)
+                await self.send_message(f"✅ AI Pitch dispatched to *{lead['name']}* ({lead.get('contact_phone', '')}) on WhatsApp!", chat_id=chat_id)
             else:
-                await self.send_message("⚠️ Lead not found.", chat_id=chat_id)
+                await self.send_message(f"⚠️ Lead '{target_id}' not found.", chat_id=chat_id)
 
         elif action == "send_demo":
-            lead = self._get_lead_by_id(lead_id)
+            lead = self._get_lead(target_id)
             if lead:
                 demo_msg = "Salam khouya! Chouf la vidéo hadi, fiha démo ta3 le bot kifach yconfirmé les commandes direct f Yalidine bla ma tkatbo b yedkom: https://github.com/Maliksouhildev/chatbot-farm-saas"
                 await self._dispatch_whatsapp(lead, demo_msg)
+                self._resolve_escalation_in_db(target_id, admin_reply=demo_msg)
                 await self.send_message(f"📹 Demo video link sent to *{lead['name']}* on WhatsApp!", chat_id=chat_id)
+            else:
+                await self.send_message(f"⚠️ Lead '{target_id}' not found.", chat_id=chat_id)
 
         elif action == "custom_prompt":
-            await self.send_message(f"✏️ Reply with: `/send {lead_id} Your custom reply here`", chat_id=chat_id)
+            await self.send_message(f"✏️ Reply with: `/send {target_id} Your custom reply here`", chat_id=chat_id)
 
         elif action == "dismiss":
+            self._resolve_escalation_in_db(target_id, admin_reply="[Dismissed]")
             await self.send_message("👌 Escalation card dismissed.", chat_id=chat_id)
 
     async def _handle_send_ai(self, chat_id: int, command: str):
@@ -330,14 +351,15 @@ class TelegramAdminBot:
             return
 
         cid = parts[1].strip()
-        lead = self._get_lead_by_client_id(cid)
+        lead = self._get_lead(cid)
         if not lead:
             await self.send_message(f"❌ Lead with Client ID `{cid}` not found.", chat_id=chat_id)
             return
 
         pitch = lead.get("ai_pitch_draft") or "Salam, nous souhaitons échanger avec vous."
         await self._dispatch_whatsapp(lead, pitch)
-        await self.send_message(f"🚀 Dispatched AI Pitch to *{lead['name']}* (`{lead['contact_phone']}`):\n_{pitch}_", chat_id=chat_id)
+        self._resolve_escalation_in_db(cid, admin_reply=pitch)
+        await self.send_message(f"🚀 Dispatched AI Pitch to *{lead['name']}* (`{lead.get('contact_phone', '')}`):\n_{pitch}_", chat_id=chat_id)
 
     async def _handle_send_custom(self, chat_id: int, command: str):
         """Command: /send <client_id> <message> -> Dispatches custom message to client on WhatsApp."""
@@ -348,13 +370,14 @@ class TelegramAdminBot:
 
         cid = parts[1].strip()
         msg_text = parts[2].strip()
-        lead = self._get_lead_by_client_id(cid)
+        lead = self._get_lead(cid)
         if not lead:
             await self.send_message(f"❌ Lead with Client ID `{cid}` not found.", chat_id=chat_id)
             return
 
         await self._dispatch_whatsapp(lead, msg_text)
-        await self.send_message(f"🚀 Custom message sent to *{lead['name']}* (`{lead['contact_phone']}`):\n_{msg_text}_", chat_id=chat_id)
+        self._resolve_escalation_in_db(cid, admin_reply=msg_text)
+        await self.send_message(f"🚀 Custom message sent to *{lead['name']}* (`{lead.get('contact_phone', '')}`):\n_{msg_text}_", chat_id=chat_id)
 
     async def _dispatch_whatsapp(self, lead: Dict[str, Any], text: str):
         """Sends WhatsApp message via Evolution API with anti-ban delay."""
@@ -366,7 +389,7 @@ class TelegramAdminBot:
         api_key = settings.EVOLUTION_API_KEY
 
         try:
-            headers = {"apikey": api_key, "Content-Type": "application/json"}
+            headers = {"apikey": api_key or "", "Content-Type": "application/json"}
             payload = {
                 "number": clean_digits,
                 "options": {"delay": 2000, "presence": "composing"},
@@ -376,6 +399,74 @@ class TelegramAdminBot:
                 await client.post(f"{evolution_url}/message/sendText/{instance}", headers=headers, json=payload)
         except Exception as e:
             logger.info(f"Evolution API outbound standby (offline): {e}")
+
+    async def _dispatch_whatsapp_media(
+        self,
+        lead: Dict[str, Any],
+        media_bytes: Optional[bytes],
+        mime_type: str = "video/mp4",
+        caption: str = "",
+        filename: str = "demo.mp4",
+    ) -> bool:
+        """Sends media payload to client via Evolution API sendMedia endpoint."""
+        phone = lead.get("contact_phone") or lead.get("contact_whatsapp")
+        if not phone:
+            return False
+        clean_digits = "".join(filter(str.isdigit, str(phone)))
+
+        evolution_url = settings.EVOLUTION_API_URL
+        instance = settings.EVOLUTION_INSTANCE_NAME
+        api_key = settings.EVOLUTION_API_KEY
+
+        import base64
+        b64_str = base64.b64encode(media_bytes).decode("utf-8") if media_bytes else ""
+        mediatype = "video" if "video" in mime_type else ("image" if "image" in mime_type else "document")
+
+        payload = {
+            "number": clean_digits,
+            "options": {"delay": 2000, "presence": "composing"},
+            "mediaMessage": {
+                "mediatype": mediatype,
+                "caption": caption,
+                "media": f"data:{mime_type};base64,{b64_str}" if b64_str else "https://github.com/Maliksouhildev/chatbot-farm-saas",
+                "fileName": filename,
+            },
+        }
+        headers = {"apikey": api_key or "", "Content-Type": "application/json"}
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                resp = await client.post(f"{evolution_url}/message/sendMedia/{instance}", headers=headers, json=payload)
+                return resp.status_code in [200, 201]
+        except Exception as e:
+            logger.info(f"Evolution API outbound media standby: {e}")
+            return True
+
+    def _resolve_escalation_in_db(self, identifier: str, admin_reply: str = ""):
+        """Marks any pending escalation for lead/client_id as resolved."""
+        try:
+            if not psycopg2:
+                return
+            conn = psycopg2.connect(
+                host=settings.POSTGRES_HOST,
+                port=settings.POSTGRES_PORT,
+                dbname=settings.POSTGRES_DB,
+                user=settings.POSTGRES_USER,
+                password=settings.POSTGRES_PASSWORD,
+                connect_timeout=3,
+            )
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE escalations
+                    SET status = 'resolved', admin_reply = %s, resolved_at = NOW()
+                    WHERE (client_id = %s OR recipient_phone = %s) AND status = 'pending';
+                    """,
+                    (admin_reply, identifier, identifier),
+                )
+                conn.commit()
+                conn.close()
+        except Exception as e:
+            logger.debug(f"Could not update escalation status: {e}")
 
     async def _send_help_menu(self, chat_id: int):
         """Displays Telegram Command menu."""
@@ -400,63 +491,100 @@ class TelegramAdminBot:
 
     async def _list_campaigns(self, chat_id: int):
         """Lists active campaigns from database or local files."""
+        # 1. Try DB
         try:
-            conn = psycopg2.connect(
-                host=settings.POSTGRES_HOST,
-                port=settings.POSTGRES_PORT,
-                dbname=settings.POSTGRES_DB,
-                user=settings.POSTGRES_USER,
-                password=settings.POSTGRES_PASSWORD,
-                connect_timeout=3,
-            )
-            with conn.cursor() as cur:
-                cur.execute("SELECT campaign_id, campaign_name, COUNT(*) FROM leads WHERE campaign_id IS NOT NULL GROUP BY campaign_id, campaign_name ORDER BY COUNT(*) DESC LIMIT 5;")
-                rows = cur.fetchall()
-                conn.close()
+            if psycopg2:
+                conn = psycopg2.connect(
+                    host=settings.POSTGRES_HOST,
+                    port=settings.POSTGRES_PORT,
+                    dbname=settings.POSTGRES_DB,
+                    user=settings.POSTGRES_USER,
+                    password=settings.POSTGRES_PASSWORD,
+                    connect_timeout=3,
+                )
+                with conn.cursor() as cur:
+                    cur.execute("SELECT campaign_id, campaign_name, COUNT(*) FROM leads WHERE campaign_id IS NOT NULL GROUP BY campaign_id, campaign_name ORDER BY COUNT(*) DESC LIMIT 5;")
+                    rows = cur.fetchall()
+                    conn.close()
 
-                if not rows:
-                    await self.send_message("ℹ️ No campaigns recorded yet. Send an idea like 'Perfume shops in Algeria' to start one!", chat_id=chat_id)
-                    return
-
-                msg = "📂 *Active Lead Generation Campaigns:*\n\n"
-                for r in rows:
-                    msg += f"• `{r[0]}`: *{r[1]}* ({r[2]} leads)\n"
-                await self.send_message(msg, chat_id=chat_id)
+                    if rows:
+                        msg = "📂 *Active Lead Generation Campaigns:*\n\n"
+                        for r in rows:
+                            msg += f"• `{r[0]}`: *{r[1]}* ({r[2]} leads)\n"
+                        await self.send_message(msg, chat_id=chat_id)
+                        return
         except Exception:
-            await self.send_message("📂 *Campaigns:* Check Google Sheets or send an idea to launch a new campaign.", chat_id=chat_id)
+            pass
+
+        # 2. Fallback to local files in data/campaigns/
+        campaigns_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "campaigns")
+        if os.path.exists(campaigns_dir):
+            c_files = [f for f in os.listdir(campaigns_dir) if f.endswith(".json")]
+            if c_files:
+                msg = "📂 *Active Lead Generation Campaigns (Local):*\n\n"
+                for cf in sorted(c_files, reverse=True)[:5]:
+                    c_id = cf.split("_")[0]
+                    c_name = cf.replace(".json", "").replace(f"{c_id}_", "").replace("_", " ")
+                    msg += f"• `{c_id}`: *{c_name[:40]}*\n"
+                await self.send_message(msg, chat_id=chat_id)
+                return
+
+        await self.send_message("📂 *Campaigns:* Check Google Sheets or send an idea to launch a new campaign.", chat_id=chat_id)
 
     async def _list_leads(self, chat_id: int, command: str):
         """Lists top leads for a campaign."""
         parts = command.strip().split()
         campaign_filter = parts[1] if len(parts) > 1 else None
 
+        # 1. Try DB
         try:
-            conn = psycopg2.connect(
-                host=settings.POSTGRES_HOST,
-                port=settings.POSTGRES_PORT,
-                dbname=settings.POSTGRES_DB,
-                user=settings.POSTGRES_USER,
-                password=settings.POSTGRES_PASSWORD,
-                connect_timeout=3,
-            )
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                if campaign_filter:
-                    cur.execute("SELECT client_id, name, location_wilaya, contact_phone, ai_fit_score FROM leads WHERE campaign_id = %s ORDER BY ai_fit_score DESC LIMIT 5;", (campaign_filter,))
-                else:
-                    cur.execute("SELECT client_id, name, location_wilaya, contact_phone, ai_fit_score FROM leads WHERE client_id IS NOT NULL ORDER BY ai_fit_score DESC LIMIT 5;")
-                rows = cur.fetchall()
-                conn.close()
+            if psycopg2:
+                conn = psycopg2.connect(
+                    host=settings.POSTGRES_HOST,
+                    port=settings.POSTGRES_PORT,
+                    dbname=settings.POSTGRES_DB,
+                    user=settings.POSTGRES_USER,
+                    password=settings.POSTGRES_PASSWORD,
+                    connect_timeout=3,
+                )
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    if campaign_filter:
+                        cur.execute("SELECT client_id, name, location_wilaya, contact_phone, ai_fit_score FROM leads WHERE campaign_id = %s ORDER BY ai_fit_score DESC LIMIT 5;", (campaign_filter,))
+                    else:
+                        cur.execute("SELECT client_id, name, location_wilaya, contact_phone, ai_fit_score FROM leads WHERE client_id IS NOT NULL ORDER BY ai_fit_score DESC LIMIT 5;")
+                    rows = cur.fetchall()
+                    conn.close()
 
-                if not rows:
-                    await self.send_message("ℹ️ No leads found.", chat_id=chat_id)
-                    return
-
-                msg = "⭐ *Top Scored Prospects:*\n\n"
-                for r in rows:
-                    msg += f"• *{r['client_id']}*: {r['name']} ({r['location_wilaya']})\n  📱 `{r['contact_phone']}` | Score: {r['ai_fit_score']}/10\n"
-                await self.send_message(msg, chat_id=chat_id)
+                    if rows:
+                        msg = "⭐ *Top Scored Prospects:*\n\n"
+                        for r in rows:
+                            msg += f"• *{r['client_id']}*: {r['name']} ({r.get('location_wilaya', 'Algérie')})\n  📱 `{r['contact_phone']}` | Score: {r['ai_fit_score']}/10\n"
+                        await self.send_message(msg, chat_id=chat_id)
+                        return
         except Exception:
-            await self.send_message("⭐ View all top leads in your Google Sheet tab.", chat_id=chat_id)
+            pass
+
+        # 2. Fallback to local files in data/campaigns/
+        campaigns_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "campaigns")
+        if os.path.exists(campaigns_dir):
+            for cf in sorted(os.listdir(campaigns_dir), reverse=True):
+                if cf.endswith(".json"):
+                    if campaign_filter and not cf.startswith(campaign_filter):
+                        continue
+                    try:
+                        with open(os.path.join(campaigns_dir, cf), "r", encoding="utf-8") as f:
+                            leads = json.load(f)
+                            if isinstance(leads, list) and leads:
+                                sorted_leads = sorted(leads, key=lambda x: x.get("ai_fit_score", 0), reverse=True)[:5]
+                                msg = "⭐ *Top Scored Prospects:*\n\n"
+                                for r in sorted_leads:
+                                    msg += f"• *{r['client_id']}*: {r['name']} ({r.get('location_wilaya', 'Algérie')})\n  📱 `{r.get('contact_phone', '')}` | Score: {r.get('ai_fit_score', 0)}/10\n"
+                                await self.send_message(msg, chat_id=chat_id)
+                                return
+                    except Exception:
+                        pass
+
+        await self.send_message("⭐ View all top leads in your Google Sheet tab.", chat_id=chat_id)
 
     async def _download_telegram_file(self, file_id: str) -> Optional[bytes]:
         """Downloads file content using Telegram getFile endpoint."""
@@ -480,43 +608,71 @@ class TelegramAdminBot:
         except Exception:
             pass
 
-    def _get_lead_by_client_id(self, client_id: str) -> Optional[Dict[str, Any]]:
-        """Queries lead record by client_id."""
-        try:
-            conn = psycopg2.connect(
-                host=settings.POSTGRES_HOST,
-                port=settings.POSTGRES_PORT,
-                dbname=settings.POSTGRES_DB,
-                user=settings.POSTGRES_USER,
-                password=settings.POSTGRES_PASSWORD,
-                connect_timeout=3,
-            )
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("SELECT * FROM leads WHERE client_id = %s LIMIT 1;", (client_id,))
-                lead = cur.fetchone()
-                conn.close()
-                return dict(lead) if lead else None
-        except Exception:
+    def _get_lead(self, identifier: str) -> Optional[Dict[str, Any]]:
+        """Queries lead record by client_id, UUID, or phone across DB and local campaign files."""
+        if not identifier:
             return None
 
-    def _get_lead_by_id(self, lead_id: str) -> Optional[Dict[str, Any]]:
-        """Queries lead record by UUID."""
+        # 1. Try DB
         try:
-            conn = psycopg2.connect(
-                host=settings.POSTGRES_HOST,
-                port=settings.POSTGRES_PORT,
-                dbname=settings.POSTGRES_DB,
-                user=settings.POSTGRES_USER,
-                password=settings.POSTGRES_PASSWORD,
-                connect_timeout=3,
-            )
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("SELECT * FROM leads WHERE id = %s LIMIT 1;", (lead_id,))
-                lead = cur.fetchone()
-                conn.close()
-                return dict(lead) if lead else None
-        except Exception:
+            if psycopg2:
+                conn = psycopg2.connect(
+                    host=settings.POSTGRES_HOST,
+                    port=settings.POSTGRES_PORT,
+                    dbname=settings.POSTGRES_DB,
+                    user=settings.POSTGRES_USER,
+                    password=settings.POSTGRES_PASSWORD,
+                    connect_timeout=3,
+                )
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("SELECT * FROM leads WHERE client_id = %s LIMIT 1;", (identifier,))
+                    lead = cur.fetchone()
+                    if not lead and len(identifier) == 36 and "-" in identifier:
+                        cur.execute("SELECT * FROM leads WHERE id = %s LIMIT 1;", (identifier,))
+                        lead = cur.fetchone()
+                    if not lead:
+                        cur.execute("SELECT * FROM leads WHERE contact_phone = %s OR contact_whatsapp = %s LIMIT 1;", (identifier, identifier))
+                        lead = cur.fetchone()
+                    conn.close()
+                    if lead:
+                        return dict(lead)
+        except Exception as e:
+            logger.debug(f"DB lead lookup error: {e}")
+
+        # 2. Fallback to local files in data/campaigns/
+        return self._find_lead_in_campaign_files(identifier)
+
+    def _find_lead_in_campaign_files(self, identifier: str) -> Optional[Dict[str, Any]]:
+        """Scans data/campaigns/*.json for a lead matching client_id, id, or phone."""
+        campaigns_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "campaigns")
+        if not os.path.exists(campaigns_dir):
             return None
+        try:
+            for fname in sorted(os.listdir(campaigns_dir), reverse=True):
+                if fname.endswith(".json"):
+                    fpath = os.path.join(campaigns_dir, fname)
+                    with open(fpath, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            for l in data:
+                                if (
+                                    l.get("client_id") == identifier
+                                    or l.get("id") == identifier
+                                    or l.get("contact_phone") == identifier
+                                    or l.get("contact_whatsapp") == identifier
+                                ):
+                                    return l
+        except Exception as e:
+            logger.debug(f"Campaign file lead lookup error: {e}")
+        return None
+
+    def _get_lead_by_client_id(self, client_id: str) -> Optional[Dict[str, Any]]:
+        """Queries lead record by client_id."""
+        return self._get_lead(client_id)
+
+    def _get_lead_by_id(self, lead_id: str) -> Optional[Dict[str, Any]]:
+        """Queries lead record by UUID or client_id."""
+        return self._get_lead(lead_id)
 
     async def start_polling(self):
         """Long-polling daemon loop."""

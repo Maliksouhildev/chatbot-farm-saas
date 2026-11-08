@@ -114,7 +114,15 @@ class OuedknissHarvester:
             "Referer": "https://www.ouedkniss.com/boutiques",
         }
 
-        async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT_SECONDS, headers=headers, http2=True) as client:
+        # Enable HTTP/2 only if h2 package is installed
+        use_http2 = False
+        try:
+            import h2  # noqa: F401
+            use_http2 = True
+        except ImportError:
+            use_http2 = False
+
+        async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT_SECONDS, headers=headers, http2=use_http2) as client:
             for niche in niches:
                 logger.info(f"Harvesting Ouedkniss Pro stores for niche: '{niche}'...")
 

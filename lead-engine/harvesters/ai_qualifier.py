@@ -5,6 +5,7 @@
 # =============================================================================
 
 import os
+import time
 import json
 import logging
 import urllib.parse
@@ -34,6 +35,8 @@ class AIQualifier:
         self.openai_key = settings.OPENAI_API_KEY
         self.gemini_key = settings.GEMINI_API_KEY
         self.model = getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
+        self._openai_cooldown_until: float = 0.0
+        self._gemini_cooldown_until: float = 0.0
 
     async def qualify_lead(self, lead: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -42,19 +45,21 @@ class AIQualifier:
         """
         result = None
 
-        # 1. Try OpenAI if key is present
-        if self.openai_key and self.openai_key.startswith("sk-"):
+        # 1. Try OpenAI if key is present and not in cooldown
+        if self.openai_key and self.openai_key.startswith("sk-") and time.time() > self._openai_cooldown_until:
             try:
                 result = await self._qualify_with_openai(lead)
             except Exception as e:
                 logger.warning(f"OpenAI qualification failed: {e}. Falling back...")
+                self._openai_cooldown_until = time.time() + 60.0
 
-        # 2. Try Gemini if OpenAI unavailable or failed
-        if not result and self.gemini_key:
+        # 2. Try Gemini if OpenAI unavailable or failed and not in cooldown
+        if not result and self.gemini_key and time.time() > self._gemini_cooldown_until:
             try:
                 result = await self._qualify_with_gemini(lead)
             except Exception as e:
                 logger.warning(f"Gemini qualification failed: {e}. Falling back...")
+                self._gemini_cooldown_until = time.time() + 60.0
 
         # 3. Fallback to High-Precision Heuristic NLP Engine
         if not result:
@@ -130,6 +135,7 @@ class AIQualifier:
                 return parsed
             else:
                 logger.error(f"OpenAI error {resp.status_code}: {resp.text}")
+                self._openai_cooldown_until = time.time() + 60.0
                 return None
 
     async def _qualify_with_gemini(self, lead: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -169,6 +175,7 @@ class AIQualifier:
                 parsed = json.loads(text)
                 parsed["ai_fit_score"] = int(parsed.get("ai_fit_score", 6))
                 return parsed
+            self._gemini_cooldown_until = time.time() + 60.0
             return None
 
     def _qualify_with_heuristics(self, lead: Dict[str, Any]) -> Dict[str, Any]:

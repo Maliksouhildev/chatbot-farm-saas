@@ -53,6 +53,8 @@ class Settings:
             GROQ_API_KEY: Optional[str] = None
             TELEGRAM_BOT_TOKEN: Optional[str] = None
             TELEGRAM_ADMIN_CHAT_ID: Optional[int] = None
+            ADMIN_WHATSAPP_PHONE: Optional[str] = None
+            ADMIN_PHONE_NUMBER: Optional[str] = None
             EVOLUTION_API_URL: str = "http://localhost:8080"
             EVOLUTION_API_KEY: Optional[str] = None
             EVOLUTION_INSTANCE_NAME: str = "lead_dispatch"
@@ -98,6 +100,8 @@ class Settings:
             self.GROQ_API_KEY = os.getenv("GROQ_API_KEY")
             self.TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
             self.TELEGRAM_ADMIN_CHAT_ID = int(os.getenv("TELEGRAM_ADMIN_CHAT_ID")) if os.getenv("TELEGRAM_ADMIN_CHAT_ID") else None
+            self.ADMIN_WHATSAPP_PHONE = os.getenv("ADMIN_WHATSAPP_PHONE")
+            self.ADMIN_PHONE_NUMBER = os.getenv("ADMIN_PHONE_NUMBER")
             self.EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL", "http://localhost:8080")
             self.EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY")
             self.EVOLUTION_INSTANCE_NAME = os.getenv("EVOLUTION_INSTANCE_NAME", "lead_dispatch")

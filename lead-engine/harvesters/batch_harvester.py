@@ -125,16 +125,21 @@ class BatchHarvester:
         except Exception as e:
             logger.warning(f"Ouedkniss harvest error: {e}")
 
-        # 4. Source C: 58-Wilaya Places Search (Sample top wilayas)
+        # 4. Source C: 58-Wilaya Places Search (Concurrent commercial hubs)
         try:
             logger.info("Harvesting Places from top commercial hubs...")
-            for mq in plan["maps_queries"][:8]:
-                g_leads = await gmaps_auditor.audit_niche(
+            gmaps_tasks = [
+                gmaps_auditor.audit_niche(
                     query=mq["query"],
                     location=mq["location"],
                     max_results=10,
                 )
-                harvested_raw.extend(g_leads)
+                for mq in plan["maps_queries"][:8]
+            ]
+            gmaps_results = await asyncio.gather(*gmaps_tasks, return_exceptions=True)
+            for gr in gmaps_results:
+                if isinstance(gr, list):
+                    harvested_raw.extend(gr)
         except Exception as e:
             logger.warning(f"GMaps harvest error: {e}")
 
@@ -152,6 +157,7 @@ class BatchHarvester:
 
         # 6. Deduplication, Normalization & Sequential Client ID Assignment
         processed_leads: List[Dict[str, Any]] = []
+        seen_fps = set()
         client_counter = 1
 
         for raw in harvested_raw:
@@ -170,10 +176,11 @@ class BatchHarvester:
             )
 
             # Check if duplicate in this batch or Redis
-            if any(p["fingerprint"] == fp for p in processed_leads):
+            if fp in seen_fps:
                 continue
             if dedup_manager.is_duplicate(fp):
                 continue
+            seen_fps.add(fp)
 
             client_id = f"DZ-{niche_slug}-{client_counter:03d}"
             client_counter += 1
@@ -212,21 +219,24 @@ class BatchHarvester:
         if progress_callback:
             await progress_callback(f"⭐ Running Dual-Engine AI Qualification on {len(processed_leads)} prospects...")
 
-        # 7. AI Qualification & Darija Pitch Generation
+        # 7. Concurrent AI Qualification & Darija Pitch Generation
         qualified_leads: List[Dict[str, Any]] = []
-        for lead in processed_leads:
-            eval_res = await ai_qualifier.qualify_lead(lead)
-            lead["ai_fit_score"] = eval_res.get("ai_fit_score", 6)
-            lead["ai_scoring_reasoning"] = eval_res.get("ai_scoring_reasoning", "")
-            lead["ai_pitch_draft"] = eval_res.get("ai_pitch_draft", "")
-            lead["detected_bottleneck"] = eval_res.get("detected_bottleneck", "Manual order dispatch")
-            lead["proposed_service"] = eval_res.get("proposed_service", "whatsapp_bot")
-            lead["whatsapp_direct_url"] = eval_res.get("whatsapp_direct_url")
-            lead["status"] = "hitl_pending" if lead["ai_fit_score"] >= 7 else "scored"
-            qualified_leads.append(lead)
+        chunk_size = 50
+        for i in range(0, len(processed_leads), chunk_size):
+            chunk = processed_leads[i : i + chunk_size]
+            eval_results = await asyncio.gather(*(ai_qualifier.qualify_lead(lead) for lead in chunk))
+            for lead, eval_res in zip(chunk, eval_results):
+                lead["ai_fit_score"] = eval_res.get("ai_fit_score", 6)
+                lead["ai_scoring_reasoning"] = eval_res.get("ai_scoring_reasoning", "")
+                lead["ai_pitch_draft"] = eval_res.get("ai_pitch_draft", "")
+                lead["detected_bottleneck"] = eval_res.get("detected_bottleneck", "Manual order dispatch")
+                lead["proposed_service"] = eval_res.get("proposed_service", "whatsapp_bot")
+                lead["whatsapp_direct_url"] = eval_res.get("whatsapp_direct_url")
+                lead["status"] = "hitl_pending" if lead["ai_fit_score"] >= 7 else "scored"
+                qualified_leads.append(lead)
 
-            # Mark seen in Redis
-            dedup_manager.mark_seen(lead["fingerprint"])
+                # Mark seen in Redis
+                dedup_manager.mark_seen(lead["fingerprint"])
 
         # 8. Persist to PostgreSQL (if DB connection active)
         self._save_leads_to_db(qualified_leads)

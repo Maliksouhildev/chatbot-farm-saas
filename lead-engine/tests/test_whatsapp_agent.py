@@ -102,3 +102,92 @@ def test_incoming_webhook_routine_flow():
     result = asyncio.run(whatsapp_conversation_agent.handle_incoming_webhook(simulated_payload))
     assert result["status"] == "answered"
     assert len(result["reply"]) > 10
+
+
+def test_admin_help_command_on_whatsapp():
+    """Verifies that an admin sending /help on WhatsApp receives the admin copilot menu."""
+    from config import settings
+    settings.ADMIN_WHATSAPP_PHONE = "+213555999000"
+    payload = {
+        "event": "messages.upsert",
+        "data": {
+            "key": {
+                "remoteJid": "213555999000@s.whatsapp.net",
+                "fromMe": False,
+                "id": "MSG_ADMIN_01",
+            },
+            "message": {
+                "conversation": "/help"
+            },
+        },
+    }
+    result = asyncio.run(whatsapp_conversation_agent.handle_incoming_webhook(payload))
+    assert result["status"] == "admin_help_sent"
+
+
+def test_admin_campaign_launch_on_whatsapp():
+    """Verifies that an admin sending an idea on WhatsApp triggers the 58-Wilaya harvester."""
+    from config import settings
+    settings.ADMIN_WHATSAPP_PHONE = "+213555999000"
+    payload = {
+        "event": "messages.upsert",
+        "data": {
+            "key": {
+                "remoteJid": "213555999000@s.whatsapp.net",
+                "fromMe": False,
+                "id": "MSG_ADMIN_02",
+            },
+            "message": {
+                "conversation": "Je cherche des boutiques de parfum partout en Algérie"
+            },
+        },
+    }
+    result = asyncio.run(whatsapp_conversation_agent.handle_incoming_webhook(payload))
+    assert result["status"] == "campaign_launched"
+    assert "PERF" in result["campaign_id"]
+    assert result["total_leads"] >= 20
+
+
+def test_admin_send_commands_on_whatsapp():
+    """Verifies that an admin can dispatch outreach via /send and /send_ai on WhatsApp."""
+    from config import settings
+    settings.ADMIN_WHATSAPP_PHONE = "+213555999000"
+    payload_send = {
+        "event": "messages.upsert",
+        "data": {
+            "key": {
+                "remoteJid": "213555999000@s.whatsapp.net",
+                "fromMe": False,
+                "id": "MSG_ADMIN_03",
+            },
+            "message": {
+                "conversation": "/send DZ-PERF-001 Salam khouya voici notre offre"
+            },
+        },
+    }
+    res_send = asyncio.run(whatsapp_conversation_agent.handle_incoming_webhook(payload_send))
+    assert res_send["status"] == "admin_custom_sent"
+    assert res_send["client_id"] == "DZ-PERF-001"
+
+
+def test_whatsapp_voice_note_transcription():
+    """Verifies that incoming voice notes (audioMessage) are transcribed by Whisper."""
+    payload = {
+        "event": "messages.upsert",
+        "data": {
+            "key": {
+                "remoteJid": "213555112233@s.whatsapp.net",
+                "fromMe": False,
+                "id": "MSG_VOICE_01",
+            },
+            "message": {
+                "audioMessage": {
+                    "mimetype": "audio/ogg; codecs=opus",
+                    "base64": "T2dnUwACAAAAAAAAAABmock_audio_content",
+                }
+            },
+        },
+    }
+    result = asyncio.run(whatsapp_conversation_agent.handle_incoming_webhook(payload))
+    assert result is not None
+    assert result["status"] in ["answered", "escalated", "campaign_launched"]

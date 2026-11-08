@@ -30,6 +30,8 @@ from config import (
 )
 from redis_dedup import dedup_manager
 from telegram_admin_bot import telegram_admin_bot
+from media_transcriber import media_transcriber
+from batch_harvester import batch_harvester
 
 logger = logging.getLogger("whatsapp_agent")
 logger.setLevel(logging.INFO)
@@ -74,35 +76,41 @@ class WhatsAppConversationAgent:
     async def handle_incoming_webhook(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Processes Evolution API webhook payload (`messages.upsert`).
-        Identifies sender, loads lead history, determines escalation, and replies.
+        Identifies sender (Admin vs Client), handles audio transcription via Groq Whisper,
+        executes Admin mobile commands & campaigns, or automates client replies & escalations.
         """
         logger.info("Received WhatsApp incoming webhook event.")
 
-        # Extract message metadata from Evolution API structure
-        message_data = self._extract_message_data(payload)
+        # Extract message metadata (supports text, voice notes, and media)
+        message_data = await self._extract_message_data(payload)
         if not message_data:
-            return {"status": "ignored", "reason": "Not a standard incoming client text"}
+            return {"status": "ignored", "reason": "Not a standard incoming client or admin message"}
 
         sender_phone = message_data["phone"]
-        message_text = message_data["text"]
+        message_text = message_data.get("text", "")
         norm_phone = normalize_algerian_phone(sender_phone) or sender_phone
 
-        # 1. Lookup lead record in PostgreSQL
+        # 1. Admin Detection & Routing (Mobile command center from your phone)
+        if self._is_admin(norm_phone, message_text):
+            logger.info(f"👑 Admin command/request detected from WhatsApp phone: {norm_phone}")
+            return await self._handle_admin_interaction(norm_phone, message_data)
+
+        # 2. Client Handling: Lookup lead in PostgreSQL or local campaign files
         lead = self._find_lead_by_phone(norm_phone)
 
-        # 2. Check Intent: Escalation vs Routine
+        # 3. Check Intent: Escalation vs Routine
         is_escalation = self._is_high_intent_escalation(message_text)
 
-        # 3. Log incoming message turn
+        # 4. Log incoming message turn
         self._record_conversation_turn(
-            lead_id=lead["id"] if lead else None,
+            lead_id=lead["id"] if lead and lead.get("id") else None,
             sender_type="client",
             recipient=norm_phone,
             content=message_text,
             intent="escalation" if is_escalation else "routine",
         )
 
-        # 4. Handle Escalation to Telegram Admin Bot
+        # 5. Handle Escalation to Telegram Admin Bot and Admin WhatsApp
         if is_escalation:
             logger.info(f"🚨 High intent escalation detected for client: {norm_phone}")
             client_id = lead.get("client_id", "DZ-UNKNOWN") if lead else "NEW-INQUIRY"
@@ -113,13 +121,30 @@ class WhatsAppConversationAgent:
 
             # Send Telegram Alert Card to Admin's phone
             await telegram_admin_bot.send_escalation_card(
-                lead_id=str(lead["id"]) if lead else "unknown",
+                lead_id=str(lead.get("id", "unknown")) if lead else "unknown",
                 client_id=client_id,
                 business_name=business_name,
                 phone=norm_phone,
                 client_message=message_text,
                 suggested_ai_reply=suggested_reply,
             )
+
+            # If admin WhatsApp is configured, also push escalation alert directly to admin's WhatsApp!
+            admin_phone = settings.ADMIN_WHATSAPP_PHONE or settings.ADMIN_PHONE_NUMBER or os.getenv("ADMIN_WHATSAPP_PHONE")
+            if admin_phone:
+                admin_norm = normalize_algerian_phone(admin_phone) or admin_phone
+                wa_escalation_card = (
+                    f"🚨 *ESCALATION: Client #{client_id}*\n"
+                    f"🏢 *Boutique:* {business_name}\n"
+                    f"📱 *Phone:* `{norm_phone}`\n\n"
+                    f"💬 *Question du client:*\n_{message_text}_\n\n"
+                    f"💡 *Réponse IA suggérée (Darija):*\n`{suggested_reply}`\n\n"
+                    f"📲 *Pour répondre :*\n"
+                    f"`/send_ai {client_id}`\n"
+                    f"ou `/send {client_id} Votre message`\n"
+                    f"ou envoyez une vidéo avec le tag `#{client_id}`"
+                )
+                await self.send_whatsapp_message(admin_norm, wa_escalation_card, delay_ms=1000)
 
             # Save to escalations table
             self._save_escalation(lead, client_id, norm_phone, message_text, suggested_reply)
@@ -135,13 +160,13 @@ class WhatsAppConversationAgent:
                 "action": "telegram_alert_dispatched",
             }
 
-        # 5. Routine Inquiry: AI Answers Autonomously using RAG
+        # 6. Routine Inquiry: AI Answers Autonomously using RAG
         reply_text = self._generate_routine_reply(message_text, lead)
         await self.send_whatsapp_message(norm_phone, reply_text, delay_ms=2000)
 
         # Record AI reply turn
         self._record_conversation_turn(
-            lead_id=lead["id"] if lead else None,
+            lead_id=lead["id"] if lead and lead.get("id") else None,
             sender_type="ai",
             recipient=norm_phone,
             content=reply_text,
@@ -154,8 +179,216 @@ class WhatsAppConversationAgent:
             "reply": reply_text,
         }
 
-    def _extract_message_data(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Parses Evolution API event structure."""
+    def _is_admin(self, norm_phone: str, text: str) -> bool:
+        """Determines if the WhatsApp message originated from the configured Admin."""
+        admin_phones = [
+            settings.ADMIN_WHATSAPP_PHONE,
+            settings.ADMIN_PHONE_NUMBER,
+            os.getenv("ADMIN_WHATSAPP_PHONE"),
+            os.getenv("ADMIN_PHONE_NUMBER"),
+        ]
+        valid_admins = [normalize_algerian_phone(p) or p for p in admin_phones if p]
+        if norm_phone and any(norm_phone == adm for adm in valid_admins):
+            return True
+        # Also check admin command prefixes
+        stripped = text.strip().lower()
+        if stripped.startswith(("/start", "/help", "/campaigns", "/leads", "/send", "/send_ai", "/status")):
+            return True
+        return False
+
+    async def _handle_admin_interaction(
+        self,
+        norm_phone: str,
+        message_data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Handles commands, campaigns, and media forwarding from the Admin's WhatsApp."""
+        text = message_data.get("text", "")
+        media_type = message_data.get("media_type")
+
+        # 1. Start / Help menu
+        if text.startswith(("/start", "/help")) or text.lower() in ["menu", "aide"]:
+            help_text = (
+                "🤖 *Admin WhatsApp Copilot*\n\n"
+                "📱 *Commandes depuis votre téléphone :*\n"
+                "• 🎙️ *Envoyez une note vocale :* ex: 'Je cherche des parfumeries en Algérie'\n"
+                "• 💬 *Envoyez une idée par texte :* 'Trouve-moi des boutiques de parfum en Algérie'\n"
+                "• 📹 *Envoyez une vidéo ou document :* Mentionnez #DZ-PERF-001 pour transférer au client\n"
+                "• `/campaigns` : Liste des campagnes actives\n"
+                "• `/leads` : Top prospects qualifiés\n"
+                "• `/send_ai <ClientID>` : Envoie le pitch Darija au client\n"
+                "• `/send <ClientID> <Message>` : Envoie un message personnalisé\n"
+                "• `/status` : État du système"
+            )
+            await self.send_whatsapp_message(norm_phone, help_text)
+            return {"status": "admin_help_sent", "phone": norm_phone}
+
+        # 2. Campaigns list
+        if text.startswith("/campaigns"):
+            campaigns_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "campaigns")
+            msg = "📂 *Campagnes actives :*\n"
+            found = False
+            if os.path.exists(campaigns_dir):
+                c_files = [f for f in os.listdir(campaigns_dir) if f.endswith(".json")]
+                for cf in sorted(c_files, reverse=True)[:5]:
+                    c_id = cf.split("_")[0]
+                    c_name = cf.replace(".json", "").replace(f"{c_id}_", "").replace("_", " ")
+                    msg += f"• `{c_id}` : {c_name[:40]}\n"
+                    found = True
+            if not found:
+                msg += "Aucune campagne enregistrée pour le moment. Envoyez une idée pour en lancer une !"
+            await self.send_whatsapp_message(norm_phone, msg)
+            return {"status": "admin_campaigns_sent", "phone": norm_phone}
+
+        # 3. Leads list
+        if text.startswith("/leads"):
+            parts = text.strip().split()
+            c_filter = parts[1] if len(parts) > 1 else None
+            lead_summary = "⭐ *Top Prospects Qualifiés :*\n"
+            top_leads = []
+            campaigns_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "campaigns")
+            if os.path.exists(campaigns_dir):
+                for cf in sorted(os.listdir(campaigns_dir), reverse=True):
+                    if cf.endswith(".json") and (not c_filter or cf.startswith(c_filter)):
+                        try:
+                            with open(os.path.join(campaigns_dir, cf), "r", encoding="utf-8") as f:
+                                data = json.load(f)
+                                if isinstance(data, list):
+                                    top_leads = sorted(data, key=lambda x: x.get("ai_fit_score", 0), reverse=True)[:5]
+                                    break
+                        except Exception:
+                            pass
+            if top_leads:
+                for l in top_leads:
+                    lead_summary += f"• *{l.get('client_id')}* : {l.get('name')} ({l.get('location_wilaya', 'Algérie')}) | Score : {l.get('ai_fit_score')}/10\n  📱 `{l.get('contact_phone')}`\n"
+            else:
+                lead_summary += "Aucun prospect trouvé. Lancez une campagne d'abord !"
+            await self.send_whatsapp_message(norm_phone, lead_summary)
+            return {"status": "admin_leads_sent", "phone": norm_phone}
+
+        # 4. /send_ai <client_id>
+        if text.startswith("/send_ai"):
+            parts = text.strip().split()
+            if len(parts) < 2:
+                await self.send_whatsapp_message(norm_phone, "⚠️ Utilisation : `/send_ai <ClientID>` (ex: `/send_ai DZ-PERF-001`)")
+                return {"status": "admin_invalid_args"}
+            cid = parts[1].strip()
+            lead = telegram_admin_bot._get_lead(cid)
+            if not lead or not (lead.get("contact_phone") or lead.get("contact_whatsapp")):
+                await self.send_whatsapp_message(norm_phone, f"❌ Prospect `{cid}` introuvable.")
+                return {"status": "admin_lead_not_found"}
+
+            client_phone = lead.get("contact_phone") or lead.get("contact_whatsapp")
+            pitch = lead.get("ai_pitch_draft") or "Salam, nous souhaitons vous présenter nos services d'automatisation."
+            await self.send_whatsapp_message(client_phone, pitch, delay_ms=1500)
+            telegram_admin_bot._resolve_escalation_in_db(cid, admin_reply=pitch)
+            await self.send_whatsapp_message(norm_phone, f"🚀 Pitch IA envoyé à *{lead.get('name')}* (`{client_phone}`) :\n_{pitch}_")
+            return {"status": "admin_pitch_sent", "client_id": cid}
+
+        # 5. /send <client_id> <message>
+        if text.startswith("/send"):
+            parts = text.strip().split(maxsplit=2)
+            if len(parts) < 3:
+                await self.send_whatsapp_message(norm_phone, "⚠️ Utilisation : `/send <ClientID> <Message>`")
+                return {"status": "admin_invalid_args"}
+            cid = parts[1].strip()
+            custom_msg = parts[2].strip()
+            lead = telegram_admin_bot._get_lead(cid)
+            if not lead or not (lead.get("contact_phone") or lead.get("contact_whatsapp")):
+                await self.send_whatsapp_message(norm_phone, f"❌ Prospect `{cid}` introuvable.")
+                return {"status": "admin_lead_not_found"}
+
+            client_phone = lead.get("contact_phone") or lead.get("contact_whatsapp")
+            await self.send_whatsapp_message(client_phone, custom_msg, delay_ms=1500)
+            telegram_admin_bot._resolve_escalation_in_db(cid, admin_reply=custom_msg)
+            await self.send_whatsapp_message(norm_phone, f"🚀 Message envoyé à *{lead.get('name')}* (`{client_phone}`) :\n_{custom_msg}_")
+            return {"status": "admin_custom_sent", "client_id": cid}
+
+        # 6. Status check
+        if text.startswith("/status"):
+            status_text = "📊 *État du système :*\n• Harvester 58 Wilayas : En ligne\n• Agent WhatsApp : Actif\n• Groq Whisper : Prêt\n• Déduplication Redis : Opérationnelle"
+            await self.send_whatsapp_message(norm_phone, status_text)
+            return {"status": "admin_status_sent"}
+
+        # 7. Media Upload / Relay to client
+        if media_type in ["video", "image", "document"]:
+            cid_match = re.search(r"#?(DZ-[A-Z0-9]+-\d+)", text)
+            if cid_match:
+                cid = cid_match.group(1)
+                lead = telegram_admin_bot._get_lead(cid)
+                if lead and (lead.get("contact_phone") or lead.get("contact_whatsapp")):
+                    client_phone = lead.get("contact_phone") or lead.get("contact_whatsapp")
+                    await telegram_admin_bot._dispatch_whatsapp_media(
+                        lead=lead,
+                        media_bytes=message_data.get("media_bytes"),
+                        mime_type=message_data.get("mime_type", "video/mp4"),
+                        caption=text or "Voici la documentation / aperçu démo demandé.",
+                    )
+                    telegram_admin_bot._resolve_escalation_in_db(cid, admin_reply=f"[Media sent: {media_type}] {text}")
+                    await self.send_whatsapp_message(norm_phone, f"✅ Média transféré avec succès à *{lead.get('name')}* (`{client_phone}`) !")
+                    return {"status": "admin_media_relayed", "client_id": cid}
+                else:
+                    await self.send_whatsapp_message(norm_phone, f"⚠️ Prospect `{cid}` introuvable.")
+                    return {"status": "admin_lead_not_found"}
+            else:
+                # Multimodal analysis with Gemini
+                await self.send_whatsapp_message(norm_phone, "📹 Média reçu. Analyse par Google Gemini Flash en cours...")
+                analysis = await media_transcriber.analyze_multimodal_media(
+                    message_data.get("media_bytes") or b"",
+                    mime_type=message_data.get("mime_type", "video/mp4"),
+                    prompt=text,
+                )
+                gemini_resp = (
+                    f"🧠 *Analyse Gemini :*\n\n{analysis.get('summary', 'Analyse terminée.')}\n\n"
+                    f"💡 *Pitch suggéré :*\n`{analysis.get('suggested_client_pitch_darija', 'Prêt à relayer.')}`"
+                )
+                await self.send_whatsapp_message(norm_phone, gemini_resp)
+                return {"status": "admin_media_analyzed"}
+
+        # 8. Treat natural language message as campaign idea (e.g. "I am looking for perfume shops all over Algeria")
+        if len(text.strip()) > 5:
+            await self.send_whatsapp_message(
+                norm_phone,
+                f"🎯 *Nouvelle idée reçue :*\n_{text}_\n\n🚀 Lancement de la prospection intelligente sur 58 wilayas...",
+            )
+
+            # Target lead detection
+            target_leads = 1000
+            count_match = re.search(r"(\d{2,4})\s*(clients|leads|prospects|boutiques|magasins)", text, re.IGNORECASE)
+            if count_match:
+                target_leads = min(int(count_match.group(1)), 1000)
+
+            # Launch campaign
+            result = await batch_harvester.execute_campaign(
+                idea_prompt=text,
+                target_leads=target_leads,
+            )
+
+            completion_msg = (
+                f"🎉 *Campagne terminée : {result['campaign_name']}*\n\n"
+                f"📊 *Total Prospects :* {result['total_leads']}\n"
+                f"⭐ *Haute Pertinence (Score ≥ 7) :* {result['high_intent_count']}\n"
+                f"📋 *Lien Google Sheet :* {result['google_sheet_url']}\n\n"
+                f"💡 *Aperçu des meilleurs prospects :*\n"
+            )
+            for l in result.get("top_leads", [])[:3]:
+                completion_msg += f"• *{l['client_id']}* : {l['name']} ({l.get('location_wilaya', 'Algérie')}) | Score : {l.get('ai_fit_score')}/10\n"
+
+            completion_msg += (
+                f"\n📲 *Pour lancer un contact :*\n"
+                f"`/send_ai {result['top_leads'][0]['client_id']}`\n"
+                f"ou `/send {result['top_leads'][0]['client_id']} Votre message`"
+            )
+            await self.send_whatsapp_message(norm_phone, completion_msg)
+            return {
+                "status": "campaign_launched",
+                "campaign_id": result.get("campaign_id"),
+                "total_leads": result.get("total_leads"),
+            }
+
+        return {"status": "ignored", "reason": "Message too short"}
+
+    async def _extract_message_data(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Parses Evolution API event structure (text, voice notes, media)."""
         data = payload.get("data", payload)
         if isinstance(data, dict):
             key = data.get("key", {})
@@ -168,16 +401,71 @@ class WhatsAppConversationAgent:
                 return None
 
             phone_digits = remote_jid.split("@")[0]
+            phone = f"+{phone_digits}"
             msg = data.get("message", {})
+
+            # 1. Check Text
             text = (
                 msg.get("conversation")
                 or msg.get("extendedTextMessage", {}).get("text")
-                or msg.get("imageMessage", {}).get("caption")
                 or ""
             )
 
-            if text:
-                return {"phone": f"+{phone_digits}", "text": text.strip()}
+            # 2. Check Voice Note / Audio
+            audio_msg = msg.get("audioMessage") or msg.get("voiceMessage")
+            media_type = None
+            media_bytes = None
+            mime_type = "audio/ogg"
+
+            if audio_msg:
+                media_type = "audio"
+                mime_type = audio_msg.get("mimetype", "audio/ogg")
+                if "base64" in audio_msg:
+                    import base64
+                    try:
+                        media_bytes = base64.b64decode(audio_msg["base64"])
+                    except Exception:
+                        pass
+                elif "url" in audio_msg:
+                    try:
+                        async with httpx.AsyncClient(timeout=10.0) as client:
+                            resp = await client.get(audio_msg["url"])
+                            if resp.status_code == 200:
+                                media_bytes = resp.content
+                    except Exception:
+                        pass
+
+                # Transcribe with Groq Whisper
+                trans_res = await media_transcriber.transcribe_voice_note(media_bytes or b"", filename="whatsapp_voice.ogg")
+                text = trans_res.get("text", "")
+
+            # 3. Check Video / Image / Document
+            video_msg = msg.get("videoMessage")
+            image_msg = msg.get("imageMessage")
+            doc_msg = msg.get("documentMessage")
+
+            if video_msg:
+                media_type = "video"
+                mime_type = video_msg.get("mimetype", "video/mp4")
+                text = video_msg.get("caption", text)
+            elif image_msg:
+                media_type = "image"
+                mime_type = image_msg.get("mimetype", "image/jpeg")
+                text = image_msg.get("caption", text)
+            elif doc_msg:
+                media_type = "document"
+                mime_type = doc_msg.get("mimetype", "application/pdf")
+                text = doc_msg.get("caption", text)
+
+            if text or media_type:
+                return {
+                    "phone": phone,
+                    "text": text.strip() if text else "",
+                    "media_type": media_type,
+                    "media_bytes": media_bytes,
+                    "mime_type": mime_type,
+                    "raw_msg": msg,
+                }
 
         return None
 
@@ -266,26 +554,31 @@ class WhatsAppConversationAgent:
         return False
 
     def _find_lead_by_phone(self, phone: str) -> Optional[Dict[str, Any]]:
-        """Looks up lead by phone in PostgreSQL."""
+        """Looks up lead by phone in PostgreSQL with fallback to local campaign records."""
         try:
-            conn = psycopg2.connect(
-                host=settings.POSTGRES_HOST,
-                port=settings.POSTGRES_PORT,
-                dbname=settings.POSTGRES_DB,
-                user=settings.POSTGRES_USER,
-                password=settings.POSTGRES_PASSWORD,
-                connect_timeout=3,
-            )
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(
-                    "SELECT * FROM leads WHERE contact_phone = %s OR contact_whatsapp = %s LIMIT 1;",
-                    (phone, phone),
+            if psycopg2:
+                conn = psycopg2.connect(
+                    host=settings.POSTGRES_HOST,
+                    port=settings.POSTGRES_PORT,
+                    dbname=settings.POSTGRES_DB,
+                    user=settings.POSTGRES_USER,
+                    password=settings.POSTGRES_PASSWORD,
+                    connect_timeout=3,
                 )
-                lead = cur.fetchone()
-                conn.close()
-                return dict(lead) if lead else None
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute(
+                        "SELECT * FROM leads WHERE contact_phone = %s OR contact_whatsapp = %s LIMIT 1;",
+                        (phone, phone),
+                    )
+                    lead = cur.fetchone()
+                    conn.close()
+                    if lead:
+                        return dict(lead)
         except Exception:
-            return None
+            pass
+
+        # Fallback to local files
+        return telegram_admin_bot._get_lead(phone)
 
     def _record_conversation_turn(
         self,

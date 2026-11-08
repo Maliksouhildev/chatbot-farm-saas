@@ -26,10 +26,14 @@ class RedisDedupManager:
     def __init__(self):
         self._client: Optional[Any] = None
         self._fallback_memory_set = set()
+        self._last_failed_at: float = 0.0
 
     @property
     def client(self) -> Optional[Any]:
         if not HAS_REDIS:
+            return None
+        # Cooldown of 30s after failure to prevent socket stall loops
+        if time.time() - self._last_failed_at < 30.0:
             return None
         if self._client is None:
             try:
@@ -39,12 +43,14 @@ class RedisDedupManager:
                     password=settings.REDIS_PASSWORD if settings.REDIS_PASSWORD else None,
                     db=settings.REDIS_DB,
                     decode_responses=True,
-                    socket_connect_timeout=3,
-                    socket_timeout=3,
+                    socket_connect_timeout=1,
+                    socket_timeout=1,
                 )
+                self._client.ping()
             except Exception as e:
-                logger.error(f"Failed to connect to Redis: {e}")
+                logger.debug(f"Failed to connect to Redis, falling back to memory: {e}")
                 self._client = None
+                self._last_failed_at = time.time()
         return self._client
 
     def ping(self) -> bool:
@@ -54,10 +60,9 @@ class RedisDedupManager:
                 return False
             return bool(self.client.ping())
         except Exception as e:
-            logger.warning(f"Redis ping failed: {e}")
-            return False
-        except Exception as e:
-            logger.warning(f"Redis ping failed: {e}")
+            logger.debug(f"Redis ping failed: {e}")
+            self._client = None
+            self._last_failed_at = time.time()
             return False
 
     @staticmethod
@@ -93,13 +98,16 @@ class RedisDedupManager:
         """
         Returns True if the fingerprint has been seen in Redis within the TTL window.
         """
-        if not self.client:
+        c = self.client
+        if not c:
             return fingerprint in self._fallback_memory_set
         try:
             key = f"lead:seen:{fingerprint}"
-            return bool(self.client.exists(key))
+            return bool(c.exists(key))
         except Exception as e:
-            logger.error(f"Redis error during is_duplicate check: {e}")
+            logger.debug(f"Redis error during is_duplicate check: {e}")
+            self._client = None
+            self._last_failed_at = time.time()
             return fingerprint in self._fallback_memory_set
 
     def mark_seen(
@@ -111,7 +119,8 @@ class RedisDedupManager:
         """
         Marks a fingerprint as seen and stores summary metadata with TTL.
         """
-        if not self.client:
+        c = self.client
+        if not c:
             self._fallback_memory_set.add(fingerprint)
             return True
         try:
@@ -119,10 +128,12 @@ class RedisDedupManager:
             ttl_seconds = days * 86400
             key = f"lead:seen:{fingerprint}"
             payload = json.dumps(metadata or {"seen_at": int(time.time())})
-            self.client.setex(key, ttl_seconds, payload)
+            c.setex(key, ttl_seconds, payload)
             return True
         except Exception as e:
-            logger.error(f"Redis error during mark_seen: {e}")
+            logger.debug(f"Redis error during mark_seen: {e}")
+            self._client = None
+            self._last_failed_at = time.time()
             self._fallback_memory_set.add(fingerprint)
             return True
 
@@ -130,12 +141,17 @@ class RedisDedupManager:
         """
         Checks if a recipient was contacted via channel within the debounce window.
         """
+        c = self.client
+        if not c:
+            return False
         try:
             clean_recipient = recipient.strip().lower()
             key = f"debounce:{channel}:{clean_recipient}"
-            return bool(self.client.exists(key))
+            return bool(c.exists(key))
         except Exception as e:
-            logger.error(f"Redis error during is_debounced check: {e}")
+            logger.debug(f"Redis error during is_debounced check: {e}")
+            self._client = None
+            self._last_failed_at = time.time()
             return False
 
     def set_debounce(

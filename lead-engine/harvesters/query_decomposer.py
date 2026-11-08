@@ -132,8 +132,8 @@ class QueryDecomposer:
         """
         lower = idea_text.lower()
 
-        # Detect niche & synonyms
-        if any(w in lower for w in ["parfum", "perfume", "parfumerie", "fragrance", "عطر", "عطور"]):
+        # Detect niche & synonyms (multilingual: EN, FR, AR, Darija Arabizi)
+        if any(w in lower for w in ["parfum", "perfume", "parfumerie", "fragrance", "riha", "ri7a", "rwayeh", "rwaye7", "عطر", "عطور", "روائح"]):
             niche_slug = "PERF"
             niche_name = "Parfumerie & Cosmétique"
             keywords_fr = ["Parfumerie", "Boutique parfum", "Parfum de luxe", "Vente de parfum"]

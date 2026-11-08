@@ -140,20 +140,23 @@ Evolution API runs locally in Docker and connects your dedicated WhatsApp number
    EVOLUTION_API_URL=http://localhost:8080
    EVOLUTION_API_KEY=your_evolution_api_key_token
    EVOLUTION_INSTANCE_NAME=lead_dispatch
+   ADMIN_WHATSAPP_PHONE=+213555000000
    ```
+   *(Set `ADMIN_WHATSAPP_PHONE` to your personal mobile number so you can control the engine directly from WhatsApp too!)*
 
 ---
 
 ## 📱 How to Use from Your Phone (Step-by-Step)
+You can manage the engine either from **Telegram** (100% ban-proof) or directly from **WhatsApp** (by messaging the dedicated number from your personal `ADMIN_WHATSAPP_PHONE`).
 
 ### Scenario A: Launching a 58-Wilaya Search
-1. Open your Telegram app and open the chat with your bot.
-2. Hold the microphone button and send a voice note:
+1. Open your Telegram or WhatsApp chat with the bot.
+2. Hold the microphone button and send a voice note (or type a message):
    > *"I am looking for perfume shops all over Algeria"*
 3. Within 500ms, Groq Whisper transcribes your voice note and the bot replies:
    > `🎙️ Transcribed: "I am looking for perfume shops all over Algeria"`
    > `🎯 Planned campaign 'Perfume Shops Algeria 58 Wilayas Grid'`
-4. The system executes searches across all 58 wilayas, classifies leads, assigns Client IDs (`DZ-PERF-001` to `DZ-PERF-1000`), and formats the Google Sheet tab.
+4. The system executes searches across all 58 wilayas, classifies leads, assigns Client IDs (`DZ-PERF-001` to `DZ-PERF-1000`), and formats the Google Sheet tab with the top-scoring prospects at the top.
 5. The bot sends you a clickable link to open your Google Sheet tab directly on your phone!
 
 ### Scenario B: Dispatching Messages to Prospects
@@ -161,14 +164,18 @@ Evolution API runs locally in Docker and connects your dedicated WhatsApp number
   `/send_ai DZ-PERF-001`
 - To send a custom message:
   `/send DZ-PERF-001 Salam khouya, voici notre offre...`
+- To view top leads:
+  `/leads`
+- To view active campaigns:
+  `/campaigns`
 
 ### Scenario C: Client Replies & Escalations
 1. When a client replies on WhatsApp asking for a preview or video demo:
-2. The AI agent immediately sends an Emergency Alert Card to your Telegram:
+2. The AI agent immediately sends an Emergency Alert Card to your Telegram and WhatsApp:
    ```
    🚨 ESCALATION: Client #DZ-PERF-015 (Parfumerie El Bahia - Oran)
    📱 Phone: +213555123456
    💬 Client Question: "Salam khouya, chhal le prix et est-ce que kayen demo video?"
    💡 Suggested AI Reply (Darija): "Salam khouya! Chouf la vidéo hadi..."
    ```
-3. You can either tap **[✅ Send AI Reply]**, or directly send a video clip from your phone gallery to the Telegram bot — the bot will immediately forward that video to the client on WhatsApp!
+3. You can either tap **[✅ Send AI Reply]**, reply `/send DZ-PERF-015 ...`, or directly send a video clip from your phone gallery to the bot with the caption `#DZ-PERF-015` — the bot will immediately forward that video to the client on WhatsApp!
