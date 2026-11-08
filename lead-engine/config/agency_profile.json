@@ -1,0 +1,165 @@
+{
+  "agency": {
+    "name": "Apex Automation & AI Solutions DZ",
+    "founder": "Malik Souhil",
+    "contact_email": "mlkmehdid@gmail.com",
+    "contact_phone": "+213555000000",
+    "telegram_admin": "@Maliksouhildev",
+    "github_url": "https://github.com/Maliksouhildev",
+    "headquarters": "Algiers / Oran, Algeria",
+    "mission": "Empowering Algerian merchants, e-commerce stores, and service clinics with 24/7 AI agents, automated Yalidine delivery dispatch, and multi-source lead pipelines."
+  },
+  "portfolio": [
+    {
+      "title": "E-Commerce WhatsApp & Yalidine Auto-Dispatcher",
+      "niche": "E-Commerce / Fashion & Perfumes",
+      "description": "24/7 AI WhatsApp sales bot in Algerian Darija Arabizi that collects orders, confirms wilaya addresses, and generates Yalidine/ZR Express tracking waybills directly without human intervention.",
+      "metrics": "Processed 12,000+ orders, cut response latency from 3 hours to 2 seconds, reduced cart abandonment by 42%.",
+      "demo_url": "https://github.com/Maliksouhildev/chatbot-farm-saas#ecommerce-demo"
+    },
+    {
+      "title": "Dental & Medical Clinic WhatsApp Appointment System",
+      "niche": "Healthcare / Clinics",
+      "description": "Autonomous booking bot syncing with Google Calendar, sending automated reminders 24 hours prior, handling patient triage in Arabic and French.",
+      "metrics": "Eliminated 85% of phone call load and reduced patient no-shows by 78%.",
+      "demo_url": "https://github.com/Maliksouhildev/chatbot-farm-saas#clinic-demo"
+    },
+    {
+      "title": "Instagram 'Prix en Privé' Auto-DM Sales Funnel",
+      "niche": "Retail & Dropshipping",
+      "description": "Instant comment-to-DM responder that automatically detects price inquiries ('chhal', 'prix svp', 'soum') and sends direct checkout links and WhatsApp contact.",
+      "metrics": "Generated 4.8x higher conversion rate on Instagram ad campaigns.",
+      "demo_url": "https://github.com/Maliksouhildev/chatbot-farm-saas#instagram-funnel"
+    },
+    {
+      "title": "n8n Enterprise Operations & Inventory Pipeline",
+      "niche": "B2B / Wholesalers",
+      "description": "Real-time stock synchronization between WooCommerce, Shopify, Ouedkniss, Google Sheets, and PostgreSQL with automated Telegram alerts.",
+      "metrics": "Saved over 35 hours per week of manual data entry for a leading Algerian electronics importer.",
+      "demo_url": "https://github.com/Maliksouhildev/chatbot-farm-saas#n8n-pipelines"
+    }
+  ],
+  "services": {
+    "whatsapp_bot": {
+      "name": "24/7 Conversational WhatsApp Sales & Support Bot",
+      "description": "Fluent Algerian Darija Arabizi, Arabic, and French bot connected to Yalidine / ZR Express API, catalog browsing, and CRM.",
+      "pricing_dzd": {
+        "setup_fee": 45000,
+        "monthly_subscription": 15000
+      },
+      "pricing_eur": {
+        "setup_fee": 350,
+        "monthly_subscription": 120
+      },
+      "deliverables": [
+        "Dedicated WhatsApp Cloud or Evolution API connection",
+        "Custom conversational AI fine-tuned on store products",
+        "Automated Yalidine / ZR Express order creation and tracking",
+        "Live Google Sheets / database sales dashboard",
+        "Admin alert notifications on Telegram for high-value orders"
+      ]
+    },
+    "instagram_bot": {
+      "name": "Instagram Comment & DM Sales Funnel",
+      "description": "Automated response to public comments and private direct messages with zero ban risk.",
+      "pricing_dzd": {
+        "setup_fee": 30000,
+        "monthly_subscription": 10000
+      },
+      "pricing_eur": {
+        "setup_fee": 250,
+        "monthly_subscription": 80
+      },
+      "deliverables": [
+        "Instant auto-reply to 'prix en mp' and pricing comments",
+        "Private DM funnel with product images and price list",
+        "Direct handoff to WhatsApp with pre-filled order text"
+      ]
+    },
+    "ecommerce_web_dev": {
+      "name": "High-Converting Mobile Storefront (58 Wilayas)",
+      "description": "Lightning-fast, mobile-optimized landing page and catalog built for Algerian e-commerce shoppers.",
+      "pricing_dzd": {
+        "setup_fee": 75000,
+        "monthly_subscription": 0
+      },
+      "pricing_eur": {
+        "setup_fee": 550,
+        "monthly_subscription": 0
+      },
+      "deliverables": [
+        "1-second load time on Mobilis/Ooredoo/Djezzy 4G",
+        "1-click checkout with 58 wilayas delivery price calculator",
+        "Full integration with Yalidine / ZR Express and WhatsApp"
+      ]
+    },
+    "n8n_automation": {
+      "name": "Custom n8n Workflow Automation & Integration",
+      "description": "End-to-end automation connecting payment gateways, shipping providers, CRM, and spreadsheets.",
+      "pricing_dzd": {
+        "setup_fee": 50000,
+        "monthly_subscription": 12000
+      },
+      "pricing_eur": {
+        "setup_fee": 400,
+        "monthly_subscription": 100
+      },
+      "deliverables": [
+        "Self-hosted Docker n8n workflows with zero per-run fees",
+        "PostgreSQL and Google Sheets bi-directional sync",
+        "Telegram admin alert system"
+      ]
+    }
+  },
+  "tone_directives": {
+    "darija_arabizi": {
+      "greeting": "Salam khouya / Salam khti! Ya3tik essaha 3la contact.",
+      "style": "Authentic Algerian e-commerce conversational tone. Uses natural Arabizi phrasing without being excessively informal.",
+      "key_phrases": [
+        "kayen demo wajda nwerrihalek f 2 minutes",
+        "système yrecouperi les commandes direct f Yalidine bla ma tkatbo b yedkom",
+        "yjawéb l les clients f 2 secondes 24h/24",
+        "t7ab nwerrilek aperçu vidéo direct 3la WhatsApp?"
+      ]
+    },
+    "french": {
+      "greeting": "Bonjour ! Merci pour votre prise de contact.",
+      "style": "Professional, courteous, high-clarity business French adapted for Maghreb and French B2B clients.",
+      "key_phrases": [
+        "nous automatisons l'intégralité de la prise de commande et la livraison 58 wilayas",
+        "notre agent WhatsApp répond instantanément 24h/24 et qualifie les acheteurs sérieux",
+        "souhaitez-vous recevoir une démonstration vidéo personnalisée ?"
+      ]
+    },
+    "english": {
+      "greeting": "Hello! Thanks for reaching out.",
+      "style": "Concise, outcome-focused tech agency communication.",
+      "key_phrases": [
+        "we build resilient n8n pipelines and custom AI agents that eliminate repetitive ops",
+        "happy to share a quick live architecture preview or video demo"
+      ]
+    }
+  },
+  "faq": [
+    {
+      "question": "Chhal le prix ta3 le bot WhatsApp ?",
+      "answer_darija": "Le bot WhatsApp complet يدير 45,000 DZD pour la mise en place + 15,000 DZD/mois pour l'hébergement et la maintenance 24/7. Yji m3ah l'intégration Yalidine et le tableau de bord Google Sheets.",
+      "answer_fr": "Le pack WhatsApp Bot complet est à 45 000 DZD pour la configuration initiale puis 15 000 DZD/mois pour l'hébergement et l'assistance continue."
+    },
+    {
+      "question": "Est-ce que yemchi m3a Yalidine ou ZR Express ?",
+      "answer_darija": "Iyeh bien sûr khouya, connecté direct m3a l'API ta3 Yalidine et ZR Express. Dès que le client yconfirmi l'adresse et le numéro, le bon de livraison ytwassa9 direct bla ma t3ayi ro7ek.",
+      "answer_fr": "Oui, tout à fait. Le système est nativement interconnecté aux APIs de Yalidine et ZR Express pour générer automatiquement les bordereaux d'expédition dès validation du client."
+    },
+    {
+      "question": "Est-ce que kayen demo nchoufha ?",
+      "answer_darija": "Iyeh kayen demo vidéo et un bot de test wajed. Nwerrilek la vidéo tout de suite ou bien njarrbouh f numéro de test ?",
+      "answer_fr": "Oui, nous disposons d'une démonstration vidéo complète ainsi que d'un bot de test interactif. Je peux vous l'envoyer immédiatement."
+    },
+    {
+      "question": "Chhal ya93ed bech yweli wajed ?",
+      "answer_darija": "Le système ykoun wajed f 48h à 72h max après la réception de vos informations et catalogue produits.",
+      "answer_fr": "Le déploiement complet s'effectue sous 48 à 72 heures ouvrées après réception de vos éléments."
+    }
+  ]
+}

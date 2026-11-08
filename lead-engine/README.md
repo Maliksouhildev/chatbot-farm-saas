@@ -187,6 +187,26 @@ The Harvester microservice exposes a clean REST API on port `8000`:
 | `POST` | `/leads/{id}/score` | Update AI qualification score, reasoning, and pitch |
 | `POST` | `/leads/{id}/status` | Update status (`approved`, `rejected`, `blacklisted`) |
 | `POST` | `/leads/{id}/outreach` | Log dispatched message and set 14-day debounce cooldown |
+| `POST` | `/campaign/start` | Launch autonomous 58-Wilaya campaign from voice note/idea |
+| `GET` | `/campaign/{id}/status` | Query campaign progress, top leads, and Google Sheet link |
+| `GET` | `/campaign/{id}/export/csv` | 1-click download of sorted campaign CSV |
+| `POST` | `/webhook/whatsapp-incoming` | Evolution API incoming webhook for Darija Conversational Agent |
+| `GET` | `/escalations` | List pending high-intent client escalation alerts |
+| `POST` | `/escalations/{id}/resolve` | Resolve escalation and dispatch admin reply to WhatsApp |
+| `POST` | `/transcribe/audio` | Groq Whisper Large v3 Turbo voice note transcription (<500ms) |
+| `POST` | `/transcribe/multimodal` | Google Gemini 1.5/2.0 Flash video/footage analysis |
+
+---
+
+## 📱 Mobile Command Copilot (Control from Your Phone)
+
+You can run your entire lead acquisition agency straight from Telegram without ever touching a computer:
+- 🎙️ **Voice Notes:** Send audio notes like *"I am looking for perfume shops all over Algeria"* -> Transcribed in <500ms via Groq Whisper -> Launches 58-Wilaya Grid.
+- 💬 **WhatsApp Outreach:** Type `/send_ai DZ-PERF-001` or `/send DZ-PERF-001 <custom message>` to message prospects.
+- 🚨 **Real-Time Escalations:** When a client asks high-stakes questions on WhatsApp (previews, demo videos, custom pricing), an emergency alert card is pushed to your phone with 1-click reply buttons (`[✅ Send AI Reply]`, `[📹 Send Demo Video]`).
+- 📹 **Footage & Media Relay:** Reply to any alert card with a video, photo, or PDF from your phone; the bot routes your exact materials to that client on WhatsApp.
+
+For the step-by-step key acquisition walkthrough, see **[`README_KEYS_GUIDE.md`](./README_KEYS_GUIDE.md)**.
 
 ---
 

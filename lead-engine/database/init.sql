@@ -38,6 +38,10 @@ CREATE TABLE IF NOT EXISTS leads (
     ai_scoring_reasoning TEXT,                           -- Justification for the qualification score
     ai_pitch_draft TEXT,                                 -- Culturally tailored personalized icebreaker & pitch
     status VARCHAR(50) DEFAULT 'new',                    -- 'new', 'scored', 'hitl_pending', 'approved', 'rejected', 'contacted', 'replied', 'converted', 'blacklisted'
+    client_id VARCHAR(50),                               -- Sequential client identifier (e.g. DZ-PERF-001)
+    campaign_id VARCHAR(100),                            -- Unique campaign grouping (e.g. DZ-PERF-20261108)
+    campaign_name VARCHAR(255),                          -- Human-readable campaign name (e.g. Perfume Shops Algeria)
+    whatsapp_direct_url TEXT,                            -- 1-click wa.me URL with pre-filled pitch
     synced_to_sheets BOOLEAN DEFAULT FALSE,              -- Track synchronization with Google Sheets master tracker
     metadata JSONB DEFAULT '{}'::jsonb,                  -- Flexible JSON payload for extra source-specific attributes
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -48,7 +52,44 @@ CREATE TABLE IF NOT EXISTS leads (
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Algeria';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS lead_category VARCHAR(50) DEFAULT 'PASSIVE_POTENTIAL';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS sub_niche VARCHAR(100);
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS client_id VARCHAR(50);
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS campaign_id VARCHAR(100);
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS campaign_name VARCHAR(255);
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS whatsapp_direct_url TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS synced_to_sheets BOOLEAN DEFAULT FALSE;
+
+-- -----------------------------------------------------------------------------
+-- 1B. ESCALATIONS TABLE (Human-in-the-Loop Admin Relay)
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS escalations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
+    client_id VARCHAR(50),
+    recipient_phone VARCHAR(50) NOT NULL,
+    client_message TEXT NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending',                -- 'pending', 'resolved', 'auto_acknowledged'
+    suggested_ai_reply TEXT,
+    admin_reply TEXT,
+    media_url TEXT,
+    telegram_message_id BIGINT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    resolved_at TIMESTAMPTZ
+);
+
+-- -----------------------------------------------------------------------------
+-- 1C. CONVERSATION TURNS TABLE (WhatsApp Multi-Turn Chat History)
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS conversation_turns (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
+    channel VARCHAR(50) DEFAULT 'whatsapp',
+    sender_type VARCHAR(20) NOT NULL,                    -- 'client', 'ai', 'admin'
+    recipient VARCHAR(100) NOT NULL,
+    message_content TEXT NOT NULL,
+    intent VARCHAR(50),
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
 -- -----------------------------------------------------------------------------
 -- 2. OUTREACH LOGS TABLE

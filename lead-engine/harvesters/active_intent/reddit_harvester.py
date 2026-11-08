@@ -8,10 +8,25 @@ import logging
 import time
 import random
 from typing import List, Dict, Any, Optional
-import praw
-from prawcore.exceptions import ResponseException, RequestException, ServerError
-import psycopg2
-from psycopg2.extras import RealDictCursor
+try:
+    import praw
+    from prawcore.exceptions import ResponseException, RequestException, ServerError
+    HAS_PRAW = True
+except ImportError:
+    HAS_PRAW = False
+    praw = None
+    ResponseException = Exception
+    RequestException = Exception
+    ServerError = Exception
+
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    HAS_PSYCOPG2 = True
+except ImportError:
+    HAS_PSYCOPG2 = False
+    psycopg2 = None
+    RealDictCursor = None
 
 from config import (
     settings,

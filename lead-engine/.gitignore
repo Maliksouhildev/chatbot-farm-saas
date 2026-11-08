@@ -36,6 +36,9 @@ database.sqlite
 pgdata/
 redis_data/
 n8n_data/
+data/
+config/*service_account*.json
+config/*.private.*
 
 # OS artifacts
 Thumbs.db

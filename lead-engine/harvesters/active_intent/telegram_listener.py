@@ -9,9 +9,12 @@ import asyncio
 import logging
 from typing import Optional, List, Dict, Any
 from telethon import TelegramClient, events
-from telethon.tl.types import Channel, Chat, User
-import psycopg2
-from psycopg2.extras import RealDictCursor
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    psycopg2 = None
+    RealDictCursor = None
 
 from config import (
     settings,

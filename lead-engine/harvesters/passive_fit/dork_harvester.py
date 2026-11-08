@@ -11,8 +11,12 @@ import random
 import asyncio
 from typing import List, Dict, Any, Optional
 import httpx
-import psycopg2
-from psycopg2.extras import RealDictCursor
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    psycopg2 = None
+    RealDictCursor = None
 
 from config import (
     settings,

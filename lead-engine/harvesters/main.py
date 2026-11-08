@@ -15,9 +15,21 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel, Field
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import psycopg2
-from psycopg2.extras import RealDictCursor
+try:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    HAS_APSCHEDULER = True
+except ImportError:
+    HAS_APSCHEDULER = False
+    AsyncIOScheduler = None
+
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    HAS_PSYCOPG2 = True
+except ImportError:
+    HAS_PSYCOPG2 = False
+    psycopg2 = None
+    RealDictCursor = None
 import httpx
 
 # Ensure harvester submodules are in python path
@@ -33,6 +45,12 @@ from active_intent.telegram_listener import telegram_harvester
 from passive_fit.ouedkniss_graphql import ouedkniss_harvester
 from passive_fit.dork_harvester import dork_harvester
 from passive_fit.gmaps_auditor import gmaps_auditor
+from media_transcriber import media_transcriber
+from query_decomposer import query_decomposer
+from batch_harvester import batch_harvester
+from telegram_admin_bot import telegram_admin_bot
+from whatsapp_conversation_agent import whatsapp_conversation_agent
+from sheets_campaign_sync import sheets_campaign_sync
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,7 +58,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("main_api")
 
-scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler() if HAS_APSCHEDULER else None
 
 
 # =============================================================================
@@ -166,60 +184,63 @@ async def run_auto_qualification_batch(limit: int = 50) -> Dict[str, Any]:
 async def lifespan(app: FastAPI):
     logger.info("Initializing Lead Engine API and background scheduler...")
 
-    # 1. Recurring Reddit buyer intent scraper (every 30 mins)
-    scheduler.add_job(
-        func=lambda: reddit_harvester.harvest(limit_per_sub=15),
-        trigger="interval",
-        minutes=30,
-        id="scheduled_reddit_harvest",
-        name="Hourly Reddit Harvester",
-        replace_existing=True,
-    )
+    if scheduler:
+        # 1. Recurring Reddit buyer intent scraper (every 30 mins)
+        scheduler.add_job(
+            func=lambda: reddit_harvester.harvest(limit_per_sub=15),
+            trigger="interval",
+            minutes=30,
+            id="scheduled_reddit_harvest",
+            name="Hourly Reddit Harvester",
+            replace_existing=True,
+        )
 
-    # 2. Recurring Ouedkniss Pro Store scraper (every 60 mins)
-    scheduler.add_job(
-        func=lambda: asyncio.create_task(ouedkniss_harvester.harvest_stores(max_pages=2)),
-        trigger="interval",
-        minutes=60,
-        id="scheduled_ouedkniss_harvest",
-        name="Ouedkniss Pro Store Scraper",
-        replace_existing=True,
-    )
+        # 2. Recurring Ouedkniss Pro Store scraper (every 60 mins)
+        scheduler.add_job(
+            func=lambda: asyncio.create_task(ouedkniss_harvester.harvest_stores(max_pages=2)),
+            trigger="interval",
+            minutes=60,
+            id="scheduled_ouedkniss_harvest",
+            name="Ouedkniss Pro Store Scraper",
+            replace_existing=True,
+        )
 
-    # 3. Recurring Google Dork e-commerce scanner (every 90 mins)
-    scheduler.add_job(
-        func=lambda: asyncio.create_task(dork_harvester.harvest_dorks(max_results_per_dork=15)),
-        trigger="interval",
-        minutes=90,
-        id="scheduled_dork_harvest",
-        name="Google Dorks Instagram/FB Scraper",
-        replace_existing=True,
-    )
+        # 3. Recurring Google Dork e-commerce scanner (every 90 mins)
+        scheduler.add_job(
+            func=lambda: asyncio.create_task(dork_harvester.harvest_dorks(max_results_per_dork=15)),
+            trigger="interval",
+            minutes=90,
+            id="scheduled_dork_harvest",
+            name="Google Dorks Instagram/FB Scraper",
+            replace_existing=True,
+        )
 
-    # 4. Recurring Google Maps local business auditor (every 180 mins)
-    scheduler.add_job(
-        func=lambda: asyncio.create_task(
-            gmaps_auditor.audit_niche(query="Clinique médicale", location="Alger, Algérie", max_results=15)
-        ),
-        trigger="interval",
-        minutes=180,
-        id="scheduled_gmaps_audit",
-        name="Google Maps Local Business Auditor",
-        replace_existing=True,
-    )
+        # 4. Recurring Google Maps local business auditor (every 180 mins)
+        scheduler.add_job(
+            func=lambda: asyncio.create_task(
+                gmaps_auditor.audit_niche(query="Clinique médicale", location="Alger, Algérie", max_results=15)
+            ),
+            trigger="interval",
+            minutes=180,
+            id="scheduled_gmaps_audit",
+            name="Google Maps Local Business Auditor",
+            replace_existing=True,
+        )
 
-    # 5. Recurring Autonomous AI Qualification & Scoring Loop (every 10 mins)
-    scheduler.add_job(
-        func=lambda: asyncio.create_task(run_auto_qualification_batch(limit=25)),
-        trigger="interval",
-        minutes=10,
-        id="scheduled_auto_qualification",
-        name="Autonomous AI Lead Qualification & Pitch Generator",
-        replace_existing=True,
-    )
+        # 5. Recurring Autonomous AI Qualification & Scoring Loop (every 10 mins)
+        scheduler.add_job(
+            func=lambda: asyncio.create_task(run_auto_qualification_batch(limit=25)),
+            trigger="interval",
+            minutes=10,
+            id="scheduled_auto_qualification",
+            name="Autonomous AI Lead Qualification & Pitch Generator",
+            replace_existing=True,
+        )
 
-    scheduler.start()
-    logger.info("APScheduler started with 5 orchestrated autonomous recurring background jobs.")
+        scheduler.start()
+        logger.info("APScheduler started with 5 orchestrated autonomous recurring background jobs.")
+    else:
+        logger.info("APScheduler inactive (apscheduler not installed in environment).")
 
     # 6. Launch Telegram MTProto listener in non-blocking background task
     telegram_task = None
@@ -229,13 +250,24 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Telegram listener inactive (TELEGRAM_API_ID not provided).")
 
+    # 7. Launch Telegram Admin Command Bot daemon
+    admin_bot_task = None
+    if telegram_admin_bot.is_configured():
+        admin_bot_task = asyncio.create_task(telegram_admin_bot.start_polling())
+        logger.info("Telegram Admin Command Bot polling task spawned.")
+    else:
+        logger.info("Telegram Admin Bot inactive (TELEGRAM_BOT_TOKEN not provided).")
+
     yield
 
     # Teardown
     logger.info("Shutting down scheduler and connections...")
-    scheduler.shutdown(wait=False)
+    if scheduler and getattr(scheduler, "running", False):
+        scheduler.shutdown(wait=False)
     if telegram_task and not telegram_task.done():
         telegram_task.cancel()
+    if admin_bot_task and not admin_bot_task.done():
+        admin_bot_task.cancel()
 
 
 app = FastAPI(
@@ -302,6 +334,24 @@ class AIScoreRequest(BaseModel):
 
 class MarkSyncedRequest(BaseModel):
     lead_ids: List[str] = Field(description="List of lead UUIDs successfully synced to Google Sheets")
+
+class CampaignStartRequest(BaseModel):
+    prompt: str = Field(description="Niche idea or voice note transcript, e.g. 'I am looking for perfume shops all over Algeria'")
+    target_leads: int = Field(default=50, ge=1, le=1000)
+
+class AudioTranscribeRequest(BaseModel):
+    audio_base64: Optional[str] = None
+    audio_url: Optional[str] = None
+    filename: str = Field(default="voice_note.ogg")
+
+class MultimodalAnalyzeRequest(BaseModel):
+    media_base64: Optional[str] = None
+    mime_type: str = Field(default="video/mp4")
+    prompt: Optional[str] = None
+
+class EscalationResolveRequest(BaseModel):
+    admin_reply: Optional[str] = None
+    dispatch_to_whatsapp: bool = Field(default=True)
 
 
 # =============================================================================
@@ -375,19 +425,20 @@ def get_dashboard_stats():
 def health_check():
     """System healthcheck reporting PostgreSQL, Redis, and Telethon connectivity."""
     db_ok = False
-    try:
-        conn = psycopg2.connect(
-            host=settings.POSTGRES_HOST,
-            port=settings.POSTGRES_PORT,
-            dbname=settings.POSTGRES_DB,
-            user=settings.POSTGRES_USER,
-            password=settings.POSTGRES_PASSWORD,
-            connect_timeout=3,
-        )
-        conn.close()
-        db_ok = True
-    except Exception as e:
-        logger.error(f"PostgreSQL health check failed: {e}")
+    if psycopg2:
+        try:
+            conn = psycopg2.connect(
+                host=settings.POSTGRES_HOST,
+                port=settings.POSTGRES_PORT,
+                dbname=settings.POSTGRES_DB,
+                user=settings.POSTGRES_USER,
+                password=settings.POSTGRES_PASSWORD,
+                connect_timeout=3,
+            )
+            conn.close()
+            db_ok = True
+        except Exception as e:
+            logger.debug(f"PostgreSQL health check failed: {e}")
 
     redis_ok = dedup_manager.ping()
     telegram_active = bool(telegram_harvester.client and telegram_harvester.client.is_connected())
@@ -398,8 +449,8 @@ def health_check():
             "postgres": "connected" if db_ok else "disconnected",
             "redis": "connected" if redis_ok else "disconnected",
             "telegram_listener": "online" if telegram_active else "standby",
-            "apscheduler": "running" if scheduler.running else "stopped",
-            "jobs_count": len(scheduler.get_jobs()),
+            "apscheduler": "running" if (scheduler and getattr(scheduler, "running", False)) else "stopped",
+            "jobs_count": len(scheduler.get_jobs()) if scheduler else 0,
         },
     }
 
@@ -757,3 +808,185 @@ async def instant_whatsapp_outreach(req: InstantWhatsAppRequest):
         "delivery_state": sent_status,
         "detail": error_msg or "Message dispatched successfully",
     }
+
+
+# =============================================================================
+# 58-WILAYA CAMPAIGN & MULTIMODAL ROUTES
+# =============================================================================
+
+@app.post("/campaign/start")
+async def start_lead_campaign(req: CampaignStartRequest, bg: BackgroundTasks):
+    """
+    Launches an autonomous 58-Wilaya lead harvesting campaign based on a voice transcript or text idea.
+    Decomposes queries, harvests multi-source leads, normalizes phones, assigns sequential Client IDs,
+    AI qualifies leads in Darija/French, and updates Google Sheets.
+    """
+    res = await batch_harvester.execute_campaign(
+        idea_prompt=req.prompt,
+        target_leads=req.target_leads,
+    )
+    return res
+
+
+@app.get("/campaign/{campaign_id}/status")
+def get_campaign_status(campaign_id: str):
+    """Returns real-time progress, lead count, and top-scored prospects for a campaign."""
+    try:
+        conn = psycopg2.connect(
+            host=settings.POSTGRES_HOST,
+            port=settings.POSTGRES_PORT,
+            dbname=settings.POSTGRES_DB,
+            user=settings.POSTGRES_USER,
+            password=settings.POSTGRES_PASSWORD,
+            connect_timeout=3,
+        )
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT client_id, name, company_name, location_wilaya, contact_phone,
+                       whatsapp_direct_url, ai_fit_score, ai_pitch_draft, status
+                FROM leads
+                WHERE campaign_id = %s
+                ORDER BY ai_fit_score DESC;
+                """,
+                (campaign_id,),
+            )
+            leads = cur.fetchall()
+            conn.close()
+
+            return {
+                "campaign_id": campaign_id,
+                "total_leads": len(leads),
+                "high_intent_count": sum(1 for l in leads if (l["ai_fit_score"] or 0) >= 7),
+                "top_leads": leads[:10],
+            }
+    except Exception as e:
+        logger.error(f"Error querying campaign status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/campaign/{campaign_id}/export/csv")
+def export_campaign_csv(campaign_id: str):
+    """Serves the generated campaign CSV file directly for 1-click download."""
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "campaigns")
+    for f in os.listdir(data_dir) if os.path.exists(data_dir) else []:
+        if f.startswith(campaign_id) and f.endswith(".csv"):
+            return FileResponse(
+                os.path.join(data_dir, f),
+                media_type="text/csv",
+                filename=f,
+            )
+    raise HTTPException(status_code=404, detail="Campaign CSV export file not found.")
+
+
+@app.post("/webhook/whatsapp-incoming")
+async def handle_whatsapp_incoming(payload: Dict[str, Any]):
+    """
+    Receives incoming Evolution API webhook messages from clients.
+    Conversational agent responds in Algerian Darija Arabizi or French,
+    and escalates high-intent inquiries (previews, custom pricing) directly to Telegram.
+    """
+    res = await whatsapp_conversation_agent.handle_incoming_webhook(payload)
+    return res
+
+
+@app.get("/escalations")
+def get_escalations(status: Optional[str] = "pending"):
+    """Fetches high-intent client inquiries escalated to admin."""
+    try:
+        conn = psycopg2.connect(
+            host=settings.POSTGRES_HOST,
+            port=settings.POSTGRES_PORT,
+            dbname=settings.POSTGRES_DB,
+            user=settings.POSTGRES_USER,
+            password=settings.POSTGRES_PASSWORD,
+            connect_timeout=3,
+        )
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if status:
+                cur.execute(
+                    "SELECT * FROM escalations WHERE status = %s ORDER BY created_at DESC LIMIT 50;",
+                    (status,),
+                )
+            else:
+                cur.execute("SELECT * FROM escalations ORDER BY created_at DESC LIMIT 50;")
+            rows = cur.fetchall()
+            conn.close()
+            return {"count": len(rows), "escalations": rows}
+    except Exception as e:
+        logger.error(f"Error querying escalations: {e}")
+        return {"count": 0, "escalations": []}
+
+
+@app.post("/escalations/{escalation_id}/resolve")
+async def resolve_escalation(escalation_id: str, req: EscalationResolveRequest):
+    """Marks an escalation card resolved and optionally dispatches admin reply to WhatsApp."""
+    try:
+        conn = psycopg2.connect(
+            host=settings.POSTGRES_HOST,
+            port=settings.POSTGRES_PORT,
+            dbname=settings.POSTGRES_DB,
+            user=settings.POSTGRES_USER,
+            password=settings.POSTGRES_PASSWORD,
+            connect_timeout=3,
+        )
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM escalations WHERE id = %s;", (escalation_id,))
+            esc = cur.fetchone()
+
+            if not esc:
+                conn.close()
+                raise HTTPException(status_code=404, detail="Escalation record not found")
+
+            cur.execute(
+                """
+                UPDATE escalations
+                SET status = 'resolved',
+                    admin_reply = %s,
+                    resolved_at = NOW()
+                WHERE id = %s
+                RETURNING id, status;
+                """,
+                (req.admin_reply, escalation_id),
+            )
+            updated = cur.fetchone()
+            conn.commit()
+            conn.close()
+
+            # Dispatch reply to client on WhatsApp
+            if req.dispatch_to_whatsapp and req.admin_reply and esc.get("recipient_phone"):
+                await whatsapp_conversation_agent.send_whatsapp_message(
+                    phone=esc["recipient_phone"],
+                    message=req.admin_reply,
+                )
+
+            return {"status": "success", "escalation": updated}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resolving escalation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/transcribe/audio")
+async def transcribe_audio_endpoint(req: AudioTranscribeRequest):
+    """Transcribes audio payload using Groq Whisper Large v3 Turbo."""
+    import base64
+    if req.audio_base64:
+        raw_bytes = base64.b64decode(req.audio_base64)
+    else:
+        raw_bytes = b""
+    res = await media_transcriber.transcribe_voice_note(raw_bytes, filename=req.filename)
+    return res
+
+
+@app.post("/transcribe/multimodal")
+async def analyze_multimodal_endpoint(req: MultimodalAnalyzeRequest):
+    """Analyzes footage, video, or documents using Google Gemini Multimodal."""
+    import base64
+    if req.media_base64:
+        raw_bytes = base64.b64decode(req.media_base64)
+    else:
+        raw_bytes = b""
+    res = await media_transcriber.analyze_multimodal_media(raw_bytes, mime_type=req.mime_type, prompt=req.prompt)
+    return res
