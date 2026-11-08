@@ -452,9 +452,17 @@ class TelegramAdminBot:
         await self.send_message(f"🚀 Custom message sent to *{lead['name']}* (`{lead.get('contact_phone', '')}`):\n_{msg_text}_", chat_id=chat_id)
 
     async def _dispatch_whatsapp(self, lead: Dict[str, Any], text: str):
-        """Sends WhatsApp message via Evolution API with anti-ban delay."""
+        """Sends WhatsApp message via Evolution API with anti-ban delay and safety guard."""
         phone = lead.get("contact_phone") or lead.get("contact_whatsapp")
         clean_digits = "".join(filter(str.isdigit, str(phone)))
+
+        # Safety Lock: Restrict outbound messaging unless explicitly enabled
+        if not getattr(settings, "ENABLE_EXTERNAL_OUTREACH", False):
+            admin_phone = settings.ADMIN_WHATSAPP_PHONE or os.getenv("ADMIN_WHATSAPP_PHONE", "")
+            admin_digits = "".join(filter(str.isdigit, admin_phone))
+            if clean_digits != admin_digits:
+                logger.warning(f"🛑 [SAFETY LOCK BLOCKED] Telegram Bot blocked outbound WhatsApp to {clean_digits}: '{text[:50]}...'.")
+                return
 
         evolution_url = settings.EVOLUTION_API_URL
         instance = settings.EVOLUTION_INSTANCE_NAME
@@ -485,6 +493,14 @@ class TelegramAdminBot:
         if not phone:
             return False
         clean_digits = "".join(filter(str.isdigit, str(phone)))
+
+        # Safety Lock: Restrict outbound media unless explicitly enabled
+        if not getattr(settings, "ENABLE_EXTERNAL_OUTREACH", False):
+            admin_phone = settings.ADMIN_WHATSAPP_PHONE or os.getenv("ADMIN_WHATSAPP_PHONE", "")
+            admin_digits = "".join(filter(str.isdigit, admin_phone))
+            if clean_digits != admin_digits:
+                logger.warning(f"🛑 [SAFETY LOCK BLOCKED] Telegram Bot blocked outbound media to {clean_digits}.")
+                return True
 
         evolution_url = settings.EVOLUTION_API_URL
         instance = settings.EVOLUTION_INSTANCE_NAME

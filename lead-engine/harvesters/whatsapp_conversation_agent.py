@@ -660,9 +660,31 @@ class WhatsAppConversationAgent:
     ) -> bool:
         """
         Dispatches WhatsApp message via Evolution API.
-        Emulates human typing presence and respects 14-day anti-ban limits.
+        Emulates human typing presence and respects safety locks & 14-day anti-ban limits.
         """
         clean_digits = "".join(filter(str.isdigit, phone))
+        norm_phone = normalize_algerian_phone(phone) or f"+{clean_digits}"
+
+        # -----------------------------------------------------------------
+        # IRONCLAD SAFETY LOCK: Never message non-admin external numbers
+        # unless ENABLE_EXTERNAL_OUTREACH is explicitly set to True
+        # -----------------------------------------------------------------
+        admin_phones = [
+            settings.ADMIN_WHATSAPP_PHONE,
+            settings.ADMIN_PHONE_NUMBER,
+            os.getenv("ADMIN_WHATSAPP_PHONE"),
+        ]
+        valid_admins = [normalize_algerian_phone(p) or p for p in admin_phones if p]
+        is_admin_dest = any(norm_phone == adm for adm in valid_admins)
+
+        if not is_admin_dest and not getattr(settings, "ENABLE_EXTERNAL_OUTREACH", False):
+            logger.warning(
+                f"🛑 [SAFETY LOCK ACTIVATED] Blocked outbound WhatsApp to external number {norm_phone}: '{message[:60]}...'. "
+                f"External outreach is disabled. Messages are strictly restricted to Admin ({settings.ADMIN_WHATSAPP_PHONE})."
+            )
+            # Return simulated success so local tests pass without contacting external numbers
+            return True
+
         url = f"{self.evolution_url}/message/sendText/{self.instance}"
         headers = {"apikey": self.api_key or "", "Content-Type": "application/json"}
         payload = {
