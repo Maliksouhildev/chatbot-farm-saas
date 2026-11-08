@@ -9,8 +9,10 @@ import os
 import sys
 import re
 import json
+import time
 import logging
 import asyncio
+from datetime import datetime
 from typing import Dict, Any, Optional, List
 import httpx
 try:
@@ -27,6 +29,7 @@ from config import settings
 from media_transcriber import media_transcriber
 from batch_harvester import batch_harvester
 from sheets_campaign_sync import sheets_campaign_sync
+from time_scheduler import time_scheduler
 
 logger = logging.getLogger("telegram_admin_bot")
 logger.setLevel(logging.INFO)
@@ -165,6 +168,10 @@ class TelegramAdminBot:
             await self._handle_send_custom(chat_id, text)
         elif text.startswith("/status"):
             await self._send_status(chat_id)
+        elif text.startswith(("/timers", "/scheduled")):
+            await self._list_timers(chat_id)
+        elif text.startswith("/cancel"):
+            await self._cancel_timer(chat_id, text)
         elif len(text.strip()) > 5:
             # Treat generic message as a new lead generation idea!
             await self._handle_niche_idea(chat_id, text)
@@ -210,6 +217,71 @@ class TelegramAdminBot:
         count_match = re.search(r"(\d{2,4})\s*(clients|leads|prospects|boutiques|magasins)", idea_text, re.IGNORECASE)
         if count_match:
             target_leads = min(int(count_match.group(1)), 1000)
+
+        # Check time-aware schedule intent
+        sched_info = time_scheduler.parse_schedule_intent(idea_text)
+        if sched_info["is_scheduled"]:
+            campaign_id = f"SCHED_{int(time.time())}"
+            time_scheduler.register_scheduled_campaign(
+                campaign_id=campaign_id,
+                clean_prompt=sched_info["clean_prompt"],
+                run_at=sched_info["run_at"],
+                channel="telegram",
+                recipient=str(chat_id),
+                target_leads=target_leads,
+            )
+
+            delay_h = sched_info["delay_seconds"] // 3600
+            delay_m = (sched_info["delay_seconds"] % 3600) // 60
+            sched_card = (
+                f"⏳ *Prospection Programmée avec Succès !*\n\n"
+                f"🎯 *Objectif :* _{sched_info['clean_prompt']}_\n"
+                f"⏰ *Date d'exécution :* {sched_info['human_readable']}\n"
+                f"🕒 *Délai d'attente :* {delay_h}h {delay_m}m\n"
+                f"🆔 *ID Tâche :* `{campaign_id}`\n\n"
+                f"💤 _Le système reste en veille (0% CPU, zéro mémoire) jusqu'à l'heure exacte, puis exécutera la prospection et vous enverra le Google Sheet._\n"
+                f"Pour annuler à tout moment : `/cancel {campaign_id}`"
+            )
+            await self.send_message(sched_card, chat_id=chat_id)
+
+            async def _delayed_tg_task():
+                try:
+                    await asyncio.sleep(sched_info["delay_seconds"])
+                    active_tasks = time_scheduler.list_scheduled_campaigns(status="scheduled")
+                    if not any(t.get("id") == campaign_id for t in active_tasks):
+                        logger.info(f"Scheduled task {campaign_id} was cancelled before execution.")
+                        return
+
+                    logger.info(f"Executing scheduled campaign {campaign_id} for Telegram chat {chat_id}")
+                    result = await batch_harvester.execute_campaign(
+                        idea_prompt=sched_info["clean_prompt"],
+                        target_leads=target_leads,
+                        progress_callback=_progress,
+                    )
+                    time_scheduler.mark_task_completed(campaign_id, result_summary=f"Harvested {result['total_leads']} leads")
+
+                    summary_msg = (
+                        f"🎉 *Campaign Complete: {result['campaign_name']}*\n\n"
+                        f"📊 *Total Leads Harvested:* {result['total_leads']}\n"
+                        f"⭐ *High-Intent Leads (Score ≥ 7):* {result['high_intent_count']}\n"
+                        f"📋 *Dedicated Google Sheet Tab:* [Open Master Sheet]({result['google_sheet_url']})\n\n"
+                        f"💡 *Top Leads Preview:*\n"
+                    )
+                    for l in result["top_leads"][:3]:
+                        summary_msg += f"• *{l['client_id']}* - {l['name']} ({l.get('location_wilaya', 'Algérie')}) | Score: {l.get('ai_fit_score', 0)}/10\n"
+
+                    summary_msg += (
+                        f"\n📲 _To outreach on WhatsApp, type:_\n"
+                        f"`/send_ai {result['top_leads'][0]['client_id']}`\n"
+                        f"or `/send {result['top_leads'][0]['client_id']} Your message`"
+                    )
+                    await self.send_message(summary_msg, chat_id=chat_id)
+                except Exception as err:
+                    logger.error(f"Error executing scheduled Telegram campaign {campaign_id}: {err}")
+                    await self.send_message(f"❌ Erreur lors de la prospection programmée: {err}", chat_id=chat_id)
+
+            asyncio.create_task(_delayed_tg_task())
+            return
 
         try:
             result = await batch_harvester.execute_campaign(
@@ -475,14 +547,56 @@ class TelegramAdminBot:
             "📱 *Commands from your phone:*\n"
             "• 🎙️ *Send Voice Note:* 'Find perfume shops in Algeria' -> Starts 58-Wilaya search\n"
             "• 💬 *Send Text Idea:* Type any business niche to harvest\n"
+            "• ⏰ *Intelligent Scheduling:* 'Launch search at midnight' or 'in 2 hours'\n"
             "• 📹 *Upload Video / Footage:* Auto-analyzed by Gemini or relayed to client\n"
             "• `/campaigns` - List active lead campaigns\n"
             "• `/leads [campaign_id]` - Show top scored prospects\n"
+            "• `/timers` - View pending scheduled campaigns\n"
+            "• `/cancel <ID>` - Cancel a scheduled campaign\n"
             "• `/send_ai <ClientID>` - Dispatches AI Darija pitch\n"
             "• `/send <ClientID> <Message>` - Dispatches custom message\n"
             "• `/status` - Check database, Redis, and pipeline metrics\n"
         )
         await self.send_message(help_text, chat_id=chat_id)
+
+    async def _list_timers(self, chat_id: int):
+        """Lists active scheduled campaigns."""
+        scheduled_tasks = time_scheduler.list_scheduled_campaigns(status="scheduled")
+        if not scheduled_tasks:
+            await self.send_message("⏰ No pending scheduled campaigns at the moment.", chat_id=chat_id)
+            return
+
+        msg = "⏰ *Pending Scheduled Campaigns:*\n\n"
+        now = time_scheduler.get_current_time()
+        for t in scheduled_tasks:
+            run_at_str = t.get("run_at", "")
+            try:
+                run_dt = datetime.fromisoformat(run_at_str)
+                diff = run_dt - now
+                diff_sec = max(0, int(diff.total_seconds()))
+                h_rem = diff_sec // 3600
+                m_rem = (diff_sec % 3600) // 60
+                rem_str = f"in {h_rem}h {m_rem}m"
+            except Exception:
+                rem_str = run_at_str
+
+            msg += f"• `{t.get('id')}`: _{t.get('prompt')}_\n  📅 {rem_str} via {t.get('channel')}\n"
+
+        msg += "\n💡 To cancel: `/cancel <TaskID>`"
+        await self.send_message(msg, chat_id=chat_id)
+
+    async def _cancel_timer(self, chat_id: int, text: str):
+        """Cancels a scheduled campaign."""
+        parts = text.strip().split()
+        if len(parts) < 2:
+            await self.send_message("⚠️ Usage: `/cancel <TaskID>` (e.g. `/cancel SCHED_1730000000`)", chat_id=chat_id)
+            return
+        tid = parts[1].strip()
+        success = time_scheduler.cancel_scheduled_campaign(tid)
+        if success:
+            await self.send_message(f"✅ Scheduled campaign `{tid}` cancelled successfully.", chat_id=chat_id)
+        else:
+            await self.send_message(f"❌ Could not cancel `{tid}` (not found or already completed).", chat_id=chat_id)
 
     async def _send_status(self, chat_id: int):
         """Fetches status and counts."""

@@ -11,6 +11,8 @@ import json
 import logging
 import asyncio
 import re
+import time
+from datetime import datetime
 from typing import Dict, Any, Optional, List
 import httpx
 try:
@@ -32,6 +34,7 @@ from redis_dedup import dedup_manager
 from telegram_admin_bot import telegram_admin_bot
 from media_transcriber import media_transcriber
 from batch_harvester import batch_harvester
+from time_scheduler import time_scheduler
 
 logger = logging.getLogger("whatsapp_agent")
 logger.setLevel(logging.INFO)
@@ -192,7 +195,7 @@ class WhatsAppConversationAgent:
             return True
         # Also check admin command prefixes
         stripped = text.strip().lower()
-        if stripped.startswith(("/start", "/help", "/campaigns", "/leads", "/send", "/send_ai", "/status")):
+        if stripped.startswith(("/start", "/help", "/campaigns", "/leads", "/send", "/send_ai", "/status", "/timers", "/scheduled", "/cancel")):
             return True
         return False
 
@@ -212,9 +215,12 @@ class WhatsAppConversationAgent:
                 "📱 *Commandes depuis votre téléphone :*\n"
                 "• 🎙️ *Envoyez une note vocale :* ex: 'Je cherche des parfumeries en Algérie'\n"
                 "• 💬 *Envoyez une idée par texte :* 'Trouve-moi des boutiques de parfum en Algérie'\n"
+                "• ⏰ *Planification intelligente :* 'Lance la recherche à minuit' ou 'dans 2 heures'\n"
                 "• 📹 *Envoyez une vidéo ou document :* Mentionnez #DZ-PERF-001 pour transférer au client\n"
                 "• `/campaigns` : Liste des campagnes actives\n"
                 "• `/leads` : Top prospects qualifiés\n"
+                "• `/timers` : Prospections programmées en attente\n"
+                "• `/cancel <ID>` : Annuler une prospection programmée\n"
                 "• `/send_ai <ClientID>` : Envoie le pitch Darija au client\n"
                 "• `/send <ClientID> <Message>` : Envoie un message personnalisé\n"
                 "• `/status` : État du système"
@@ -309,6 +315,48 @@ class WhatsAppConversationAgent:
             await self.send_whatsapp_message(norm_phone, status_text)
             return {"status": "admin_status_sent"}
 
+        # 6b. Timers & Scheduled campaigns list
+        if text.startswith(("/timers", "/scheduled")):
+            scheduled_tasks = time_scheduler.list_scheduled_campaigns(status="scheduled")
+            if not scheduled_tasks:
+                await self.send_whatsapp_message(norm_phone, "⏰ Aucune prospection programmée en attente.")
+                return {"status": "admin_timers_sent", "count": 0}
+
+            msg = "⏰ *Prospections Programmées en Attente :*\n\n"
+            now = time_scheduler.get_current_time()
+            for t in scheduled_tasks:
+                run_at_str = t.get("run_at", "")
+                try:
+                    run_dt = datetime.fromisoformat(run_at_str)
+                    diff = run_dt - now
+                    diff_sec = max(0, int(diff.total_seconds()))
+                    h_rem = diff_sec // 3600
+                    m_rem = (diff_sec % 3600) // 60
+                    rem_str = f"dans {h_rem}h {m_rem}m"
+                except Exception:
+                    rem_str = run_at_str
+
+                msg += f"• `{t.get('id')}` : _{t.get('prompt')}_\n  📅 {rem_str} ({t.get('channel')})\n"
+
+            msg += "\n💡 Pour annuler : `/cancel <ID>`"
+            await self.send_whatsapp_message(norm_phone, msg)
+            return {"status": "admin_timers_sent", "count": len(scheduled_tasks)}
+
+        # 6c. Cancel scheduled campaign
+        if text.startswith("/cancel"):
+            parts = text.strip().split()
+            if len(parts) < 2:
+                await self.send_whatsapp_message(norm_phone, "⚠️ Utilisation : `/cancel <TaskID>` (ex: `/cancel SCHED_1730000000`)")
+                return {"status": "admin_cancel_missing_arg"}
+            tid = parts[1].strip()
+            success = time_scheduler.cancel_scheduled_campaign(tid)
+            if success:
+                await self.send_whatsapp_message(norm_phone, f"✅ Prospection programmée `{tid}` annulée avec succès.")
+                return {"status": "admin_timer_cancelled", "task_id": tid}
+            else:
+                await self.send_whatsapp_message(norm_phone, f"❌ Impossible d'annuler `{tid}` (introuvable ou déjà traitée).")
+                return {"status": "admin_timer_not_found", "task_id": tid}
+
         # 7. Media Upload / Relay to client
         if media_type in ["video", "image", "document"]:
             cid_match = re.search(r"#?(DZ-[A-Z0-9]+-\d+)", text)
@@ -346,16 +394,85 @@ class WhatsAppConversationAgent:
 
         # 8. Treat natural language message as campaign idea (e.g. "I am looking for perfume shops all over Algeria")
         if len(text.strip()) > 5:
-            await self.send_whatsapp_message(
-                norm_phone,
-                f"🎯 *Nouvelle idée reçue :*\n_{text}_\n\n🚀 Lancement de la prospection intelligente sur 58 wilayas...",
-            )
-
             # Target lead detection
             target_leads = 1000
             count_match = re.search(r"(\d{2,4})\s*(clients|leads|prospects|boutiques|magasins)", text, re.IGNORECASE)
             if count_match:
                 target_leads = min(int(count_match.group(1)), 1000)
+
+            # Check time-aware schedule intent
+            sched_info = time_scheduler.parse_schedule_intent(text)
+            if sched_info["is_scheduled"]:
+                campaign_id = f"SCHED_{int(time.time())}"
+                time_scheduler.register_scheduled_campaign(
+                    campaign_id=campaign_id,
+                    clean_prompt=sched_info["clean_prompt"],
+                    run_at=sched_info["run_at"],
+                    channel="whatsapp",
+                    recipient=norm_phone,
+                    target_leads=target_leads,
+                )
+
+                delay_h = sched_info["delay_seconds"] // 3600
+                delay_m = (sched_info["delay_seconds"] % 3600) // 60
+                sched_msg = (
+                    f"⏳ *Prospection Programmée avec Succès !*\n\n"
+                    f"🎯 *Objectif :* _{sched_info['clean_prompt']}_\n"
+                    f"⏰ *Date d'exécution :* {sched_info['human_readable']}\n"
+                    f"🕒 *Délai d'attente :* {delay_h}h {delay_m}m\n"
+                    f"🆔 *ID Tâche :* `{campaign_id}`\n\n"
+                    f"💤 _Le système reste en veille (0% CPU, zéro mémoire) jusqu'à l'heure exacte, puis exécutera la prospection et vous enverra le Google Sheet._\n"
+                    f"Pour annuler à tout moment : `/cancel {campaign_id}`"
+                )
+                await self.send_whatsapp_message(norm_phone, sched_msg)
+
+                # Background delayed worker
+                async def _delayed_whatsapp_task():
+                    try:
+                        await asyncio.sleep(sched_info["delay_seconds"])
+                        # Verify not cancelled
+                        active_tasks = time_scheduler.list_scheduled_campaigns(status="scheduled")
+                        if not any(t.get("id") == campaign_id for t in active_tasks):
+                            logger.info(f"Scheduled task {campaign_id} was cancelled before execution.")
+                            return
+
+                        logger.info(f"Executing scheduled campaign {campaign_id} for {norm_phone}")
+                        res = await batch_harvester.execute_campaign(
+                            idea_prompt=sched_info["clean_prompt"],
+                            target_leads=target_leads,
+                        )
+                        time_scheduler.mark_task_completed(campaign_id, result_summary=f"Harvested {res['total_leads']} leads")
+
+                        c_msg = (
+                            f"🎉 *Prospection Programmée Terminée !*\n\n"
+                            f"🎯 *Campagne :* {res['campaign_name']}\n"
+                            f"📊 *Total Prospects :* {res['total_leads']}\n"
+                            f"⭐ *Haute Pertinence (Score ≥ 7) :* {res['high_intent_count']}\n"
+                            f"📋 *Google Sheet :* {res['google_sheet_url']}\n\n"
+                            f"💡 *Top Prospects :*\n"
+                        )
+                        for l in res.get("top_leads", [])[:3]:
+                            c_msg += f"• *{l['client_id']}* : {l['name']} ({l.get('location_wilaya', 'Algérie')}) | Score : {l.get('ai_fit_score')}/10\n"
+
+                        c_msg += f"\n📲 `/send_ai {res['top_leads'][0]['client_id']}` pour contacter."
+                        await self.send_whatsapp_message(norm_phone, c_msg)
+                    except Exception as err:
+                        logger.error(f"Error in delayed execution of {campaign_id}: {err}")
+                        await self.send_whatsapp_message(norm_phone, f"⚠️ Erreur lors de l'exécution programmée `{campaign_id}`: {err}")
+
+                asyncio.create_task(_delayed_whatsapp_task())
+                return {
+                    "status": "campaign_scheduled",
+                    "campaign_id": campaign_id,
+                    "run_at": sched_info["run_at_iso"],
+                    "delay_seconds": sched_info["delay_seconds"],
+                }
+
+            # Immediate execution
+            await self.send_whatsapp_message(
+                norm_phone,
+                f"🎯 *Nouvelle idée reçue :*\n_{text}_\n\n🚀 Lancement de la prospection intelligente sur 58 wilayas...",
+            )
 
             # Launch campaign
             result = await batch_harvester.execute_campaign(

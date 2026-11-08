@@ -51,6 +51,7 @@ from batch_harvester import batch_harvester
 from telegram_admin_bot import telegram_admin_bot
 from whatsapp_conversation_agent import whatsapp_conversation_agent
 from sheets_campaign_sync import sheets_campaign_sync
+from time_scheduler import time_scheduler
 
 logging.basicConfig(
     level=logging.INFO,
@@ -817,15 +818,66 @@ async def instant_whatsapp_outreach(req: InstantWhatsAppRequest):
 @app.post("/campaign/start")
 async def start_lead_campaign(req: CampaignStartRequest, bg: BackgroundTasks):
     """
-    Launches an autonomous 58-Wilaya lead harvesting campaign based on a voice transcript or text idea.
+    Launches or schedules an autonomous 58-Wilaya lead harvesting campaign based on a voice transcript or text idea.
     Decomposes queries, harvests multi-source leads, normalizes phones, assigns sequential Client IDs,
     AI qualifies leads in Darija/French, and updates Google Sheets.
     """
+    sched_info = time_scheduler.parse_schedule_intent(req.prompt)
+    if sched_info["is_scheduled"]:
+        campaign_id = f"SCHED_{int(time.time())}"
+        task = time_scheduler.register_scheduled_campaign(
+            campaign_id=campaign_id,
+            clean_prompt=sched_info["clean_prompt"],
+            run_at=sched_info["run_at"],
+            channel="api",
+            recipient="api_user",
+            target_leads=req.target_leads,
+        )
+
+        async def _delayed_task():
+            try:
+                await asyncio.sleep(sched_info["delay_seconds"])
+                active = time_scheduler.list_scheduled_campaigns(status="scheduled")
+                if not any(t.get("id") == campaign_id for t in active):
+                    return
+                res = await batch_harvester.execute_campaign(
+                    idea_prompt=sched_info["clean_prompt"],
+                    target_leads=req.target_leads,
+                )
+                time_scheduler.mark_task_completed(campaign_id, result_summary=f"Harvested {res['total_leads']} leads")
+            except Exception as e:
+                logger.error(f"Error executing scheduled campaign: {e}")
+
+        asyncio.create_task(_delayed_task())
+        return {
+            "status": "scheduled",
+            "campaign_id": campaign_id,
+            "scheduled_for": sched_info["run_at_iso"],
+            "delay_seconds": sched_info["delay_seconds"],
+            "human_readable": sched_info["human_readable"],
+        }
+
     res = await batch_harvester.execute_campaign(
         idea_prompt=req.prompt,
         target_leads=req.target_leads,
     )
     return res
+
+
+@app.get("/scheduler/tasks")
+def list_scheduled_tasks(status: Optional[str] = None):
+    """Lists scheduled campaign jobs and their execution timestamps."""
+    tasks = time_scheduler.list_scheduled_campaigns(status=status)
+    return {"count": len(tasks), "tasks": tasks}
+
+
+@app.post("/scheduler/tasks/{task_id}/cancel")
+def cancel_scheduled_task(task_id: str):
+    """Cancels a pending scheduled campaign job."""
+    success = time_scheduler.cancel_scheduled_campaign(task_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Task not found or already completed")
+    return {"status": "success", "task_id": task_id, "message": "Scheduled task cancelled"}
 
 
 @app.get("/campaign/{campaign_id}/status")

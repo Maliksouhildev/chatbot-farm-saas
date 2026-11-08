@@ -151,6 +151,11 @@ class GMapsAuditor:
             logger.info(f"Auditing Google Maps niche: '{query}' in '{location}'...")
             async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT_SECONDS) as client:
                 res = await client.post(self.endpoint, headers=headers, json=payload)
+                if res.status_code == 429:
+                    logger.warning("Serper Places API rate limit (429) hit. Backing off for 5.0s...")
+                    await asyncio.sleep(5.0)
+                    res = await client.post(self.endpoint, headers=headers, json=payload)
+
                 if res.status_code != 200:
                     logger.error(f"Serper Places API returned {res.status_code}: {res.text}")
                     return []

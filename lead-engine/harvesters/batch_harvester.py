@@ -113,6 +113,9 @@ class BatchHarvester:
         except Exception as e:
             logger.warning(f"Dork harvest error: {e}")
 
+        # Safe rate-limiting pacing wait node between harvest sources
+        await asyncio.sleep(random.uniform(1.0, 2.0))
+
         # 3. Source B: Ouedkniss GraphQL Pro Stores
         try:
             logger.info("Harvesting from Ouedkniss GraphQL...")
@@ -125,21 +128,24 @@ class BatchHarvester:
         except Exception as e:
             logger.warning(f"Ouedkniss harvest error: {e}")
 
-        # 4. Source C: 58-Wilaya Places Search (Concurrent commercial hubs)
+        # Safe rate-limiting pacing wait node between harvest sources
+        await asyncio.sleep(random.uniform(1.0, 2.0))
+
+        # 4. Source C: 58-Wilaya Places Search (Paced commercial hubs)
         try:
-            logger.info("Harvesting Places from top commercial hubs...")
-            gmaps_tasks = [
-                gmaps_auditor.audit_niche(
-                    query=mq["query"],
-                    location=mq["location"],
-                    max_results=10,
-                )
-                for mq in plan["maps_queries"][:8]
-            ]
-            gmaps_results = await asyncio.gather(*gmaps_tasks, return_exceptions=True)
-            for gr in gmaps_results:
-                if isinstance(gr, list):
-                    harvested_raw.extend(gr)
+            logger.info("Harvesting Places from top commercial hubs with pacing...")
+            for mq in plan["maps_queries"][:6]:
+                try:
+                    places_leads = await gmaps_auditor.audit_niche(
+                        query=mq["query"],
+                        location=mq["location"],
+                        max_results=10,
+                    )
+                    harvested_raw.extend(places_leads)
+                    # Safe rate-limiting delay between places queries
+                    await asyncio.sleep(random.uniform(0.8, 1.5))
+                except Exception as ex:
+                    logger.warning(f"Error auditing hub {mq['location']}: {ex}")
         except Exception as e:
             logger.warning(f"GMaps harvest error: {e}")
 
@@ -237,6 +243,10 @@ class BatchHarvester:
 
                 # Mark seen in Redis
                 dedup_manager.mark_seen(lead["fingerprint"])
+
+            # Pacing delay between AI qualification chunks to respect LLM rate limits
+            if i + chunk_size < len(processed_leads):
+                await asyncio.sleep(0.5)
 
         # 8. Persist to PostgreSQL (if DB connection active)
         self._save_leads_to_db(qualified_leads)
